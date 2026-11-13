@@ -35,7 +35,7 @@ let package = Package(
             resources: [.copy("Resources")]
         ),
         .testTarget(name: "PoConvertTests", dependencies: ["PoConvert"]),
-        .testTarget(name: "GitkUITests", dependencies: ["GitkUI", "GitkCore"]),
+        .testTarget(name: "GitkUITests", dependencies: ["GitkUI", "GitkCore", "PoConvert"]),
     ],
     swiftLanguageModes: [.v6]
 )

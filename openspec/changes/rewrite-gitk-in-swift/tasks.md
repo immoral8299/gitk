@@ -674,7 +674,7 @@ Order of work:
   - Files: `Sources/GitkUI/App/LanguageOverride.swift`, `L10n.swift`, tests.
   - Needs: 19.3, 9.3.
   - Spec: localization "German system", "Untranslated string", "Override from terminal", "C locale".
-- [ ] 19.5 [S] Add `L10nCoverageTests`: scan `Sources/GitkUI` for `L("…")` literals and fail on any key that is not a gitk msgid (from `gitk/po/de.po` msgids, after `&` stripping) unless it is listed in `docs/architecture.md` under new strings — Verify: `swift test --filter L10nCoverageTests` passes.
+- [x] 19.5 [S] Add `L10nCoverageTests`: scan `Sources/GitkUI` for `L("…")` literals and fail on any key that is not a gitk msgid (from `gitk/po/de.po` msgids, after `&` stripping) unless it is listed in `docs/architecture.md` under new strings — Verify: `swift test --filter L10nCoverageTests` passes.
   - Files: `Tests/GitkUITests/L10nCoverageTests.swift`.
   - Needs: 19.3.
 
