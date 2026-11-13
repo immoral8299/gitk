@@ -495,7 +495,7 @@ Order of work:
 
 ## 14. Find
 
-- [ ] 14.1 [M] Implement `FindQuery` (Core: type, match mode, field, pattern) and `doesmatch` text matching over the headline, comments, author and committer — Verify: `swift test --filter FindQueryTests` (IgnCase author, an invalid regexp gives no matches and no throw).
+- [x] 14.1 [M] Implement `FindQuery` (Core: type, match mode, field, pattern) and `doesmatch` text matching over the headline, comments, author and committer — Verify: `swift test --filter FindQueryTests` (IgnCase author, an invalid regexp gives no matches and no throw).
   - Files: `Sources/GitkCore/Find/FindQuery.swift`, tests.
   - Port: 4936–4975, 5079–5150.
   - Needs: 3.2.
