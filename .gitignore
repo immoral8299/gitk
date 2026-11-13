@@ -1,0 +1,12 @@
+# SwiftPM / Xcode
+.build/
+.swiftpm/
+*.xcodeproj
+xcuserdata/
+DerivedData/
+
+# Local build and snapshot output
+/out/
+
+# macOS
+.DS_Store
