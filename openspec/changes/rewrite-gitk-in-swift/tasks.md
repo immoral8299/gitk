@@ -77,7 +77,7 @@ Order of work:
 - [x] 2.1 [M] Implement `ObjectID` (D4): inline 32-byte storage, `init?(hex:)` for 40 or 64 hex characters, `hex`, `abbreviated(_ n:)`, the constants `.localUnstaged` and `.localStaged` (gitk `nullid`/`nullid2`, sized to the hash length), `Hashable` and `Comparable` — Verify: `swift test --filter ObjectIDTests` covers valid and invalid lengths, uppercase rejection, round-trip, and the abbreviation lengths.
   - Files: `Sources/GitkCore/Model/ObjectID.swift`, `Tests/GitkCoreTests/ObjectIDTests.swift`.
   - Needs: 1.3.
-- [ ] 2.2 [M] Implement `ProcessRunner`/`GitRunner.run(args, stdin:, cwd:)`. It returns `GitOutput{stdout, stderr, status}` and throws `GitError` on a non-zero exit. It removes `GIT_TRACE` from the child environment and never uses a shell (D2) — Verify: `swift test --filter GitRunnerTests` checks `git --version` succeeds; `git rev-parse nope` throws with "unknown revision" in stderr; `/usr/bin/env` run with `GIT_TRACE=1` in the parent does not list `GIT_TRACE`.
+- [x] 2.2 [M] Implement `ProcessRunner`/`GitRunner.run(args, stdin:, cwd:)`. It returns `GitOutput{stdout, stderr, status}` and throws `GitError` on a non-zero exit. It removes `GIT_TRACE` from the child environment and never uses a shell (D2) — Verify: `swift test --filter GitRunnerTests` checks `git --version` succeeds; `git rev-parse nope` throws with "unknown revision" in stderr; `/usr/bin/env` run with `GIT_TRACE=1` in the parent does not list `GIT_TRACE`.
   - Files: `Sources/GitkCore/Git/GitRunner.swift`, `Sources/GitkCore/Git/GitEnvironment.swift`, tests.
   - Port: 160–245 (`safe_exec*`, `make_arg_safe` — only the argument array semantics apply in Swift).
   - Needs: 1.3.
