@@ -250,7 +250,7 @@ Order of work:
   - Port: 20–34, 12601–12610, 12828–12831.
   - Needs: 2.4, 2.5.
   - Spec: cli-launch "Git too old", "Not a repository", "Unknown hash algorithm", "SHA-256 repository".
-- [ ] 8.3 [M] Implement `ViewSpec` (name, args, files, argscmd, perm) and ports of `parseviewargs` and `parseviewrevs`, including running argscmd with `sh -c` and the `--merge` handling via `unmerged_files` — Verify: `swift test --filter ViewSpecTests` (`--merge` on the `conflict` fixture gives the unmerged files; both "No files selected" messages; argscmd output lines are appended).
+- [x] 8.3 [M] Implement `ViewSpec` (name, args, files, argscmd, perm) and ports of `parseviewargs` and `parseviewrevs`, including running argscmd with `sh -c` and the `--merge` handling via `unmerged_files` — Verify: `swift test --filter ViewSpecTests` (`--merge` on the `conflict` fixture gives the unmerged files; both "No files selected" messages; argscmd output lines are appended).
   - Files: `Sources/GitkCore/Model/ViewSpec.swift`, tests.
   - Port: 363–587.
   - Needs: 2.2, 1.6.
