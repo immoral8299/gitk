@@ -532,7 +532,7 @@ Order of work:
   - Port: 4303–4372.
   - Needs: 8.3.
   - Spec: views "Pickaxe as regexp".
-- [ ] 15.2 [M] Implement `ViewOptionCodec.decode` (pattern matching, `-<n>` as the limit, leftovers into extra args) — Verify: `swift test --filter ViewOptionDecodeTests` (`--author=bob -20 --no-merges`; round-trip of `encode` results).
+- [x] 15.2 [M] Implement `ViewOptionCodec.decode` (pattern matching, `-<n>` as the limit, leftovers into extra args) — Verify: `swift test --filter ViewOptionDecodeTests` (`--author=bob -20 --no-merges`; round-trip of `encode` results).
   - Files: `ViewOptionCodec.swift`, tests.
   - Port: 4372–4434.
   - Needs: 15.1.
