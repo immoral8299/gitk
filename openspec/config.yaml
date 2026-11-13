@@ -1,0 +1,44 @@
+schema: spec-driven
+
+context: |
+  Project: gitk-swift. A native macOS rewrite of gitk (the Tcl/Tk git history browser) in Swift.
+  Reference source: ./gitk/ is the upstream gitk checkout at commit 6fc42f7 (one ~13k-line Tcl
+  script `gitk/gitk` plus 16 po/*.po catalogs). It is read-only reference material for
+  behaviour, differential tests and translations. It is never built or shipped.
+
+  Decisions already made (2026-11-13; do not re-ask):
+  - Platform/UI: macOS only (14+). AppKit for the performance-critical parts: commit list
+    with graph, diff text view, file list. SwiftUI only for simple dialogs and preferences.
+    No Linux/Windows UI.
+  - Scope: full gitk feature parity, delivered in milestones. Deliberate deviations: no Tk
+    themes or themeloader, no X11 PRIMARY auto-copy, macOS menu conventions, and gitk code
+    with no UI (view and ancestry highlighting) is not ported.
+  - Git access: run the `git` CLI as a subprocess, with the same commands and flags gitk
+    uses. No libgit2. Requires git >= 2.20; supports SHA-1 and SHA-256.
+  - Compatibility: same CLI syntax as gitk (`[rev-list args] [-- paths]`, --select-commit,
+    --argscmd). Import ~/.config/git/gitk (or $XDG_CONFIG_HOME/git/gitk, ~/.gitk) one way,
+    by parsing `set` lines without running Tcl, and never write to it. Generate localized
+    resources from gitk/po/*.po.
+  - Build: Swift Package Manager, Swift 6 toolchain, no third-party packages. Executable
+    name `gitk-swift`. The commit-graph cache is a separate file in the git dir, not
+    gitk.cache.
+  - License: GPL-2.0-or-later (derived from gitk); keep the original copyright notices.
+    Not for upstream submission.
+  - Testing: unit tests on the core library, fixture repositories built by a script, and
+    differential tests against gitk's Tcl procedures run under tclsh 9
+    (/opt/homebrew/bin/tclsh) for ordering and layout parity.
+
+  Execution model: one manager agent dispatches tasks from tasks.md to a fleet of
+  Sonnet/Haiku worker agents. Each task must be self-contained.
+
+rules:
+  specs:
+    - Behaviour only. No Swift type names or framework choices.
+    - Where gitk's code and its help text disagree, follow the code and say so.
+  design:
+    - Cite the gitk Tcl procs and line ranges each decision ports from.
+  tasks:
+    - Each task must be atomic, completable in one session by a Sonnet/Haiku agent
+      with no clarification needed.
+    - Each task must name the exact files to create or modify, the gitk/gitk procs and
+      line ranges it ports (if any), the tasks it depends on (by ID), and an exact
