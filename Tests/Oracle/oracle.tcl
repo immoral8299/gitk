@@ -8,7 +8,7 @@
 # ordering and layout algorithms headless.
 #
 #   tclsh Tests/Oracle/oracle.tcl --selftest
-#   tclsh Tests/Oracle/oracle.tcl --repo <dir> [git log args]   (task 5.2)
+#   tclsh Tests/Oracle/oracle.tcl --repo <dir> [--layout=chunked|oneshot] [git log args]
 #
 # Stub list and reasons: Tests/Oracle/README.md.
 
@@ -106,7 +106,14 @@ proc oracle::installStubs {} {
     # Canvas drawing and scrolling.
     proc ::setcanvscroll {args} {}
     proc ::drawvisible {args} {}
+    # gitk's own drawcommits is kept as ::oracle::realDrawcommits: its
+    # layoutrows/optimize_rows half is exactly what lays rows out as the user
+    # scrolls (task 5.3). The helpers it calls to paint are stubbed below.
+    rename ::drawcommits ::oracle::realDrawcommits
     proc ::drawcommits {args} {}
+    proc ::drawcmitrow {args} {}
+    proc ::drawparentlinks {args} {}
+    proc ::drawlineseg {args} {return {}}
     proc ::clear_display {args} {}
     proc ::redisplay {args} {}
     proc ::selectline {args} {}
@@ -156,6 +163,9 @@ proc oracle::initGlobals {} {
         set nextcolor 0
         set lastscrollset 0
         set lastscrollrows 0
+        # drawcommits (kept for layout, see layoutAll) tests these.
+        set need_redisplay 0
+        set nrows_drawn 0
         set canvxmax 0
         set canvy0 0
         set linespc 1
@@ -303,15 +313,105 @@ proc oracle::loadRepo {dir logArgs} {
     set ::numcommits $::commitidx(0)
 }
 
-# {order:[ids...], varcs:{...}} for view 0. `order` is gitk's row order, taken
-# from `commitonrow` for rows 0..numcommits-1; `varcs` lists the arc tables,
-# indexed by arc number (index 0 is gitk's sentinel arc).
-proc oracle::dumpOrder {} {
+# Lay out every row the way gitk does after a view has loaded. gitk never
+# calls layoutrows directly: `drawcommits row endrow` (6459-6539) does it for
+# a window of rows around what is visible, and `drawvisible` (6557-6612)
+# derives that window from the canvas scroll position.
+#
+#   oneshot: one drawcommits call over the whole view, i.e. layoutrows over
+#            all rows followed by optimize_rows over all rows.
+#   chunked: successive drawcommits calls for a window of `win` rows that
+#            advances by `step` rows from the top to the bottom, using
+#            drawvisible's row arithmetic (y0/y1 -> row/endrow) with
+#            linespc = 18. This is what happens when a user opens the repo
+#            and scrolls to the bottom.
+proc oracle::layoutAll {mode win step} {
+    set n $::commitidx(0)
+    if {$n == 0} return
+    set ::numcommits $n
+    set ::linespc 18
+    if {[info exists ::env(ORACLE_TRACE_LAYOUT)]} {
+        # Debug aid: log the row ranges gitk lays out, to stderr.
+        foreach p {layoutrows optimize_rows realDrawcommits} {
+            set cmd [expr {$p eq "realDrawcommits" ? "::oracle::$p" : "::$p"}]
+            trace add execution $cmd enter [list apply {{p cmd op} {
+                puts stderr "oracle: [lindex $cmd 0] [lrange $cmd 1 end]"
+            }} $p]
+        }
+    }
+    switch -- $mode {
+        oneshot {
+            realDrawcommits 0 [expr {$n - 1}]
+        }
+        chunked {
+            set ls $::linespc
+            for {set s 0} {$s < $n} {incr s $step} {
+                # drawvisible: y0 = top of the window, y1 = bottom.
+                set y0 [expr {$s * $ls}]
+                set y1 [expr {($s + $win) * $ls}]
+                set row [expr {int(($y0 - 3) / $ls) - 1}]
+                set endrow [expr {int(($y1 - 3) / $ls) + 1}]
+                if {$endrow >= $::vrowmod(0)} {
+                    ::update_arcrows 0
+                }
+                realDrawcommits $row $endrow
+            }
+        }
+        default {error "unknown layout mode: $mode"}
+    }
+}
+
+proc oracle::jrows {} {
+    set parts {}
+    set n $::commitidx(0)
+    for {set r 0} {$r < $n} {incr r} {
+        set id [::commitonrow $r]
+        set il [lindex $::rowidlist $r]
+        lappend parts "{\"col\":[lsearch -exact $il $id],\"id\":[jstr $id],\"idlist\":[jlist str $il]}"
+    }
+    return "\[\n[join $parts ,\n]\n\]"
+}
+
+proc oracle::jranges {order} {
+    set parts {}
+    foreach id [lsort $order] {
+        if {![info exists ::children(0,$id)]} {
+            set r {}
+        } else {
+            set r [::rowranges $id]
+        }
+        lappend parts "[jstr $id]:[jlist int $r]"
+    }
+    return "{\n[join $parts ,\n]\n}"
+}
+
+# gitk assigns colours while drawing (drawcmitrow, drawlineseg,
+# drawparentlinks). The oracle calls assigncolor once per id in row order and
+# reports the index of the chosen colour in the `colors` list.
+proc oracle::jcolors {order} {
+    set parts {}
+    foreach id $order {
+        ::assigncolor $id
+    }
+    foreach id [lsort $order] {
+        lappend parts "[jstr $id]:[lsearch -exact $::colors $::colormap($id)]"
+    }
+    return "{\n[join $parts ,\n]\n}"
+}
+
+# {colors, order, ranges, rows, varcs} for view 0 (keys sorted). `order` is
+# gitk's row order, taken from `commitonrow` for rows 0..numcommits-1; `varcs`
+# lists the arc tables, indexed by arc number (index 0 is gitk's sentinel arc).
+proc oracle::dumpAll {} {
     set n $::commitidx(0)
     set order {}
     for {set r 0} {$r < $n} {incr r} {
         lappend order [::commitonrow $r]
     }
+    set colors [jcolors $order]
+    set rows [jrows]
+    set ranges [jranges $order]
+
     # make_disporder already refreshed varcrow for every arc it touched;
     # this makes the last arcs current too.
     ::update_arcrows 0
@@ -326,17 +426,18 @@ proc oracle::dumpOrder {} {
         }
     }
     set varcs [join [list \
-        "\"varcstart\":[jlist str $::varcstart(0)]" \
         "\"varccommits\":\[[join $cm ,]\]" \
+        "\"varcrow\":[jlist intornull $::varcrow(0)]" \
+        "\"varcstart\":[jlist str $::varcstart(0)]" \
         "\"varctok\":[jlist str $::varctok(0)]" \
-        "\"vupptr\":[jlist int $::vupptr(0)]" \
+        "\"vbackptr\":[jlist int $::vbackptr(0)]" \
         "\"vdownptr\":[jlist int $::vdownptr(0)]" \
         "\"vleftptr\":[jlist int $::vleftptr(0)]" \
-        "\"vbackptr\":[jlist int $::vbackptr(0)]" \
-        "\"varcrow\":[jlist intornull $::varcrow(0)]"] ,]
-    return "{\"order\":[jlist str $order],\"varcs\":{$varcs}}"
+        "\"vupptr\":[jlist int $::vupptr(0)]"] ,]
+    return "{\n\"colors\":$colors,\n\"order\":[jlist str $order],\n\"ranges\":$ranges,\n\"rows\":$rows,\n\"varcs\":{$varcs}\n}"
 }
 
+# repoMode <dir> [--layout=chunked|oneshot] [--window N] [--step N] [git log args]
 proc oracle::repoMode {args} {
     if {[llength $args] < 1} {return [usage]}
     set dir [file normalize [lindex $args 0]]
@@ -344,13 +445,34 @@ proc oracle::repoMode {args} {
         puts stderr "oracle: not a directory: $dir"
         return 2
     }
-    loadRepo $dir [lrange $args 1 end]
-    puts [dumpOrder]
+    set mode chunked
+    set win 50
+    set step 50
+    set rest {}
+    set a [lrange $args 1 end]
+    while {[llength $a]} {
+        set x [lindex $a 0]
+        set a [lrange $a 1 end]
+        if {[regexp {^--layout=(.*)$} $x -> m]} {
+            set mode $m
+        } elseif {$x eq "--window" || $x eq "--step"} {
+            set v [lindex $a 0]
+            set a [lrange $a 1 end]
+            if {![string is integer -strict $v] || $v < 1} {return [usage]}
+            if {$x eq "--window"} {set win $v} else {set step $v}
+        } else {
+            lappend rest $x
+        }
+    }
+    if {$mode ne "chunked" && $mode ne "oneshot"} {return [usage]}
+    loadRepo $dir $rest
+    layoutAll $mode $win $step
+    puts [dumpAll]
     return [expr {[llength $::oracle::errors] ? 1 : 0}]
 }
 
 proc oracle::usage {} {
-    puts stderr "usage: oracle.tcl --selftest | --repo <dir> \[git log args\]"
+    puts stderr "usage: oracle.tcl --selftest | --repo <dir> \[--layout=chunked|oneshot\] \[--window N\] \[--step N\] \[git log args\]"
     return 2
 }
 

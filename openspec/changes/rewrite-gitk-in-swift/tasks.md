@@ -168,7 +168,7 @@ Order of work:
   - Files: `Tests/Oracle/oracle.tcl`.
   - Port: 587–672, 1651–1884.
   - Needs: 5.1, 1.5.
-- [ ] 5.3 [M] Make the oracle lay out and colour rows: drive `layoutmore` (with `drawcommits` and `drawvisible` stubbed) until every row is laid out, then add `rows:[{id,col,idlist}]`, `ranges:{id:[…]}` and `colors:{id:n}` (calling `assigncolor` for each id in row order) — Verify: on `linear` every `col` is 0; on `merge-simple` the merge's second parent line is in column 1.
+- [x] 5.3 [M] Make the oracle lay out and colour rows: drive `layoutmore` (with `drawcommits` and `drawvisible` stubbed) until every row is laid out, then add `rows:[{id,col,idlist}]`, `ranges:{id:[…]}` and `colors:{id:n}` (calling `assigncolor` for each id in row order) — Verify: on `linear` every `col` is 0; on `merge-simple` the merge's second parent line is in column 1.
   - Files: `Tests/Oracle/oracle.tcl`.
   - Port: 5373–5443, 6668–6731.
   - Needs: 5.2.
