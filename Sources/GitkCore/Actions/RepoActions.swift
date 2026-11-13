@@ -214,6 +214,22 @@ public struct RepoActions: Sendable {
         return try await run(["diff-tree", "-r", "-p"] + ids).stdout
     }
 
+    // MARK: Copy reference
+
+    /// Port of gitk proc `copyreference` (gitk/gitk 9632–9647): the text of
+    /// `git show -s --pretty=format:%h ("%s", %ad) --date=short`, with
+    /// `--abbrev=<abbrevLength>` added only when that is shorter than the full
+    /// `hashLength`. Returns the text; the caller puts it on the clipboard.
+    public func copyReference(_ id: ObjectID, abbrevLength: Int, hashLength: Int) async throws -> String {
+        var args = ["show", "-s", "--pretty=format:%h (\"%s\", %ad)", "--date=short"]
+        if abbrevLength < hashLength {
+            args.append("--abbrev=\(abbrevLength)")
+        }
+        args.append(id.hex)
+        let out = try await run(args)
+        return String(decoding: out.stdout, as: UTF8.self).trimmingCharacters(in: .newlines)
+    }
+
     // MARK: Helpers
 
     private func run(_ args: [String], stdin: Data? = nil) async throws -> GitOutput {

@@ -581,7 +581,7 @@ Order of work:
   - Port: 9514–9632.
   - Needs: 16.1, 10.3.
   - Spec: repository-actions "Annotated tag".
-- [ ] 16.7 [S] Implement Copy commit reference (`git show -s --pretty=format:'%h ("%s", %ad)' --date=short` plus `--abbrev` from the copy length) — Verify: `swift test --filter CopyReferenceTests`.
+- [x] 16.7 [S] Implement Copy commit reference (`git show -s --pretty=format:'%h ("%s", %ad)' --date=short` plus `--abbrev` from the copy length) — Verify: `swift test --filter CopyReferenceTests`.
   - Files: `RepoActions.swift`, tests.
   - Port: 9632–9647.
   - Needs: 16.1.
