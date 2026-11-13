@@ -23,8 +23,10 @@ let package = Package(
         // Dev tool: prints ordering + layout JSON for differential tests.
         .executableTarget(name: "gitk-core-dump", dependencies: ["GitkCore"]),
         // Dev tool: converts po/*.po into localized resources.
-        .executableTarget(name: "po2strings"),
+        .target(name: "PoConvert"),
+        .executableTarget(name: "po2strings", dependencies: ["PoConvert"]),
         .testTarget(name: "GitkCoreTests", dependencies: ["GitkCore"]),
+        .testTarget(name: "PoConvertTests", dependencies: ["PoConvert"]),
         .testTarget(name: "GitkUITests", dependencies: ["GitkUI", "GitkCore"]),
     ],
     swiftLanguageModes: [.v6]

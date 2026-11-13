@@ -2,5 +2,7 @@
 // gitk-swift: a native macOS port of gitk.
 // Derived from gitk, Copyright © 2005-2016 Paul Mackerras and contributors.
 
-// Placeholder until task 19.1 implements the converter.
+import PoConvert
+
+// Thin CLI over the PoConvert library; the converter arrives with task 19.2.
 print("po2strings: not implemented yet")

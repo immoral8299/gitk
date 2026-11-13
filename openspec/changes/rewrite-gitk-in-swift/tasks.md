@@ -659,7 +659,7 @@ Order of work:
 
 ## 19. Localization
 
-- [ ] 19.1 [M] Write the `po2strings` parser: msgctxt, multiline msgid/msgstr, escapes, fuzzy and empty entries skipped — Verify: `swift test --filter PoParserTests` with sample snippets taken from `gitk/po/de.po`.
+- [x] 19.1 [M] Write the `po2strings` parser: msgctxt, multiline msgid/msgstr, escapes, fuzzy and empty entries skipped — Verify: `swift test --filter PoParserTests` with sample snippets taken from `gitk/po/de.po`.
   - Files: `Sources/po2strings/main.swift`, `Sources/po2strings/PoParser.swift` (or a small shared library target if needed), tests.
   - Needs: 1.3.
 - [ ] 19.2 [S] Convert placeholders (`%s`/`%d`/`%n$s` to positional `%n$@`/`%n$ld`), strip `&` mnemonics, map lproj names (D11), and write sorted `.strings` output — Verify: `swift test --filter PoConvertTests`.
