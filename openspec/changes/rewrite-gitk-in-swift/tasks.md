@@ -85,7 +85,7 @@ Order of work:
   - Files: `Sources/GitkCore/Git/GitProcess.swift`, `Sources/GitkCore/Git/RecordSplitter.swift`, tests.
   - Port: 283–354 (`run`, `filerun`, `dorunq` — the purpose only; replaced by async streams).
   - Needs: 2.2.
-- [ ] 2.4 [S] Implement `GitVersion` parsing and comparison, with a minimum of 2.20 — Verify: `swift test --filter GitVersionTests` with inputs `git version 2.54.0 (Apple Git-157)`, `git version 2.19.1`, `git version 2.45.0.windows.1`, `git version 2.20`.
+- [x] 2.4 [S] Implement `GitVersion` parsing and comparison, with a minimum of 2.20 — Verify: `swift test --filter GitVersionTests` with inputs `git version 2.54.0 (Apple Git-157)`, `git version 2.19.1`, `git version 2.45.0.windows.1`, `git version 2.20`.
   - Files: `Sources/GitkCore/Git/GitVersion.swift`, tests.
   - Port: 20–34.
   - Needs: 1.3.
