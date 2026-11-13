@@ -107,7 +107,7 @@ Order of work:
 - [x] 3.2 [S] Implement `CommitStore`: interns `ObjectID` to `CommitIndex` (`Int32`) and holds parallel arrays for the fields from 3.1, decoding text lazily — Verify: `swift test --filter CommitStoreTests` (interning is idempotent; 100k inserts take under 0.5s in release; text is decoded on first access).
   - Files: `Sources/GitkCore/Model/CommitStore.swift`, `Sources/GitkCore/Model/Commit.swift`, tests.
   - Needs: 3.1.
-- [ ] 3.3 [M] Implement `RefParser`/`RefSet`. It loads `git show-ref -d` and `git symbolic-ref -q HEAD`, peels annotated tags, and classifies refs as heads, remotes, tags or other. It applies `hideremotes` and the `refstohide` globs — Verify: `swift test --filter RefParserTests` on `tags-notes` (annotated tag attached to its commit), detached HEAD (no main head name, main head ID set), and hiding globs.
+- [x] 3.3 [M] Implement `RefParser`/`RefSet`. It loads `git show-ref -d` and `git symbolic-ref -q HEAD`, peels annotated tags, and classifies refs as heads, remotes, tags or other. It applies `hideremotes` and the `refstohide` globs — Verify: `swift test --filter RefParserTests` on `tags-notes` (annotated tag attached to its commit), detached HEAD (no main head name, main head ID set), and hiding globs.
   - Files: `Sources/GitkCore/Parsing/RefParser.swift`, `Sources/GitkCore/Model/RefSet.swift`, tests.
   - Port: 2014–2128 (`readrefs`, `movehead`, `removehead`), 12518–12530 (`is_other_ref_visible`).
   - Needs: 2.2, 2.1.
