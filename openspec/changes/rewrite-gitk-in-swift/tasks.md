@@ -280,7 +280,7 @@ Order of work:
   - Files: `Tests/GitkCoreTests/PerfTests.swift`.
   - Needs: 8.5, 1.7.
   - Spec: history-loading "Large repository".
-- [ ] 8.10 [M] Add `RawLogParser`/`ViewSession` support for encodings: decode with the commit's `encoding` header, falling back to the repository's `gitEncoding` — Verify: `swift test --filter EncodingTests` on `encodings` (the Latin-1 author name decodes correctly).
+- [ ] 8.10 [M] Add `RawLogParser`/`ViewSession` support for encodings, as gitk does it: `git log --pretty=raw` re-encodes messages to `i18n.logOutputEncoding` (default UTF-8) and drops the `encoding` header, so do not pass `--encoding`; decode the stream with the repository's `gitEncoding` (`RepoContext`), and use a commit's `encoding` header only if one is present — Verify: `swift test --filter EncodingTests` on `encodings` (the Latin-1 author name decodes correctly).
   - Files: `RawLogParser.swift`, `CommitStore.swift`, tests.
   - Needs: 8.5.
   - Spec: history-loading "Non-UTF-8 commit", "Unsupported encoding".
