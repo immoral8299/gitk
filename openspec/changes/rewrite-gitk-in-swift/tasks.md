@@ -93,7 +93,7 @@ Order of work:
   - Files: `Sources/GitkCore/Git/RepoContext.swift`, tests.
   - Port: 245–283, 12572–12615, 12941–12952.
   - Needs: 2.2, 1.6.
-- [ ] 2.6 [S] Implement `TextDecoder.decode(_ data: Data, encodingName: String?) -> String`. IANA names map through `CFStringConvertIANACharSetNameToEncoding`. Invalid sequences fall back to decoding each byte as ISO-8859-1 (matching Tcl's tcl8 profile). Unknown names fall back to UTF-8 and report a warning — Verify: `swift test --filter TextDecoderTests` covers UTF-8, Latin-1, Shift-JIS, invalid UTF-8 bytes kept, and an unknown name.
+- [x] 2.6 [S] Implement `TextDecoder.decode(_ data: Data, encodingName: String?) -> String`. IANA names map through `CFStringConvertIANACharSetNameToEncoding`. Invalid sequences fall back to decoding each byte as ISO-8859-1 (matching Tcl's tcl8 profile). Unknown names fall back to UTF-8 and report a warning — Verify: `swift test --filter TextDecoderTests` covers UTF-8, Latin-1, Shift-JIS, invalid UTF-8 bytes kept, and an unknown name.
   - Files: `Sources/GitkCore/Parsing/TextDecoder.swift`, tests.
   - Port: 36–55, 12420–12460 (`tcl_encoding`).
   - Needs: 1.3.
