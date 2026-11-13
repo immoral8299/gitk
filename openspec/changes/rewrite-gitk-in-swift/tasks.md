@@ -140,7 +140,7 @@ Order of work:
 - [x] 4.1 [S] Generate `TkColorTable` (X11/Tk colour name → RGB) from Tk's `xlib/xcolors.c` (tcltk/tk tag `core-9-0-3`). Include the `grayNN`/`greyNN` names. Commit the generator script under `Tools/` — Verify: `swift test --filter TkColorTableTests` checks `gray85`=(217,217,217), `darkgrey`=(169,169,169), `LightSkyBlue`, and that lookup ignores case.
   - Files: `Sources/GitkCore/Settings/TkColorTable.swift`, `Tools/gen-tk-colors.sh`, tests.
   - Needs: 1.3.
-- [ ] 4.2 [S] Implement `TkColor.parse(_:) -> RGBA?` for `#rgb`, `#rrggbb`, `#rrrrggggbbbb` and names — Verify: `swift test --filter TkColorTests`.
+- [x] 4.2 [S] Implement `TkColor.parse(_:) -> RGBA?` for `#rgb`, `#rrggbb`, `#rrrrggggbbbb` and names — Verify: `swift test --filter TkColorTests`.
   - Files: `Sources/GitkCore/Settings/TkColor.swift`, tests.
   - Needs: 4.1.
 - [ ] 4.3 [S] Implement `TkFont.parse(_:) -> FontSpec{family, pointSize, bold, italic}` and `format`, using `TclList` — Verify: `swift test --filter TkFontTests` with `{Lucida Grande} 9`, `Monaco 9`, `{sans} 9 bold`, `Helvetica -12` (negative size = pixels, converted to points 1:1).
