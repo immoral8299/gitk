@@ -151,7 +151,7 @@ Order of work:
   - Files: `Sources/GitkCore/Settings/Settings.swift`, tests.
   - Port: 12616–12810.
   - Needs: 4.2, 4.3.
-- [ ] 4.5 [S] Implement `SettingsStore.load()`/`save()` as JSON in `~/Library/Application Support/gitk-swift/` (overridable with `GITK_SWIFT_CONFIG_DIR`), with atomic writes. A corrupt file gives defaults plus a warning, and the bad file is not overwritten until the first change — Verify: `swift test --filter SettingsStoreTests` (round-trip, corrupt file, override dir).
+- [x] 4.5 [S] Implement `SettingsStore.load()`/`save()` as JSON in `~/Library/Application Support/gitk-swift/` (overridable with `GITK_SWIFT_CONFIG_DIR`), with atomic writes. A corrupt file gives defaults plus a warning, and the bad file is not overwritten until the first change — Verify: `swift test --filter SettingsStoreTests` (round-trip, corrupt file, override dir).
   - Files: `Sources/GitkCore/Settings/SettingsStore.swift`, tests.
   - Needs: 4.4.
 - [ ] 4.6 [M] Implement `LegacyConfigImporter`. It finds the file (`$XDG_CONFIG_HOME/git/gitk` > `~/.config/git/gitk` > `~/.gitk`), splits it into commands, imports `set var value`, `set geometry(k) v` and `set permviews {…}`, and ignores anything else without evaluating it — Verify: `swift test --filter LegacyConfigImporterTests` with a sample config containing fonts, colours, two permviews, a `proc` line (skipped) and an `exec` line (skipped); the source file's bytes and mtime are unchanged afterwards.
