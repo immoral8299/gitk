@@ -527,7 +527,7 @@ Order of work:
 
 ## 15. Views
 
-- [ ] 15.1 [M] Implement `ViewOptions` (the `known_view_options` table as data) and `ViewOptionCodec.encode` — Verify: `swift test --filter ViewOptionEncodeTests` (Author + Since gives `--author=alice --since=2026-03-01`; regexp pickaxe gives `-Sfoo.*bar --pickaxe-regex`).
+- [x] 15.1 [M] Implement `ViewOptions` (the `known_view_options` table as data) and `ViewOptionCodec.encode` — Verify: `swift test --filter ViewOptionEncodeTests` (Author + Since gives `--author=alice --since=2026-03-01`; regexp pickaxe gives `-Sfoo.*bar --pickaxe-regex`).
   - Files: `Sources/GitkCore/Views/ViewOptions.swift`, `ViewOptionCodec.swift`, tests.
   - Port: 4303–4372.
   - Needs: 8.3.
