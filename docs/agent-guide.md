@@ -145,8 +145,11 @@ which must stay first.
 - Use gitk's English text exactly as it appears inside `[mc "..."]` in
   `gitk/gitk`, without the `&` mnemonic marker. That text is the key that
   finds the translations.
-- Placeholders: write `%@` for strings and `%ld` for integers, in gitk's
-  order. The `.po` converter maps gitk's `%s`/`%d` to these.
+- Placeholders: keep gitk's Tcl placeholders exactly as written (`%s`, `%d`,
+  `%1$s`), and pass arguments in gitk's order: `String` for `%s`, `Int` for
+  `%d`. For example: `L("Reset branch %s to %s?", branch, id)`. `L()` converts
+  the key the same way the `.po` converter does before looking it up and
+  formatting it. Never write `%@` or `%ld` yourself.
 - A new string with no gitk equivalent is allowed only if you list it under
   "New strings" in `docs/architecture.md`.
 

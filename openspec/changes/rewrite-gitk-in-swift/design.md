@@ -172,7 +172,7 @@ The executable is named `gitk-swift` so it does not clash with git's own `gitk`.
   - It converts `%s`/`%d`/`%n$s` into positional `%n$@`/`%n$ld`.
   - It writes `Sources/GitkUI/Resources/<lproj>/Localizable.strings` sorted by key. Output is deterministic.
   - Language folder mapping: `pt_br → pt-BR.lproj`, `pt_pt → pt-PT.lproj`, `zh_cn → zh-Hans.lproj`; others are lowercased as they are.
-- The UI calls `L("English msgid", args...)`, which uses `Bundle.module`.
+- The UI calls `L("<gitk msgid, verbatim, with Tcl %s/%d>", args...)`. `L()` converts the key with the same `PoConvert` placeholder function used for the catalogs (`%s`→`%n$@`, `%d`→`%n$ld`), looks the result up in `Bundle.module`, and formats it. So the source keeps gitk's exact text, and `L10nCoverageTests` can compare keys with the `.po` msgids directly. Placeholder conversion lives in the `PoConvert` library target, which `GitkUI` depends on.
 - `LanguageOverride` runs first thing in `main`. It maps `LC_ALL`/`LC_MESSAGES`/`LANG` to an lproj and sets `AppleLanguages` in the process's `UserDefaults` volatile domain.
 
 ### D12. Verification hooks for agents

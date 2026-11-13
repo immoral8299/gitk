@@ -670,7 +670,7 @@ Order of work:
   - Files: `Tools/regen-l10n.sh`, `Sources/GitkUI/Resources/**`.
   - Needs: 19.2, 1.1.
   - Spec: localization "Idempotent conversion".
-- [ ] 19.4 [S] Implement `LanguageOverride` (`LC_ALL` > `LC_MESSAGES` > `LANG` → lproj; C/POSIX ignored) and make `L()` use `Bundle.module` with an English fallback — Verify: `swift test --filter LanguageOverrideTests`; `LANG=de_DE.UTF-8 Tools/snapshot.sh linear /tmp/de.png` shows German labels ("Suchen", "Zeile").
+- [ ] 19.4 [S] Implement `LanguageOverride` (`LC_ALL` > `LC_MESSAGES` > `LANG` → lproj; C/POSIX ignored) and make `L()` convert its Tcl-style key with `PoConvert`'s placeholder function (add the `GitkUI` → `PoConvert` dependency), then look it up in `Bundle.module` with an English fallback (design D11) — Verify: `swift test --filter LanguageOverrideTests`; `LANG=de_DE.UTF-8 Tools/snapshot.sh linear /tmp/de.png` shows German labels ("Suchen", "Zeile").
   - Files: `Sources/GitkUI/App/LanguageOverride.swift`, `L10n.swift`, tests.
   - Needs: 19.3, 9.3.
   - Spec: localization "German system", "Untranslated string", "Override from terminal", "C locale".
