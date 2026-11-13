@@ -143,7 +143,7 @@ Order of work:
 - [x] 4.2 [S] Implement `TkColor.parse(_:) -> RGBA?` for `#rgb`, `#rrggbb`, `#rrrrggggbbbb` and names — Verify: `swift test --filter TkColorTests`.
   - Files: `Sources/GitkCore/Settings/TkColor.swift`, tests.
   - Needs: 4.1.
-- [ ] 4.3 [S] Implement `TkFont.parse(_:) -> FontSpec{family, pointSize, bold, italic}` and `format`, using `TclList` — Verify: `swift test --filter TkFontTests` with `{Lucida Grande} 9`, `Monaco 9`, `{sans} 9 bold`, `Helvetica -12` (negative size = pixels, converted to points 1:1).
+- [x] 4.3 [S] Implement `TkFont.parse(_:) -> FontSpec{family, pointSize, bold, italic}` and `format`, using `TclList` — Verify: `swift test --filter TkFontTests` with `{Lucida Grande} 9`, `Monaco 9`, `{sans} 9 bold`, `Helvetica -12` (negative size = pixels, converted to points 1:1).
   - Files: `Sources/GitkCore/Settings/TkFont.swift`, tests.
   - Port: 8829–8873 (`parsefont`, `fontflags`, `fontname`).
   - Needs: 3.7.
