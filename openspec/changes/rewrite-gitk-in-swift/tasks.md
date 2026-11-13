@@ -179,6 +179,12 @@ Order of work:
   - Files: `Tests/GitkCoreTests/Support/Oracle.swift`, tests.
   - Needs: 5.4.
 
+- [ ] 5.6 [M] Make the oracle's results match how gitk actually draws. (a) Add a seeded `random-dag` fixture to `make-fixture.sh`: 1,500 commits, `--all`, about 40% with extra parents up to 80 commits back, built with `git fast-import`, deterministic. Add its README row. (b) Assign colours the way gitk does, during drawing: let the drawing procs `drawcmitrow`, `drawlineseg` and `drawparentlinks` run with only their canvas calls stubbed, so `assigncolor` happens in gitk's order. Do not assign in row order afterwards. (c) Regenerate the goldens, including `random-dag` (chunked 50/50) — Verify: `Tools/regen-golden.sh` run twice leaves no diff; `ORACLE_TRACE_LAYOUT=1` on `random-dag` shows the chunked `layoutrows` calls; `swift test --filter OracleGoldenTests` passes.
+  - Files: `Tests/Fixtures/make-fixture.sh`, `Tests/Fixtures/README.md`, `Tests/Oracle/oracle.tcl`, `Tests/Oracle/README.md`, `Tests/GitkCoreTests/Golden/*.json`.
+  - Port: 6309–6459 (`drawlines`, `drawcmittext`, `drawcmitrow`), 6074–6309.
+  - Needs: 5.5.
+  - Why: on random graphs gitk's columns depend on the chunks it lays out while drawing (see `Tests/Oracle/README.md`, "Layout modes"), and its colours depend on drawing order. The fixtures shipped so far don't show either effect.
+
 ## 6. Core: display ordering (port of gitk "varc")
 
 - [ ] 6.1 [L] Port `varcinit`, `resetvarcs`, `seeds` and `newvarc` into `VarcOrdering`, keeping gitk's state names as Swift properties — Verify: `swift test --filter VarcOrderingInitTests` (unit tests on hand-built 5-commit graphs) passes.
@@ -218,11 +224,11 @@ Order of work:
   - Port: 5840–5998.
   - Needs: 7.2.
   - Spec: commit-graph "Matches gitk on reference repositories", "Linear history".
-- [ ] 7.4 [M] Port `rowranges` and `layoutmore`, and add the lazy `ensureLaid(upTo:)` (D3) — Verify: `swift test --filter RowRangesParityTests` (equal to the oracle `ranges`) and a test that laying out only the first 100 rows of `many-branches` does not touch later rows.
+- [ ] 7.4 [M] Port `rowranges`, plus the row-range arithmetic of `drawcommits`/`drawvisible` (6459–6612). Implement the lazy `ensureLaid(visibleRows:)` (D3) so it calls `layoutrows`/`optimize_rows` with exactly the ranges gitk uses for that viewport. Layout results depend on these chunks (see 5.6) — Verify: `swift test --filter RowRangesParityTests`, where `ranges` and rows equal the oracle on every fixture, including `random-dag`, when the test scrolls a 50-row viewport down in 50-row steps like the oracle's default; plus a test that laying out only the first viewport of `many-branches` does not touch later rows.
   - Files: `GraphLayout.swift`, tests.
-  - Port: 5423–5443, 6018–6074.
-  - Needs: 7.3.
-- [ ] 7.5 [M] Port `findcrossings` and `assigncolor` as `GraphColors` — Verify: `swift test --filter ColorParityTests` (equal to the oracle `colors` for all fixtures).
+  - Port: 5423–5443, 6018–6074, 6459–6612.
+  - Needs: 7.3, 5.6.
+- [ ] 7.5 [M] Port `findcrossings` and `assigncolor` as `GraphColors`, assigning colours in gitk's drawing order (the order `drawcmitrow`/`drawlineseg`/`drawparentlinks` would call it for each drawn viewport, see 5.6) — Verify: `swift test --filter ColorParityTests` (equal to the oracle `colors` for all fixtures).
   - Files: `Sources/GitkCore/Graph/GraphColors.swift`, tests.
   - Port: 6633–6731.
   - Needs: 7.4.
