@@ -240,7 +240,7 @@ Order of work:
 
 ## 8. Core: launch, views and history loading
 
-- [ ] 8.1 [M] Implement `LaunchArguments.parse(argv:, repo:)`: split out `--select-commit=` and `--argscmd=`, treat `--` as the start of paths, skip empty arguments, use `git rev-parse --no-revs --no-flags` to find trailing paths, detect ambiguous arguments, and clean up the "Bad arguments" text — Verify: `swift test --filter LaunchArgumentsTests` covers every cli-launch scenario that does not need the UI.
+- [x] 8.1 [M] Implement `LaunchArguments.parse(argv:, repo:)`: split out `--select-commit=` and `--argscmd=`, treat `--` as the start of paths, skip empty arguments, use `git rev-parse --no-revs --no-flags` to find trailing paths, detect ambiguous arguments, and clean up the "Bad arguments" text — Verify: `swift test --filter LaunchArgumentsTests` covers every cli-launch scenario that does not need the UI.
   - Files: `Sources/GitkCore/CLI/LaunchArguments.swift`, tests.
   - Port: 12836–12895.
   - Needs: 2.5.
