@@ -147,7 +147,7 @@ Order of work:
   - Files: `Sources/GitkCore/Settings/TkFont.swift`, tests.
   - Port: 8829–8873 (`parsefont`, `fontflags`, `fontname`).
   - Needs: 3.7.
-- [ ] 4.4 [M] Implement the `Settings` `Codable` struct, with one property per supported `config_variables` entry plus `geometry` and `views: [SavedView]`. Defaults are gitk's aqua values, except the fonts (D9) — Verify: `swift test --filter SettingsDefaultsTests` checks every default against a table copied from gitk lines 12616–12730, with the unsupported variables (`theme`, `themeloader`, `uicolor`, `uifgcolor`, `uifgdisabledcolor`) listed as excluded.
+- [x] 4.4 [M] Implement the `Settings` `Codable` struct, with one property per supported `config_variables` entry plus `geometry` and `views: [SavedView]`. Defaults are gitk's aqua values, except the fonts (D9) — Verify: `swift test --filter SettingsDefaultsTests` checks every default against a table copied from gitk lines 12616–12730, with the unsupported variables (`theme`, `themeloader`, `uicolor`, `uifgcolor`, `uifgdisabledcolor`) listed as excluded.
   - Files: `Sources/GitkCore/Settings/Settings.swift`, tests.
   - Port: 12616–12810.
   - Needs: 4.2, 4.3.
