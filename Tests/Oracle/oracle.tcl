@@ -215,6 +215,140 @@ proc oracle::selftest {} {
     return 0
 }
 
+# --- JSON -------------------------------------------------------------------
+
+proc oracle::jstr {s} {
+    # Escape per RFC 8259. Characters above U+007F are emitted as they are.
+    set out ""
+    foreach ch [split $s ""] {
+        scan $ch %c code
+        switch -- $ch {
+            "\"" {append out "\\\""}
+            "\\" {append out "\\\\"}
+            "\n" {append out "\\n"}
+            "\r" {append out "\\r"}
+            "\t" {append out "\\t"}
+            default {
+                if {$code < 0x20} {
+                    append out [format {\u%04x} $code]
+                } else {
+                    append out $ch
+                }
+            }
+        }
+    }
+    return "\"$out\""
+}
+
+# Encode a Tcl list as a JSON array of strings, ints, or (ints or null).
+proc oracle::jlist {kind items} {
+    set parts {}
+    foreach x $items {
+        switch -- $kind {
+            str {lappend parts [jstr $x]}
+            int {lappend parts [expr {$x}]}
+            intornull {lappend parts [expr {$x eq "" ? "null" : [expr {$x}]}]}
+        }
+    }
+    return "\[[join $parts ,]\]"
+}
+
+# --- --repo mode ------------------------------------------------------------
+
+# Load commits the way gitk does at start-up: `getcommits` runs `initlayout`
+# and `start_rev_list` (which parses the arguments and runs
+# `git log --parents --boundary -z --pretty=raw --stdin ...`). The oracle then
+# feeds the pipe through `getcommitlines` until it returns 0 (EOF). gitk reads
+# non-blocking from the event loop; the oracle makes the pipe blocking and
+# loops instead.
+proc oracle::loadRepo {dir logArgs} {
+    cd $dir
+
+    # Mirror gitk's argument split (12792-12840): revision args before `--`,
+    # file limits after it.
+    set revargs {}
+    set files {}
+    set sawdd 0
+    foreach a $logArgs {
+        if {!$sawdd && $a eq "--"} {
+            set sawdd 1
+        } elseif {$sawdd} {
+            lappend files $a
+        } else {
+            lappend revargs $a
+        }
+    }
+
+    setHashAlgorithm [string trim [exec git rev-parse --show-object-format]]
+
+    set ::gitencoding utf-8
+    set ::tclencoding [::tcl_encoding $::gitencoding]
+    set ::selectheadid {}
+    set ::mainheadid [string trim [exec git rev-parse HEAD]]
+    set ::viewargs(0) $revargs
+    set ::viewargscmd(0) {}
+    set ::viewfiles(0) $files
+    set ::viewname(0) "Command line"
+    set ::curview 0
+
+    ::initlayout
+    if {![::start_rev_list 0]} {
+        error "oracle: start_rev_list failed: $::oracle::errors"
+    }
+    # start_rev_list registered exactly one instance for view 0.
+    set inst [lindex $::viewinstances(0) 0]
+    set fd $::commfd($inst)
+    fconfigure $fd -blocking 1
+    while {[::getcommitlines $fd $inst 0 0] != 0} {}
+    set ::numcommits $::commitidx(0)
+}
+
+# {order:[ids...], varcs:{...}} for view 0. `order` is gitk's row order, taken
+# from `commitonrow` for rows 0..numcommits-1; `varcs` lists the arc tables,
+# indexed by arc number (index 0 is gitk's sentinel arc).
+proc oracle::dumpOrder {} {
+    set n $::commitidx(0)
+    set order {}
+    for {set r 0} {$r < $n} {incr r} {
+        lappend order [::commitonrow $r]
+    }
+    # make_disporder already refreshed varcrow for every arc it touched;
+    # this makes the last arcs current too.
+    ::update_arcrows 0
+
+    set narcs [llength $::varctok(0)]
+    set cm {}
+    for {set a 0} {$a < $narcs} {incr a} {
+        if {[info exists ::varccommits(0,$a)]} {
+            lappend cm [jlist str $::varccommits(0,$a)]
+        } else {
+            lappend cm {[]}
+        }
+    }
+    set varcs [join [list \
+        "\"varcstart\":[jlist str $::varcstart(0)]" \
+        "\"varccommits\":\[[join $cm ,]\]" \
+        "\"varctok\":[jlist str $::varctok(0)]" \
+        "\"vupptr\":[jlist int $::vupptr(0)]" \
+        "\"vdownptr\":[jlist int $::vdownptr(0)]" \
+        "\"vleftptr\":[jlist int $::vleftptr(0)]" \
+        "\"vbackptr\":[jlist int $::vbackptr(0)]" \
+        "\"varcrow\":[jlist intornull $::varcrow(0)]"] ,]
+    return "{\"order\":[jlist str $order],\"varcs\":{$varcs}}"
+}
+
+proc oracle::repoMode {args} {
+    if {[llength $args] < 1} {return [usage]}
+    set dir [file normalize [lindex $args 0]]
+    if {![file isdirectory $dir]} {
+        puts stderr "oracle: not a directory: $dir"
+        return 2
+    }
+    loadRepo $dir [lrange $args 1 end]
+    puts [dumpOrder]
+    return [expr {[llength $::oracle::errors] ? 1 : 0}]
+}
+
 proc oracle::usage {} {
     puts stderr "usage: oracle.tcl --selftest | --repo <dir> \[git log args\]"
     return 2
@@ -229,10 +363,7 @@ proc oracle::main {argv} {
 
     switch -- [lindex $argv 0] {
         --selftest {return [selftest]}
-        --repo {
-            puts stderr "oracle: --repo is not implemented yet (task 5.2)"
-            return 2
-        }
+        --repo {return [repoMode {*}[lrange $argv 1 end]]}
         default {return [usage]}
     }
 }

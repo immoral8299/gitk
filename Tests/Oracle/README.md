@@ -61,6 +61,31 @@ least 420.
 | `setcoords` | computes canvas metrics from fonts |
 | `::oracle_widget` | stands in for `$canv`, `$canv2`, `$canv3`: `initlayout` calls `$canv cget -width`, and `setcanvscroll`-like code calls `$canv conf`; every subcommand is ignored and `cget` returns 0 |
 
+## `--repo` mode (task 5.2)
+
+```
+tclsh Tests/Oracle/oracle.tcl --repo <dir> [git log args] [-- files]
+```
+
+Arguments are passed to gitk's own `parseviewargs`/`start_rev_list`, so
+`--all`, `--date-order`, path limits, etc. behave as in gitk (no arguments
+means `HEAD`). The oracle runs the real `initlayout`, `start_rev_list` (which
+spawns `git log --no-color -z --pretty=raw --show-notes --parents --boundary
+... --stdin`) and `getcommitlines`; only the non-blocking `filerun` event loop
+is replaced by a blocking read loop. Output (view 0):
+
+```
+{"order": [id, ...],            // commitonrow 0..n-1: gitk's row order
+ "varcs": {                     // one entry per arc, index 0 = sentinel arc
+   "varcstart": [id, ...], "varccommits": [[id, ...], ...],
+   "varctok": [string, ...], "vupptr": [int, ...], "vdownptr": [int, ...],
+   "vleftptr": [int, ...], "vbackptr": [int, ...], "varcrow": [int|null, ...]}}
+```
+
+Exit status: 0 on success, 1 if gitk reported an error through `error_popup`
+(also printed on stderr), 2 on usage errors. If gitk cannot parse the git log
+output it calls `exit 1` itself.
+
 ## Known gaps
 
 - `showlocalchanges` is 0 (gitk defaults to 1). The oracle does not start a
