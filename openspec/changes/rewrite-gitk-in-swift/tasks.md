@@ -500,7 +500,7 @@ Order of work:
   - Port: 4936–4975, 5079–5150.
   - Needs: 3.2.
   - Spec: commit-find "Case-insensitive author search", "Invalid regexp".
-- [ ] 14.2 [S] Port `makepatterns` and path matching into `PathPatterns`, with backslash-to-slash for Exact — Verify: `swift test --filter PathPatternsTests` (a directory matches its children; quoted spaces via `ShellWords`).
+- [x] 14.2 [S] Port `makepatterns` and path matching into `PathPatterns`, with backslash-to-slash for Exact — Verify: `swift test --filter PathPatternsTests` (a directory matches its children; quoted spaces via `ShellWords`).
   - Files: `Sources/GitkCore/Find/PathPatterns.swift`, tests.
   - Port: 4975–4989.
   - Needs: 3.8.
