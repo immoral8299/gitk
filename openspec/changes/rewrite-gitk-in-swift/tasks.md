@@ -505,7 +505,7 @@ Order of work:
   - Port: 4975–4989.
   - Needs: 3.8.
   - Spec: commit-find "Directory path", "Quoted path with spaces".
-- [ ] 14.3 [M] Implement `FindEngine`: for path, `-S` and `-G` types it runs `git diff-tree -r -s --stdin <args>`, feeding the view's commits, and streams back the matching IDs; it is cancellable — Verify: `swift test --filter FindEngineTests` (`-S` on `linear` matches `git log -S` for the same string).
+- [x] 14.3 [M] Implement `FindEngine`: for path, `-S` and `-G` types it runs `git diff-tree -r -s --stdin <args>`, feeding the view's commits, and streams back the matching IDs; it is cancellable — Verify: `swift test --filter FindEngineTests` (`-S` on `linear` matches `git log -S` for the same string).
   - Files: `Sources/GitkCore/Find/FindEngine.swift`, tests.
   - Port: 4989–5079.
   - Needs: 14.1, 14.2, 2.3.
