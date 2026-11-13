@@ -113,7 +113,15 @@ final class ChildProcess: @unchecked Sendable {
         var attr: posix_spawnattr_t?
         posix_spawnattr_init(&attr)
         defer { posix_spawnattr_destroy(&attr) }
-        var flags = Int32(POSIX_SPAWN_CLOEXEC_DEFAULT)
+        // The child starts with an empty signal mask and default dispositions,
+        // whatever the parent (e.g. a test host) has blocked or ignored.
+        var noSignals = sigset_t()
+        sigemptyset(&noSignals)
+        posix_spawnattr_setsigmask(&attr, &noSignals)
+        var allSignals = sigset_t()
+        sigfillset(&allSignals)
+        posix_spawnattr_setsigdefault(&attr, &allSignals)
+        var flags = Int32(POSIX_SPAWN_CLOEXEC_DEFAULT | POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF)
         if ownProcessGroup {
             flags |= Int32(POSIX_SPAWN_SETPGROUP)
             posix_spawnattr_setpgroup(&attr, 0)

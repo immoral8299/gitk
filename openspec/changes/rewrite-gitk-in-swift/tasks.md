@@ -81,7 +81,7 @@ Order of work:
   - Files: `Sources/GitkCore/Git/GitRunner.swift`, `Sources/GitkCore/Git/GitEnvironment.swift`, tests.
   - Port: 160–245 (`safe_exec*`, `make_arg_safe` — only the argument array semantics apply in Swift).
   - Needs: 1.3.
-- [ ] 2.3 [M] Implement streaming: `GitProcess` with `records(separator:)` as an `AsyncThrowingStream<Data, Error>`, backed by `RecordSplitter`, plus `cancel()`, which sends SIGTERM to the process group — Verify: `swift test --filter RecordSplitterTests` (records split across chunk boundaries, a trailing record with no separator, empty records) and `GitProcessCancelTests` (cancelling an endless `sh -c 'while :; do printf "a\0"; done'` leaves `isRunning == false` within 1s).
+- [x] 2.3 [M] Implement streaming: `GitProcess` with `records(separator:)` as an `AsyncThrowingStream<Data, Error>`, backed by `RecordSplitter`, plus `cancel()`, which sends SIGTERM to the process group — Verify: `swift test --filter RecordSplitterTests` (records split across chunk boundaries, a trailing record with no separator, empty records) and `GitProcessCancelTests` (cancelling an endless `sh -c 'while :; do printf "a\0"; done'` leaves `isRunning == false` within 1s).
   - Files: `Sources/GitkCore/Git/GitProcess.swift`, `Sources/GitkCore/Git/RecordSplitter.swift`, tests.
   - Port: 283–354 (`run`, `filerun`, `dorunq` — the purpose only; replaced by async streams).
   - Needs: 2.2.
