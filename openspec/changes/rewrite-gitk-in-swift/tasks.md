@@ -119,7 +119,7 @@ Order of work:
   - Files: `Sources/GitkCore/Parsing/WordDiffParser.swift`, tests.
   - Port: the word-diff branches inside 8328–8542.
   - Needs: 3.4.
-- [ ] 3.6 [S] Implement `TreeParser` for `git ls-tree -r -z --full-name` and `git diff-tree -r -z --name-status -C` (the file list) — Verify: `swift test --filter TreeParserTests` on `renames` and `linear`.
+- [x] 3.6 [S] Implement `TreeParser` for `git ls-tree -r -z --full-name` and `git diff-tree -r -z --name-status -C` (the file list) — Verify: `swift test --filter TreeParserTests` on `renames` and `linear`.
   - Files: `Sources/GitkCore/Parsing/TreeParser.swift`, tests.
   - Port: 7832–7900 (`gettree`, `gettreeline`), 8103–8169 (`gettreediffs`, `gettreediffline`).
   - Needs: 1.6.
