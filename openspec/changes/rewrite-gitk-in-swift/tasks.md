@@ -130,7 +130,7 @@ Order of work:
   - Files: `Sources/GitkCore/Find/ShellWords.swift`, tests.
   - Port: 4179–4271.
   - Needs: 1.3.
-- [ ] 3.9 [M] Implement `TclDateFormat.format(epoch:, tzOffsetSeconds:, format:)` (D10) — Verify: `swift test --filter TclDateFormatTests` checks fixed epochs against the expected strings for `%Y-%m-%d %H:%M:%S`, a `%z` format (the commit's zone is used), `%a %b %e`, and `%%`.
+- [x] 3.9 [M] Implement `TclDateFormat.format(epoch:, tzOffsetSeconds:, format:)` (D10) — Verify: `swift test --filter TclDateFormatTests` checks fixed epochs against the expected strings for `%Y-%m-%d %H:%M:%S`, a `%z` format (the commit's zone is used), `%a %b %e`, and `%%`.
   - Files: `Sources/GitkCore/Util/TclDateFormat.swift`, tests.
   - Port: 12152–12180 (`formatdate`).
   - Needs: 1.3.
