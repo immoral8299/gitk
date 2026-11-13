@@ -100,7 +100,7 @@ Order of work:
 
 ## 3. Core: parsers and text utilities
 
-- [ ] 3.1 [M] Implement `RawLogParser.parse(record: Data) -> ParsedCommit`. `ParsedCommit` is a `Sendable` struct: id, parents, boundary flag, left/right side mark, tree, author/committer (name+email, epoch, tz offset), encoding, headline, raw message bytes and notes — Verify: `swift test --filter RawLogParserTests` uses real records from `git log -z --pretty=raw --parents --boundary --show-notes` on `merge-simple`, `tags-notes` (notes present), a range `A..B` (boundary `-` prefix) and `--left-right` (`<`/`>`).
+- [x] 3.1 [M] Implement `RawLogParser.parse(record: Data) -> ParsedCommit`. `ParsedCommit` is a `Sendable` struct: id, parents, boundary flag, left/right side mark, tree, author/committer (name+email, epoch, tz offset), encoding, headline, raw message bytes and notes — Verify: `swift test --filter RawLogParserTests` uses real records from `git log -z --pretty=raw --parents --boundary --show-notes` on `merge-simple`, `tags-notes` (notes present), a range `A..B` (boundary `-` prefix) and `--left-right` (`<`/`>`).
   - Files: `Sources/GitkCore/Parsing/RawLogParser.swift`, tests.
   - Port: 1651–1700 (record framing in `getcommitlines`), 1907–1972 (`parsecommit`).
   - Needs: 2.1, 2.6, 1.6.
