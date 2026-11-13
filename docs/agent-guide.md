@@ -160,6 +160,19 @@ which must stay first.
 - Never commit build output, fixture repositories or snapshots, except the
   ones a task explicitly lists (such as `docs/smoke/*.png`).
 
+### Worktree runs dispatched by the orchestrator
+
+When the orchestrator gives you a task in an isolated git worktree:
+
+- Work and commit only inside your worktree. Never write to the main checkout.
+- Do **not** edit `tasks.md` or `docs/spec-coverage.md`. Your report gives the
+  covered scenarios and their test names, and the orchestrator updates both
+  files when it cherry-picks your commits.
+- The `gitk/` submodule is not checked out in a new worktree. To read gitk
+  source, use the main checkout's copy (the path is in your prompt). If a task
+  needs `gitk/gitk` at its repo-relative path (oracle tasks), run
+  `git submodule update --init gitk` inside your worktree first.
+- Each commit's message is `gitk-swift: <task ID> <summary>`, as above.
 ## Definition of done
 
 A task is done when all of the following hold:
