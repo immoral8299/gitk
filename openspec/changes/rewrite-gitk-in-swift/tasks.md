@@ -137,7 +137,7 @@ Order of work:
 
 ## 4. Core: settings model and legacy import
 
-- [ ] 4.1 [S] Generate `TkColorTable` (X11/Tk colour name → RGB) from Tk's `xlib/xcolors.c` (tcltk/tk tag `core-9-0-3`). Include the `grayNN`/`greyNN` names. Commit the generator script under `Tools/` — Verify: `swift test --filter TkColorTableTests` checks `gray85`=(217,217,217), `darkgrey`=(169,169,169), `LightSkyBlue`, and that lookup ignores case.
+- [x] 4.1 [S] Generate `TkColorTable` (X11/Tk colour name → RGB) from Tk's `xlib/xcolors.c` (tcltk/tk tag `core-9-0-3`). Include the `grayNN`/`greyNN` names. Commit the generator script under `Tools/` — Verify: `swift test --filter TkColorTableTests` checks `gray85`=(217,217,217), `darkgrey`=(169,169,169), `LightSkyBlue`, and that lookup ignores case.
   - Files: `Sources/GitkCore/Settings/TkColorTable.swift`, `Tools/gen-tk-colors.sh`, tests.
   - Needs: 1.3.
 - [ ] 4.2 [S] Implement `TkColor.parse(_:) -> RGBA?` for `#rgb`, `#rrggbb`, `#rrrrggggbbbb` and names — Verify: `swift test --filter TkColorTests`.
