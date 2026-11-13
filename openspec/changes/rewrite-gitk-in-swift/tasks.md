@@ -115,7 +115,7 @@ Order of work:
   - Files: `Sources/GitkCore/Parsing/DiffParser.swift`, tests.
   - Port: 8272–8542 (`makediffhdr`, `parseblobdiffline`).
   - Needs: 1.6.
-- [ ] 3.5 [M] Implement `WordDiffParser` for `--word-diff=porcelain`, producing token runs (`.same`, `.added`, `.removed`) per line — Verify: `swift test --filter WordDiffParserTests` with a sample containing additions, removals and `~` newlines.
+- [x] 3.5 [M] Implement `WordDiffParser` for `--word-diff=porcelain`, producing token runs (`.same`, `.added`, `.removed`) per line — Verify: `swift test --filter WordDiffParserTests` with a sample containing additions, removals and `~` newlines.
   - Files: `Sources/GitkCore/Parsing/WordDiffParser.swift`, tests.
   - Port: the word-diff branches inside 8328–8542.
   - Needs: 3.4.
