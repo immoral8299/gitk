@@ -108,6 +108,17 @@ enum OracleRunner {
         let description: String
     }
 
+    /// Extra arguments the oracle is run with for a fixture (default: none,
+    /// i.e. HEAD). Keep in step with `extra_args()` in `Tools/regen-golden.sh`,
+    /// so a live run equals the golden file.
+    static let extraArguments: [String: [String]] = [
+        "random-dag": ["--all"],
+    ]
+
+    static func arguments(for fixture: String) -> [String] {
+        extraArguments[fixture] ?? []
+    }
+
     static var oracleScript: URL {
         FixtureRepo.repoRoot.appendingPathComponent("Tests/Oracle/oracle.tcl")
     }
@@ -141,14 +152,15 @@ enum OracleRunner {
         return try live(fixture)
     }
 
-    /// Always runs `tclsh Tests/Oracle/oracle.tcl --repo <fixture>`.
+    /// Always runs `tclsh Tests/Oracle/oracle.tcl --repo <fixture>` with the
+    /// fixture's `extraArguments`.
     static func live(_ fixture: String) throws -> OracleResult {
         guard let tclsh = tclshURL else { throw RunError(description: "tclsh not found") }
         let repo = try FixtureRepo.make(fixture)
 
         let process = Process()
         process.executableURL = tclsh
-        process.arguments = [oracleScript.path, "--repo", repo.path]
+        process.arguments = [oracleScript.path, "--repo", repo.path] + arguments(for: fixture)
         let stdout = Pipe()
         let stderr = Pipe()
         process.standardOutput = stdout

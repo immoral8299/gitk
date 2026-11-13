@@ -27,6 +27,12 @@ import Testing
         #expect(try git(repo, "rev-parse", "HEAD") == "b7729902a3f81cc7da12ad56b4af698ee6ad444c")
     }
 
+    @Test func randomDagMatchesReadme() throws {
+        let repo = try FixtureRepo.make("random-dag")
+        #expect(try git(repo, "rev-list", "--all", "--count") == "1500")
+        #expect(try git(repo, "rev-parse", "HEAD") == "57449d57b6681e5287e71abf05fdde7b277cb46b")
+    }
+
     @Test func makeIsCachedAndStable() throws {
         let first = try FixtureRepo.make("merge-simple")
         let second = try FixtureRepo.make("merge-simple")

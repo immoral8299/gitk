@@ -9,7 +9,7 @@ import Testing
     static let fixtures = [
         "linear", "merge-simple", "octopus", "criss-cross", "many-branches",
         "long-lines", "renames", "encodings", "tags-notes", "sha256",
-        "local-changes", "conflict",
+        "local-changes", "conflict", "random-dag",
     ]
 
     @Test func goldenFilesExistForEveryFixture() throws {
@@ -53,7 +53,7 @@ import Testing
 
     @Test(.enabled(if: OracleRunner.liveAvailable))
     func liveOracleEqualsGolden() throws {
-        for fixture in ["linear", "merge-simple"] {
+        for fixture in ["linear", "merge-simple", "random-dag"] {
             #expect(try OracleRunner.live(fixture) == OracleGolden.load(fixture), "fixture \(fixture)")
         }
     }

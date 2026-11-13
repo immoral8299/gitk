@@ -12,6 +12,10 @@
 # submodule (git submodule update --init gitk). The fixtures are built in a
 # temporary directory with Tests/Fixtures/make-fixture.sh, so the output is
 # the same on every run. Never edit the golden files by hand.
+#
+# Fixtures that need extra `git log` arguments are listed in extra_args() below.
+# Keep that table in step with OracleRunner.extraArguments in
+# Tests/GitkCoreTests/Support/Oracle.swift, so a live run equals the golden.
 
 set -eu
 
@@ -23,6 +27,13 @@ command -v tclsh >/dev/null 2>&1 || { echo "regen-golden: tclsh not found" >&2; 
 [ -f "$ROOT/gitk/gitk" ] || {
     echo "regen-golden: gitk/gitk not found (run: git submodule update --init gitk)" >&2
     exit 1
+}
+
+# Extra oracle arguments for a fixture (default: none, i.e. HEAD).
+extra_args() {
+    case $1 in
+        random-dag) echo "--all" ;;
+    esac
 }
 
 if [ $# -gt 0 ]; then
@@ -39,6 +50,7 @@ for name in $NAMES; do
     [ "$name" != huge ] || { echo "regen-golden: skipping huge" >&2; continue; }
     echo "regen-golden: $name" >&2
     "$ROOT/Tests/Fixtures/make-fixture.sh" "$name" "$WORK" >/dev/null
-    tclsh "$ORACLE" --repo "$WORK/$name" > "$WORK/$name.json"
+    # shellcheck disable=SC2046
+    tclsh "$ORACLE" --repo "$WORK/$name" $(extra_args "$name") > "$WORK/$name.json"
     mv "$WORK/$name.json" "$GOLDEN/$name.json"
 done

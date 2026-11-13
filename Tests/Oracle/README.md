@@ -6,7 +6,7 @@
 
 ```
 tclsh Tests/Oracle/oracle.tcl --selftest        # prints "ok <procs loaded>"
-tclsh Tests/Oracle/oracle.tcl --repo <dir> ...  # tasks 5.2, 5.3
+tclsh Tests/Oracle/oracle.tcl --repo <dir> ...  # tasks 5.2, 5.3, 5.6
 tclsh Tests/Oracle/oracle.tcl --allcommits <dir> # task 12.1
 ```
 
@@ -55,14 +55,15 @@ least 420.
 | `filerun` | installs a `fileevent` reader; the oracle feeds `getcommitlines` directly |
 | `setcanvscroll` | sets canvas scroll regions |
 | `drawvisible` | derives the visible rows from the canvas scroll position and calls `drawcommits`; the oracle computes the same arithmetic itself (see `--layout`) |
-| `drawcommits` | stubbed, but the real proc is kept as `::oracle::realDrawcommits`: its `layoutrows`/`optimize_rows` half is how gitk lays rows out, and the oracle calls it |
-| `drawcmitrow`, `drawparentlinks`, `drawlineseg` | the painting calls inside `drawcommits`; no-ops (`drawlineseg` returns `{}`) |
-| `clear_display`, `redisplay` | canvas redraw |
+| `drawcommits` | stubbed, but the real proc is kept as `::oracle::realDrawcommits`: its `layoutrows`/`optimize_rows` half is how gitk lays rows out, and its drawing half is how colours get assigned; the oracle calls it |
+| `drawcmittext` | draws a row's circle, tags and three text items; needs fonts and commit info and never assigns a colour. The stub only sets `idpos($id)`, which `drawparentlinks` reads |
+| `getcommit`, `redrawtags` | `drawcmitrow` calls `getcommit` for commits without `commitinfo`; `redrawtags` is called by `drawparentlinks` |
+| `redisplay` | canvas redraw |
 | `selectline` | selects a row, touches the text widgets |
 | `dispnexttag` | tag display in the detail pane |
 | `dohidelocalchanges`, `doshowlocalchanges`, `dodiffindex`, `rereadrefs` | start `git diff-index` / `git for-each-ref` readers and mutate the view; local changes are not part of the oracle |
 | `setcoords` | computes canvas metrics from fonts |
-| `::oracle_widget` | stands in for `$canv`, `$canv2`, `$canv3`: `initlayout` calls `$canv cget -width`, and `setcanvscroll`-like code calls `$canv conf`; every subcommand is ignored and `cget` returns 0 |
+| `::oracle_widget` | stands in for `$canv`, `$canv2`, `$canv3`. `cget` returns 0 (`initlayout`). It keeps a table of line items so gitk's own `drawlineseg` works: `create` returns an item id, `coords`, `itemcget`, `itemconf` and `delete` read and change the stored item (`delete all` clears the table). `bind`, `raise`, `lower` and anything else are ignored |
 
 ## `--repo` mode (tasks 5.2, 5.3)
 
@@ -93,15 +94,22 @@ per line for `rows`, `ranges` and `colors`:
   entries are `""`. `col` is `lsearch -exact idlist id` (not `idcol`, which
   finds an insertion position).
 - `colors`: gitk assigns colours while drawing, in drawing order. The oracle
-  calls `assigncolor` once per commit in row order after layout, so the result
-  depends on the final `rowidlist` and on `nextcolor` (reset by `initlayout`).
+  runs gitk's own `drawcmitrow`, `drawparentlinks` and `drawlineseg` (task
+  5.6) from inside `drawcommits`, so `assigncolor` is called in exactly the
+  order and at the times gitk calls it: it sees the `rowidlist` as it is at
+  that moment (not yet re-optimised rows included) and the `nextcolor`
+  counter that earlier calls advanced. `colors` is the `colormap` left behind
+  (only ids that got a colour), so it depends on the layout mode like `rows`
+  does. Only `drawcmittext` (text and circles) is stubbed, and `puts` with one
+  argument, which gitk uses for "oops" diagnostics, goes to stderr.
 
 ### Layout modes
 
 gitk never lays rows out in one go. `drawvisible` (gitk 6557-6612) turns the
 scroll position into `row`/`endrow` and `drawcommits` (6459-6539) then runs
 `layoutrows` on rows not yet final and `optimize_rows` on a window around
-them. The oracle runs the real `drawcommits` with the painting stubbed:
+them. The oracle runs the real `drawcommits`, including its drawing half
+(`drawcmitrow`, `drawparentlinks`, `drawlineseg`) on the canvas stand-in:
 
 - `--layout=chunked` (default): `drawcommits` for a window of `--window` rows
   (default 50) that advances by `--step` rows (default 50) from the top to
@@ -111,16 +119,24 @@ them. The oracle runs the real `drawcommits` with the painting stubbed:
 
 Finding (task 5.3): on all twelve non-`huge` fixtures, on `huge -n 4000`, and
 for windows/steps 1/1, 7/7, 13/5, 20/7, 30/30, 50/1, 50/25, 50/50, 100/100,
-200/200, `chunked` and `oneshot` are byte-identical. On random graphs of 1,500 commits (one ref per commit; 40% of commits have
+200/200, `chunked` and `oneshot` give identical `rows` and `ranges`. On random graphs of 1,500 commits (one ref per commit; 40% of commits have
 a second or third parent, taken up to 80 commits back) they are **not**: with
 chunked 50/50, 27-49 rows per graph differ in padding and column (8-14 of
 them in `col`); with 100/100, 11-15 rows; with 7/7, about 250; with 50/1,
 about 96% of rows. The set of ids in each `idlist` and the `ranges` are always
-the same, and `colors` differ in some chunkings. So the layout does depend on the
+the same, and `colors` differ in some chunkings.
+The checked-in `random-dag` fixture (task 5.6, `--all`) shows the same: chunked 50/50 and
+oneshot differ in 53 of 1,500 rows and in 1,327 colours, with equal `ranges`. Colours on the
+other fixtures are the same in both modes. So the layout does depend on the
 scroll pattern for graphs bigger and messier than the fixtures; chunked
 (50, 50) is the default as the closest model of normal use. The Swift port's
-`ensureLaid(upTo:)` must reproduce `drawcommits`' arithmetic, and parity tests
-on the fixtures hold for any chunking.
+`ensureLaid(upTo:)` must reproduce `drawcommits`' arithmetic, and row parity tests
+on the small fixtures hold for any chunking.
+
+Some fixtures need `git log` arguments: the golden for `random-dag` is made
+with `--all`. `Tools/regen-golden.sh` (`extra_args`) and `OracleRunner`
+(`extraArguments` in `Tests/GitkCoreTests/Support/Oracle.swift`) keep the
+same table.
 
 `ORACLE_TRACE_LAYOUT=1` logs the `realDrawcommits`, `layoutrows` and
 `optimize_rows` calls to stderr.

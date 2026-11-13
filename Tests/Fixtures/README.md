@@ -28,6 +28,7 @@ every run.
 | `sha256` | SHA-256 object format with a merge | `eb4823297e6cacabfef8b93e7cb96f2353a3c8d8c4e90b27a2898b8e1de9d7e8` | 5 |
 | `local-changes` | staged edit to `a.txt`, unstaged edit to `b.txt` | `bc331ab057015993835b0634eea6716440cf0a5f` | 3 |
 | `conflict` | merge of `theirs` stopped with a conflict in `conflict.txt` | `422d0a61358da657b9bce9a1ed72c6d32966df10` | 4 |
+| `random-dag` | 1,500 generated commits (seeded LCG in awk, `git fast-import`): branches `main`, `b1`–`b5` plus 111 `fork/<n>` refs; 575 merges (480 with 2 parents, 95 with 3) whose extra parents lie within the previous 80 commits; up to 29 lanes wide. Oracle golden uses `--all` | `57449d57b6681e5287e71abf05fdde7b277cb46b` | 1500 |
 | `huge` | 200,000 generated commits (`make-huge.sh`): main line, a side commit every 50 commits merged back (3,999 merges); perf tests only | `08dc3dcba3385c84dd25064b842bd9667114f6b9` | 200000 |
 
 Build times on an M-series Mac: most fixtures take 1–2 s; `many-branches` takes about 15 s,

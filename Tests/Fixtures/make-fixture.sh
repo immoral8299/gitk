@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-FIXTURES="linear merge-simple octopus criss-cross many-branches long-lines renames encodings tags-notes sha256 local-changes conflict huge"
+FIXTURES="linear merge-simple octopus criss-cross many-branches long-lines renames encodings tags-notes sha256 local-changes conflict random-dag huge"
 
 usage() {
     echo "usage: $0 <name> <outdir> | --list" >&2
@@ -284,6 +284,81 @@ conflict)
         echo "conflict fixture: merge unexpectedly succeeded" >&2
         exit 1
     fi
+    ;;
+
+random-dag)
+    # 1,500 generated commits (seeded LCG, no $RANDOM): six branches main,
+    # b1..b5 grow side by side, about 8% of commits fork onto their own
+    # refs/heads/fork/<n>, and about 40% of commits carry 1-2 extra parents
+    # chosen among the previous 80 commits. Every commit is reachable from a
+    # ref, so `--all` sees all of them. Dates: 2020-01-01T00:00:00Z + 60s*n.
+    init
+    awk 'BEGIN {
+        n = 1500
+        epoch = 1577836800
+        seed = 20200101
+        split("main b1 b2 b3 b4 b5", bname, " ")
+        for (i = 1; i <= n; i++) {
+            # Park-Miller LCG; seed * 16807 stays below 2^46, so it is exact.
+            seed = (seed * 16807) % 2147483647
+            r1 = int(seed * 100 / 2147483647)
+            seed = (seed * 16807) % 2147483647
+            r2 = int(seed * 6 / 2147483647) + 1
+            seed = (seed * 16807) % 2147483647
+            r3 = int(seed * 100 / 2147483647)
+            seed = (seed * 16807) % 2147483647
+            r4 = int(seed * 30 / 2147483647)
+            nparents = 0
+            fork = 0
+            if (i == 1) {
+                ref = "refs/heads/main"
+                r2 = 1
+            } else if (tip[r2] == 0) {
+                # first commit of a branch: start it at a recent commit
+                ref = "refs/heads/" bname[r2]
+                nparents = 1
+                par[1] = i - 1 - (r4 % (i - 1 < 30 ? i - 1 : 30))
+            } else if (r1 < 8) {
+                # fork: a new ref whose parent is a recent commit
+                ref = "refs/heads/fork/" i
+                fork = 1
+                nparents = 1
+                par[1] = i - 1 - (r4 % (i - 1 < 30 ? i - 1 : 30))
+            } else {
+                ref = "refs/heads/" bname[r2]
+                nparents = 1
+                par[1] = tip[r2]
+            }
+            if (i > 1 && r3 < 40) {
+                # extra parents among the previous 80 commits
+                seed = (seed * 16807) % 2147483647
+                extra = 1 + (int(seed * 100 / 2147483647) < 15 ? 1 : 0)
+                for (e = 0; e < extra; e++) {
+                    seed = (seed * 16807) % 2147483647
+                    back = int(seed * (i - 1 < 80 ? i - 1 : 80) / 2147483647)
+                    q = i - 1 - back
+                    dup = 0
+                    for (k = 1; k <= nparents; k++) if (par[k] == q) dup = 1
+                    if (!dup) {
+                        nparents++
+                        par[nparents] = q
+                    }
+                }
+            }
+            when = epoch + i * 60
+            printf "commit %s\nmark :%d\n", ref, i
+            printf "author Alice Author <alice@example.com> %d +0000\n", when
+            printf "committer Carol Committer <carol@example.com> %d +0000\n", when
+            msg = sprintf("random commit %d", i)
+            printf "data %d\n%s\n", length(msg), msg
+            if (nparents > 0) printf "from :%d\n", par[1]
+            for (k = 2; k <= nparents; k++) printf "merge :%d\n", par[k]
+            fdata = sprintf("commit %d\n", i)
+            printf "M 644 inline f%d.txt\ndata %d\n%s\n", i % 7, length(fdata), fdata
+            if (!fork) tip[r2] = i
+        }
+    }' | git fast-import --quiet
+    git reset -q --hard main
     ;;
 
 huge)

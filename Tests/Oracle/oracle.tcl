@@ -18,6 +18,9 @@ namespace eval oracle {
     variable gitkPath [file join $here .. .. gitk gitk]
     variable procCount 0
     variable errors {}
+    variable itemSeq 0
+    variable items
+    array set items {}
 }
 
 # Split gitk into top-level commands the way Tcl itself would (accumulate
@@ -107,15 +110,23 @@ proc oracle::installStubs {} {
     # Canvas drawing and scrolling.
     proc ::setcanvscroll {args} {}
     proc ::drawvisible {args} {}
-    # gitk's own drawcommits is kept as ::oracle::realDrawcommits: its
-    # layoutrows/optimize_rows half is exactly what lays rows out as the user
-    # scrolls (task 5.3). The helpers it calls to paint are stubbed below.
+    # gitk's own drawcommits is kept as ::oracle::realDrawcommits: it lays
+    # rows out as the user scrolls (task 5.3) and then draws them (task 5.6).
+    # The drawing procs it calls (drawcmitrow, drawparentlinks, drawlineseg,
+    # clear_display, bindline, ...) are gitk's own and run unchanged on top of
+    # the ::oracle_widget canvas below, so assigncolor is called in gitk's
+    # drawing order. Only the text half of drawing is stubbed.
     rename ::drawcommits ::oracle::realDrawcommits
     proc ::drawcommits {args} {}
-    proc ::drawcmitrow {args} {}
-    proc ::drawparentlinks {args} {}
-    proc ::drawlineseg {args} {return {}}
-    proc ::clear_display {args} {}
+    # drawcmittext draws the circle, tags and the three text items of a row.
+    # It never assigns a colour; it needs fonts and commit info. The one thing
+    # later drawing reads from it is idpos (drawparentlinks).
+    proc ::drawcmittext {id row col} {
+        set ::idpos($id) [list 0 0 0]
+    }
+    proc ::redrawtags {args} {}
+    # drawcmitrow calls getcommit for commits without commitinfo.
+    proc ::getcommit {args} {return 1}
     proc ::redisplay {args} {}
     proc ::selectline {args} {}
     proc ::dispnexttag {args} {}
@@ -125,10 +136,62 @@ proc oracle::installStubs {} {
     proc ::rereadrefs {args} {}
     proc ::setcoords {args} {}
 
-    # A stand-in for the three canvas widgets: every subcommand is ignored
-    # and `cget` answers 0, which is all initlayout and friends ask for.
+    # A stand-in for the three canvas widgets. initlayout asks `cget`
+    # (answered 0). The line drawing procs need a little more: `create`
+    # returns an item id, and `coords`, `itemcget`, `itemconf` and `delete`
+    # read and change the items they created, because drawlineseg joins line
+    # pieces by reading them back. `bind`, `raise`, `lower`, `yview`, ...
+    # are ignored.
     proc ::oracle_widget {args} {
-        if {[lindex $args 0] eq "cget"} {return 0}
+        switch -- [lindex $args 0] {
+            cget {return 0}
+            create {
+                set id [incr ::oracle::itemSeq]
+                set ::oracle::items($id) [dict create \
+                    type [lindex $args 1] \
+                    coords [lindex $args 2] \
+                    opts [lrange $args 3 end]]
+                return $id
+            }
+            coords {
+                set id [lindex $args 1]
+                if {![info exists ::oracle::items($id)]} {return {}}
+                if {[llength $args] > 2} {
+                    dict set ::oracle::items($id) coords \
+                        [concat {*}[lrange $args 2 end]]
+                    return {}
+                }
+                return [dict get $::oracle::items($id) coords]
+            }
+            itemcget {
+                set id [lindex $args 1]
+                if {![info exists ::oracle::items($id)]} {return {}}
+                set opts [dict get $::oracle::items($id) opts]
+                set o [lindex $args 2]
+                if {[dict exists $opts $o]} {return [dict get $opts $o]}
+                return {}
+            }
+            itemconf -
+            itemconfigure {
+                set id [lindex $args 1]
+                if {[info exists ::oracle::items($id)]} {
+                    set opts [dict get $::oracle::items($id) opts]
+                    foreach {o v} [lrange $args 2 end] {dict set opts $o $v}
+                    dict set ::oracle::items($id) opts $opts
+                }
+                return {}
+            }
+            delete {
+                foreach id [lrange $args 1 end] {
+                    if {$id eq "all"} {
+                        array unset ::oracle::items
+                    } else {
+                        unset -nocomplain ::oracle::items($id)
+                    }
+                }
+                return {}
+            }
+        }
         return {}
     }
 }
@@ -175,6 +238,15 @@ proc oracle::initGlobals {} {
         set selectedline {}
         set mainheadid {}
         set tclencoding {}
+        # Drawing (drawcmitrow, drawlineseg): gitk 12648, 12915, 12920, 12930
+        # and the canvas metrics setcoords would compute for linespc 18.
+        set maxlinelen 200
+        set findpattern {}
+        set markingmatches 0
+        set highlight_related None
+        set lthickness 1
+        set canvx0 12
+        set canvy0 12
         set canv ::oracle_widget
         set canv2 ::oracle_widget
         set canv3 ::oracle_widget
@@ -218,11 +290,15 @@ proc oracle::selftest {} {
         puts stderr "oracle: selftest: drawcommits was not stubbed"
         return 1
     }
+    if {[string first assigncolor [info body ::drawcmitrow]] < 0} {
+        puts stderr "oracle: selftest: drawcmitrow is not gitk's"
+        return 1
+    }
     if {$procCount < 420} {
         puts stderr "oracle: selftest: only $procCount procs loaded"
         return 1
     }
-    puts "ok $procCount"
+    realputs stdout "ok $procCount"
     return 0
 }
 
@@ -387,15 +463,15 @@ proc oracle::jranges {order} {
 }
 
 # gitk assigns colours while drawing (drawcmitrow, drawlineseg,
-# drawparentlinks). The oracle calls assigncolor once per id in row order and
-# reports the index of the chosen colour in the `colors` list.
-proc oracle::jcolors {order} {
+# drawparentlinks), so `colors` is the colormap that drawing left behind: only
+# ids that were drawn or reached as a parent have an entry. Values are indexes
+# into gitk's `colors` list.
+proc oracle::jcolors {} {
     set parts {}
-    foreach id $order {
-        ::assigncolor $id
-    }
-    foreach id [lsort $order] {
-        lappend parts "[jstr $id]:[lsearch -exact $::colors $::colormap($id)]"
+    if {[array exists ::colormap]} {
+        foreach id [lsort [array names ::colormap]] {
+            lappend parts "[jstr $id]:[lsearch -exact $::colors $::colormap($id)]"
+        }
     }
     return "{\n[join $parts ,\n]\n}"
 }
@@ -409,7 +485,7 @@ proc oracle::dumpAll {} {
     for {set r 0} {$r < $n} {incr r} {
         lappend order [::commitonrow $r]
     }
-    set colors [jcolors $order]
+    set colors [jcolors]
     set rows [jrows]
     set ranges [jranges $order]
 
@@ -468,7 +544,7 @@ proc oracle::repoMode {args} {
     if {$mode ne "chunked" && $mode ne "oneshot"} {return [usage]}
     loadRepo $dir $rest
     layoutAll $mode $win $step
-    puts [dumpAll]
+    realputs stdout [dumpAll]
     return [expr {[llength $::oracle::errors] ? 1 : 0}]
 }
 
@@ -570,6 +646,20 @@ proc oracle::dumpAllCommits {} {
 proc oracle::usage {} {
     puts stderr "usage: oracle.tcl --selftest | --repo <dir> \[--layout=chunked|oneshot\] \[--window N\] \[--step N\] \[git log args\] | --allcommits <dir>"
     return 2
+}
+
+# gitk reports oddities with one-argument `puts "oops ..."`. Send those to
+# stderr so they cannot corrupt the JSON on stdout; the oracle itself prints
+# through ::oracle::realputs.
+rename ::puts ::oracle::realputs
+proc ::puts {args} {
+    set a $args
+    if {[lindex $a 0] eq "-nonewline"} {set a [lrange $a 1 end]}
+    if {[llength $a] == 1} {
+        ::oracle::realputs {*}[lrange $args 0 end-1] stderr [lindex $a 0]
+    } else {
+        ::oracle::realputs {*}$args
+    }
 }
 
 proc oracle::main {argv} {
