@@ -387,7 +387,7 @@ Order of work:
   - Files: `DetailsTextController.swift`, tests.
   - Needs: 11.1.
   - Spec: commit-details "Word wrap".
-- [ ] 11.4 [M] Implement `DiffCommandBuilder` (Core) as a port of `diffcmd`, with the `getblobdiffs` flags (context, `-w`, `--word-diff=porcelain`, `--root` when showRoot is set, limitdiffs path filter) for every combination of IDs, including the local-changes rows — Verify: `swift test --filter DiffCommandBuilderTests` (a table of the 8 combinations).
+- [x] 11.4 [M] Implement `DiffCommandBuilder` (Core) as a port of `diffcmd`, with the `getblobdiffs` flags (context, `-w`, `--word-diff=porcelain`, `--root` when showRoot is set, limitdiffs path filter) for every combination of IDs, including the local-changes rows — Verify: `swift test --filter DiffCommandBuilderTests` (a table of the 8 combinations).
   - Files: `Sources/GitkCore/History/DiffCommandBuilder.swift`, tests.
   - Port: 8059–8103, 8203–8231.
   - Needs: 3.4.
