@@ -17,7 +17,11 @@ let package = Package(
         // UI-free core. Must import Foundation only (enforced by CoreIsolationTests).
         .target(name: "GitkCore"),
         // AppKit user interface.
-        .target(name: "GitkUI", dependencies: ["GitkCore"]),
+        .target(
+            name: "GitkUI",
+            dependencies: ["GitkCore", "PoConvert"],
+            resources: [.process("Resources")]
+        ),
         // The app executable.
         .executableTarget(name: "gitk-swift", dependencies: ["GitkCore", "GitkUI"]),
         // Dev tool: prints ordering + layout JSON for differential tests.

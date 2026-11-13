@@ -666,7 +666,7 @@ Order of work:
   - Files: `Sources/po2strings/*`, tests.
   - Needs: 19.1.
   - Spec: localization "Formatted message".
-- [ ] 19.3 [S] Write `Tools/regen-l10n.sh` and commit the generated `Sources/GitkUI/Resources/*.lproj/Localizable.strings` for all 16 languages — Verify: running the script twice leaves `git status` clean; there are 16 lproj directories.
+- [x] 19.3 [S] Write `Tools/regen-l10n.sh` and commit the generated `Sources/GitkUI/Resources/*.lproj/Localizable.strings` for all 16 languages — Verify: running the script twice leaves `git status` clean; there are 16 lproj directories.
   - Files: `Tools/regen-l10n.sh`, `Sources/GitkUI/Resources/**`.
   - Needs: 19.2, 1.1.
   - Spec: localization "Idempotent conversion".
