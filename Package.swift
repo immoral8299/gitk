@@ -25,7 +25,11 @@ let package = Package(
         // Dev tool: converts po/*.po into localized resources.
         .target(name: "PoConvert"),
         .executableTarget(name: "po2strings", dependencies: ["PoConvert"]),
-        .testTarget(name: "GitkCoreTests", dependencies: ["GitkCore"]),
+        .testTarget(
+            name: "GitkCoreTests",
+            dependencies: ["GitkCore"],
+            resources: [.copy("Resources")]
+        ),
         .testTarget(name: "PoConvertTests", dependencies: ["PoConvert"]),
         .testTarget(name: "GitkUITests", dependencies: ["GitkUI", "GitkCore"]),
     ],

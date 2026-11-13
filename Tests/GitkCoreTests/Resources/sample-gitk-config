@@ -1,0 +1,40 @@
+set autocopy 1
+set autoselect 0
+set autosellen 12
+set bgcolor white
+set circlecolors {white blue gray blue blue}
+set cmitmode patch
+set colors {"#00ff00" red blue magenta darkgrey brown orange}
+set datetimeformat "%Y-%m-%d %H:%M"
+set diffbgcolors {"#fff3f3" "#f0fff0"}
+set diffcolors {"#c30000" "#009800" blue}
+set diffcontext 5
+set extdifftool opendiff
+set headbgcolor "#00ff00"
+set hideremotes 1
+set mainfont {Menlo 11}
+set textfont {{Courier New} 10}
+set uifont {{Lucida Grande} 9 bold}
+set tabstop 4
+set theme clam
+set themeloader {}
+set uicolor {}
+set visiblerefs {"master" main}
+set web_browser "open"
+set wrapcomment word
+set unknownvar 42
+# a comment line
+proc hello {} { puts "should not run" }
+set sneaky [exec touch /tmp/gitk-swift-should-not-exist]
+set headfgcolor "[exec echo red]"
+exec rm -rf /nonexistent-gitk-swift-dir
+source /nonexistent-gitk-swift-file
+set geometry(main) 1000x800+10+20
+set geometry(state) normal
+set geometry(topwidth) 1000
+set geometry(pwsash0) "300 1"
+set geometry(showrefs) 150
+set permviews {
+{Docs {docs {with space}} {--all --since=1.week} {}}
+{Mine {} {--author=me} {echo --first-parent}}
+}
