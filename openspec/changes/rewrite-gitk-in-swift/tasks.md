@@ -111,7 +111,7 @@ Order of work:
   - Files: `Sources/GitkCore/Parsing/RefParser.swift`, `Sources/GitkCore/Model/RefSet.swift`, tests.
   - Port: 2014–2128 (`readrefs`, `movehead`, `removehead`), 12518–12530 (`is_other_ref_visible`).
   - Needs: 2.2, 2.1.
-- [ ] 3.4 [M] Implement `DiffParser`, a streaming line classifier for `diff-tree -p --cc` output. It yields `DiffLine` values (`.fileHeader(old,new,status)`, `.hunkHeader`, `.add`, `.remove`, `.context`, `.combined(markers:[Character])`, `.binary`, `.submodule`, `.other`) and file-section boundaries — Verify: `swift test --filter DiffParserTests` on `merge-simple`, `octopus` (3 marker columns) and `renames` (rename old→new paths).
+- [x] 3.4 [M] Implement `DiffParser`, a streaming line classifier for `diff-tree -p --cc` output. It yields `DiffLine` values (`.fileHeader(old,new,status)`, `.hunkHeader`, `.add`, `.remove`, `.context`, `.combined(markers:[Character])`, `.binary`, `.submodule`, `.other`) and file-section boundaries — Verify: `swift test --filter DiffParserTests` on `merge-simple`, `octopus` (3 marker columns) and `renames` (rename old→new paths).
   - Files: `Sources/GitkCore/Parsing/DiffParser.swift`, tests.
   - Port: 8272–8542 (`makediffhdr`, `parseblobdiffline`).
   - Needs: 1.6.
