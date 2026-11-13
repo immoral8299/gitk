@@ -161,7 +161,7 @@ Order of work:
 
 ## 5. Differential-test oracle (Tcl)
 
-- [ ] 5.1 [L] Spike: write `Tests/Oracle/oracle.tcl` so it loads every `proc` from `gitk/gitk` under plain `tclsh`, splitting top-level commands with `info complete` and evaluating only those starting with `proc `. It must stub UI procs and initialize the globals listed in the agent guide — Verify: `tclsh Tests/Oracle/oracle.tcl --selftest` prints `ok` and the number of procs loaded (≥ 420).
+- [x] 5.1 [L] Spike: write `Tests/Oracle/oracle.tcl` so it loads every `proc` from `gitk/gitk` under plain `tclsh`, splitting top-level commands with `info complete` and evaluating only those starting with `proc `. It must stub UI procs and initialize the globals listed in the agent guide — Verify: `tclsh Tests/Oracle/oracle.tcl --selftest` prints `ok` and the number of procs loaded (≥ 420).
   - Files: `Tests/Oracle/oracle.tcl`, `Tests/Oracle/README.md` (stub list and the reason for each stub).
   - Needs: 1.1.
 - [ ] 5.2 [L] Make the oracle load and order commits: `--repo <dir> [args]` runs `git log` as `start_rev_list` does (blocking), feeds the output through `getcommitlines` until EOF, and prints JSON `{order:[ids…], varcs:{…}}`, where `varcs` dumps `varcstart`, `varccommits`, `varctok`, `vupptr`, `vdownptr`, `vleftptr`, `vbackptr` and `varcrow` — Verify: on `linear` and `merge-simple`, `order` contains exactly the `git rev-list --all` IDs and every parent comes after its children.
