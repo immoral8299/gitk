@@ -32,6 +32,7 @@ let package = Package(
         .testTarget(
             name: "GitkCoreTests",
             dependencies: ["GitkCore"],
+            exclude: ["Golden"],
             resources: [.copy("Resources")]
         ),
         .testTarget(name: "PoConvertTests", dependencies: ["PoConvert"]),
