@@ -286,8 +286,13 @@ public struct ProcessRunner: Sendable {
     }
 }
 
+/// Anything that can run `git <args>`; lets startup code be tested with a stub.
+public protocol GitRunning: Sendable {
+    func run(_ args: [String], stdin: Data?, cwd: URL?) async throws -> GitOutput
+}
+
 /// Runs git (design D2). Arguments are always an array, never a shell string.
-public struct GitRunner: Sendable {
+public struct GitRunner: Sendable, GitRunning {
     public var gitURL: URL
     /// Default working directory; nil is the launch cwd.
     public var cwd: URL?

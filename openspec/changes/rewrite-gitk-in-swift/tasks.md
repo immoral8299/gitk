@@ -89,7 +89,7 @@ Order of work:
   - Files: `Sources/GitkCore/Git/GitVersion.swift`, tests.
   - Port: 20–34.
   - Needs: 1.3.
-- [ ] 2.5 [M] Implement `RepoContext.discover(cwd:)`. It finds `gitDir`, `worktree`, `cdup`, `isBare`, `hasWorktree`, `hashAlgorithm` and `hashLength`, `logShowRoot`, `gitEncoding` (logOutputEncoding > commitEncoding > utf-8) and `guiEncoding` — Verify: `swift test --filter RepoContextTests` on `linear`, `sha256` (hashLength 64), a bare clone (`hasWorktree == false`), a subdirectory cwd (`cdup == "../"`), and a non-repository (throws `.notARepository`).
+- [x] 2.5 [M] Implement `RepoContext.discover(cwd:)`. It finds `gitDir`, `worktree`, `cdup`, `isBare`, `hasWorktree`, `hashAlgorithm` and `hashLength`, `logShowRoot`, `gitEncoding` (logOutputEncoding > commitEncoding > utf-8) and `guiEncoding` — Verify: `swift test --filter RepoContextTests` on `linear`, `sha256` (hashLength 64), a bare clone (`hasWorktree == false`), a subdirectory cwd (`cdup == "../"`), and a non-repository (throws `.notARepository`).
   - Files: `Sources/GitkCore/Git/RepoContext.swift`, tests.
   - Port: 245–283, 12572–12615, 12941–12952.
   - Needs: 2.2, 1.6.
