@@ -294,7 +294,7 @@ Order of work:
   - Files: `Sources/gitk-swift/main.swift`, `Sources/GitkUI/App/AppDelegate.swift`, `Sources/GitkUI/App/Alerts.swift`.
   - Needs: 8.1, 8.2.
   - Spec: cli-launch "Launch from terminal".
-- [ ] 9.3 [S] Implement `L()` in `L10n.swift` (`Bundle.module` lookup; returns the English key until group 19) and the `Alerts` helpers `showError`, `errorPopup` and `confirmPopup`, which honour the headless env vars (D12) — Verify: `swift test --filter AlertsTests` (headless confirm reads `GITK_SWIFT_CONFIRM`).
+- [x] 9.3 [S] Implement `L()` in `L10n.swift` (`Bundle.module` lookup; returns the English key until group 19) and the `Alerts` helpers `showError`, `errorPopup` and `confirmPopup`, which honour the headless env vars (D12) — Verify: `swift test --filter AlertsTests` (headless confirm reads `GITK_SWIFT_CONFIRM`).
   - Files: `Sources/GitkUI/App/L10n.swift`, `Alerts.swift`, `Tests/GitkUITests/AlertsTests.swift`.
   - Needs: 1.3.
 - [ ] 9.4 [M] Implement `Snapshot` (D12): when `GITK_SWIFT_SNAPSHOT` is set, wait for `loadFinished` and the selection to be displayed, render the window with `cacheDisplay`, write the PNG and exit 0; also write `Tools/snapshot.sh` — Verify: `Tools/snapshot.sh linear /tmp/s.png` creates a non-empty PNG of the requested size.
