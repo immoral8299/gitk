@@ -27,7 +27,12 @@ Planned (from the proposal and design):
 
 Recorded during implementation:
 
-- (none yet)
+- 2026-11-13, 8.1: "Bad arguments to gitk:" strips git's text up to and including `fatal:` wherever it occurs. gitk strips only when the index is > 0, so it never strips git's usual `fatal: …` message; the spec asks for stripping.
+- 2026-11-13, 8.2: Startup checks the repository before the hash algorithm. gitk runs `rev-parse --show-object-format` first, which fails with an uncaught Tcl error outside a repository; we show "Cannot find a git repository here." instead.
+- 2026-11-13, 8.3: `path_filter` matches file limits as literal prefixes. gitk uses `string match "$p*"`, so glob characters in a limit act as wildcards there.
+- 2026-11-13, 14.1: Find's Regexp mode uses ICU (`NSRegularExpression`), not Tcl ARE. Differences such as `\m \M \y`, `***=` and embedded options are listed in `FindQuery.doesMatch`'s doc comment.
+- 2026-11-13, 16.1: Cherry-pick and revert also recognise current git's "files would be overwritten by merge:" list format for local-changes failures. gitk's `Entry '…'` pattern no longer matches git 2.54 output.
+- 2026-11-13, 2.5: `gui.encoding` defaults to UTF-8, standing in for Tcl's `[encoding system]`.
 
 ## New strings
 
