@@ -397,7 +397,7 @@ Order of work:
   - Port: 8231–8328, 8603–8638.
   - Needs: 11.4, 11.1.
   - Spec: diff-viewer "Ordinary commit", "Rename", "Large diff".
-- [ ] 11.6 [S] Colour combined-diff markers by parent — Verify: a snapshot of `octopus` with the merge selected shows 3 coloured marker columns.
+- [ ] 11.6 [S] Colour combined-diff markers by parent — Verify: a snapshot of a merge with a non-trivial combined diff shows 3 coloured marker columns. The fixture merges are clean, so `--cc` prints nothing for them; first add an `evil-octopus` fixture to `make-fixture.sh` (the `octopus` merge amended with an extra edit, as `DiffParserTests` does) and its row in `Tests/Fixtures/README.md`.
   - Files: `DiffRenderer.swift`.
   - Needs: 11.5.
   - Spec: diff-viewer "Octopus merge".
@@ -464,7 +464,7 @@ Order of work:
 
 - [ ] 13.1 [M] Implement `FileListController` in Patch mode ("Comments" plus the files in diff order) with click-to-jump in the diff pane — Verify: `swift test --filter FileListPatchTests` (entries for `renames`); a snapshot shows the list.
   - Files: `Sources/GitkUI/FileList/FileListController.swift`, tests.
-  - Port: 3504–3662.
+  - Port: 3504–3662. Note: gitk builds this list from `git diff-tree -r --no-commit-id [--root] <id>` raw output (no `-z`, no `-C`), while `TreeParser.parseNameStatus` parses `-z --name-status -C`. Use the parser, keep the diff pane's rename detection consistent, and record the choice in `docs/architecture.md`.
   - Needs: 11.5.
   - Spec: file-list "Jump to file".
 - [ ] 13.2 [S] Keep the file list highlight in sync with the diff scroll position — Verify: `swift test --filter FileHighlightSyncTests` (scroll offset → file index).
