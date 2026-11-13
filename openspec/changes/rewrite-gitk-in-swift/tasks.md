@@ -245,7 +245,7 @@ Order of work:
   - Port: 12836–12895.
   - Needs: 2.5.
   - Spec: cli-launch "Revision range and paths", "Bare path argument", "Ambiguous argument", "Bad revision", "HEAD as select-commit".
-- [ ] 8.2 [S] Implement `StartupChecks.run() throws -> StartupContext`, which performs the git version, repository and hash algorithm checks in gitk's order and throws typed errors carrying gitk's exact messages — Verify: `swift test --filter StartupChecksTests` (not a repository, an unknown hash algorithm via a stubbed runner, and git too old via a stubbed runner).
+- [x] 8.2 [S] Implement `StartupChecks.run() throws -> StartupContext`, which performs the git version, repository and hash algorithm checks in gitk's order and throws typed errors carrying gitk's exact messages — Verify: `swift test --filter StartupChecksTests` (not a repository, an unknown hash algorithm via a stubbed runner, and git too old via a stubbed runner).
   - Files: `Sources/GitkCore/CLI/StartupChecks.swift`, tests.
   - Port: 20–34, 12601–12610, 12828–12831.
   - Needs: 2.4, 2.5.
