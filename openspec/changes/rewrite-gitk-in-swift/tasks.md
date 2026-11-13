@@ -287,7 +287,7 @@ Order of work:
 
 ## 9. App shell
 
-- [ ] 9.1 [S] Add `AppCommand` (an enum of every menu, key, button and context command in the specs) and `KeyBindings` (key descriptor → command, from gitk 2592–2850 and `keys` 3223–3293, with ⌘ in place of Ctrl) to Core — Verify: `swift test --filter KeyBindingsTests` asserts each binding in the commit-list, diff-viewer and commit-find specs.
+- [x] 9.1 [S] Add `AppCommand` (an enum of every menu, key, button and context command in the specs) and `KeyBindings` (key descriptor → command, from gitk 2592–2850 and `keys` 3223–3293, with ⌘ in place of Ctrl) to Core — Verify: `swift test --filter KeyBindingsTests` asserts each binding in the commit-list, diff-viewer and commit-find specs.
   - Files: `Sources/GitkCore/Util/AppCommand.swift`, `Sources/GitkCore/Util/KeyBindings.swift`, tests.
   - Needs: 1.3.
 - [ ] 9.2 [M] Implement `main.swift` and `AppDelegate`: run `LanguageOverride` (a stub for now), `StartupChecks` and `LaunchArguments`; on failure show an alert (or print to stderr with `GITK_SWIFT_HEADLESS_ERRORS=1`) and exit 1; on success set the `.regular` activation policy, activate, and open the main window — Verify: `GITK_SWIFT_HEADLESS_ERRORS=1 swift run gitk-swift` run in `/tmp` exits 1 and prints "Cannot find a git repository here."
