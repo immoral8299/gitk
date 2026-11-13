@@ -104,7 +104,7 @@ Order of work:
   - Files: `Sources/GitkCore/Parsing/RawLogParser.swift`, tests.
   - Port: 1651–1700 (record framing in `getcommitlines`), 1907–1972 (`parsecommit`).
   - Needs: 2.1, 2.6, 1.6.
-- [ ] 3.2 [S] Implement `CommitStore`: interns `ObjectID` to `CommitIndex` (`Int32`) and holds parallel arrays for the fields from 3.1, decoding text lazily — Verify: `swift test --filter CommitStoreTests` (interning is idempotent; 100k inserts take under 0.5s in release; text is decoded on first access).
+- [x] 3.2 [S] Implement `CommitStore`: interns `ObjectID` to `CommitIndex` (`Int32`) and holds parallel arrays for the fields from 3.1, decoding text lazily — Verify: `swift test --filter CommitStoreTests` (interning is idempotent; 100k inserts take under 0.5s in release; text is decoded on first access).
   - Files: `Sources/GitkCore/Model/CommitStore.swift`, `Sources/GitkCore/Model/Commit.swift`, tests.
   - Needs: 3.1.
 - [ ] 3.3 [M] Implement `RefParser`/`RefSet`. It loads `git show-ref -d` and `git symbolic-ref -q HEAD`, peels annotated tags, and classifies refs as heads, remotes, tags or other. It applies `hideremotes` and the `refstohide` globs — Verify: `swift test --filter RefParserTests` on `tags-notes` (annotated tag attached to its commit), detached HEAD (no main head name, main head ID set), and hiding globs.
