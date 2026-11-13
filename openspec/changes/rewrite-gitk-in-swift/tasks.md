@@ -172,7 +172,7 @@ Order of work:
   - Files: `Tests/Oracle/oracle.tcl`.
   - Port: 5373–5443, 6668–6731.
   - Needs: 5.2.
-- [ ] 5.4 [S] Write `Tools/regen-golden.sh`, which runs the oracle on every fixture (not `huge`) and writes `Tests/GitkCoreTests/Golden/<fixture>.json` — Verify: running it twice gives no `git diff`.
+- [x] 5.4 [S] Write `Tools/regen-golden.sh`, which runs the oracle on every fixture (not `huge`) and writes `Tests/GitkCoreTests/Golden/<fixture>.json` — Verify: running it twice gives no `git diff`.
   - Files: `Tools/regen-golden.sh`, `Tests/GitkCoreTests/Golden/*.json`.
   - Needs: 5.3.
 - [ ] 5.5 [S] Add the Swift `OracleGolden.load(_ fixture:) -> OracleResult` (`Decodable`) helper, and an `OracleRunner` that uses live `tclsh` when it is present and the golden file otherwise — Verify: `swift test --filter OracleGoldenTests` decodes all golden files.
