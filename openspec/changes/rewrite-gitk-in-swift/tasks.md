@@ -123,7 +123,7 @@ Order of work:
   - Files: `Sources/GitkCore/Parsing/TreeParser.swift`, tests.
   - Port: 7832–7900 (`gettree`, `gettreeline`), 8103–8169 (`gettreediffs`, `gettreediffline`).
   - Needs: 1.6.
-- [ ] 3.7 [S] Implement the `TclList` tokenizer: split a Tcl list string into elements, handling braces, quotes, backslash escapes and nested braces — Verify: `swift test --filter TclListTests` with at least 12 cases, including `{Lucida Grande} 9`, `{"#00ff00" red}`, `a\ b`, `{}`, `{a {b c}}`.
+- [x] 3.7 [S] Implement the `TclList` tokenizer: split a Tcl list string into elements, handling braces, quotes, backslash escapes and nested braces — Verify: `swift test --filter TclListTests` with at least 12 cases, including `{Lucida Grande} 9`, `{"#00ff00" red}`, `a\ b`, `{}`, `{a {b c}}`.
   - Files: `Sources/GitkCore/Parsing/TclList.swift`, tests.
   - Needs: 1.3.
 - [ ] 3.8 [S] Implement `ShellWords` as ports of `shellquote`, `shellarglist`, `shelldequote` and `shellsplit` — Verify: `swift test --filter ShellWordsTests`, including quoted spaces, single quotes and unterminated quotes (error).
