@@ -9,6 +9,7 @@
 #
 #   tclsh Tests/Oracle/oracle.tcl --selftest
 #   tclsh Tests/Oracle/oracle.tcl --repo <dir> [--layout=chunked|oneshot] [git log args]
+#   tclsh Tests/Oracle/oracle.tcl --allcommits <dir>
 #
 # Stub list and reasons: Tests/Oracle/README.md.
 
@@ -471,8 +472,103 @@ proc oracle::repoMode {args} {
     return [expr {[llength $::oracle::errors] ? 1 : 0}]
 }
 
+# --- --allcommits mode (task 12.1) ---------------------------------------------
+
+# Run gitk's own `readrefs` and `getallcommits` (the whole-repository ancestry
+# index that feeds the nearby tags/heads lines) against a repository and print
+# the arc tables as JSON.
+#
+# gitk reads and writes `$gitdir/gitk.cache` there. The oracle must never touch
+# the repository's own directory, so `gitdir` is pointed at a fresh empty
+# temporary directory: `getallcommits` then finds no cache to read, and
+# `savecache` (which gitk queues with `run`, a no-op here; also redefined as a
+# no-op below) could not clobber anything either. `filerun` becomes a blocking
+# loop that calls the script until it reports completion (0, or the empty
+# result of the error path), which is what gitk's `dorunq` does one event at a
+# time.
+proc oracle::allcommitsMode {args} {
+    if {[llength $args] != 1} {return [usage]}
+    set dir [file normalize [lindex $args 0]]
+    if {![file isdirectory $dir]} {
+        puts stderr "oracle: not a directory: $dir"
+        return 2
+    }
+    cd $dir
+    setHashAlgorithm [string trim [exec git rev-parse --show-object-format]]
+
+    set base [expr {[info exists ::env(TMPDIR)] ? $::env(TMPDIR) : "/tmp"}]
+    set tmp [file join $base "gitk-oracle-gitdir-[pid]-[clock microseconds]"]
+    file mkdir $tmp
+    set ::gitdir $tmp
+
+    set ::tclencoding {}
+    set ::hideremotes 0
+    set ::refstohide {}
+    set ::selecthead {}
+    ::readrefs
+
+    proc ::filerun {fd script} {
+        fconfigure $fd -blocking 1
+        while 1 {
+            set r [uplevel #0 $script]
+            if {$r eq "" || $r == 0} break
+        }
+    }
+    proc ::savecache {} {}
+
+    ::getallcommits
+    file delete -force $tmp
+    puts [dumpAllCommits]
+    return [expr {[llength $::oracle::errors] ? 1 : 0}]
+}
+
+# Array element as a list, {} when unset.
+proc oracle::arr {name key} {
+    upvar #0 ${name}($key) v
+    if {[info exists v]} {return $v}
+    return {}
+}
+
+# {"id": [..], ...} for one of gitk's id-keyed list arrays, keys sorted.
+proc oracle::jidmap {name kind} {
+    set parts {}
+    foreach id [lsort [array names ::$name]] {
+        lappend parts "[jstr $id]:[jlist $kind [arr $name $id]]"
+    }
+    return "{\n[join $parts ,\n]\n}"
+}
+
+# The arc tables after getallcommits: per arc a (1..nextarc) its start, end
+# (null while still growing), ids, tags and heads, plus the per-id maps.
+proc oracle::dumpAllCommits {} {
+    set arcs {}
+    for {set a 1} {$a <= $::nextarc} {incr a} {
+        set end null
+        if {[info exists ::arcend($a)]} {set end [jstr $::arcend($a)]}
+        set growing false
+        if {[info exists ::growing($a)]} {set growing true}
+        lappend arcs [join [list \
+            "{\"a\":$a" \
+            "\"start\":[jstr [arr arcstart $a]]" \
+            "\"end\":$end" \
+            "\"ids\":[jlist str [arr arcids $a]]" \
+            "\"growing\":$growing" \
+            "\"tags\":[jlist str [arr arctags $a]]" \
+            "\"heads\":[jlist str [arr archeads $a]]}"] ,]
+    }
+    return [join [list \
+        "{\"allchildren\":[jidmap allchildren str]" \
+        "\"allcommits\":$::allcommits" \
+        "\"allparents\":[jidmap allparents str]" \
+        "\"arcnos\":[jidmap arcnos int]" \
+        "\"arcout\":[jidmap arcout int]" \
+        "\"arcs\":\[\n[join $arcs ,\n]\n\]" \
+        "\"nextarc\":$::nextarc" \
+        "\"seeds\":[jlist str $::seeds]}"] ,\n]
+}
+
 proc oracle::usage {} {
-    puts stderr "usage: oracle.tcl --selftest | --repo <dir> \[--layout=chunked|oneshot\] \[--window N\] \[--step N\] \[git log args\]"
+    puts stderr "usage: oracle.tcl --selftest | --repo <dir> \[--layout=chunked|oneshot\] \[--window N\] \[--step N\] \[git log args\] | --allcommits <dir>"
     return 2
 }
 
@@ -486,6 +582,7 @@ proc oracle::main {argv} {
     switch -- [lindex $argv 0] {
         --selftest {return [selftest]}
         --repo {return [repoMode {*}[lrange $argv 1 end]]}
+        --allcommits {return [allcommitsMode {*}[lrange $argv 1 end]]}
         default {return [usage]}
     }
 }

@@ -7,6 +7,7 @@
 ```
 tclsh Tests/Oracle/oracle.tcl --selftest        # prints "ok <procs loaded>"
 tclsh Tests/Oracle/oracle.tcl --repo <dir> ...  # tasks 5.2, 5.3
+tclsh Tests/Oracle/oracle.tcl --allcommits <dir> # task 12.1
 ```
 
 It needs the `gitk/` submodule (`git submodule update --init gitk`) and never
@@ -127,6 +128,44 @@ on the fixtures hold for any chunking.
 Exit status: 0 on success, 1 if gitk reported an error through `error_popup`
 (also printed on stderr), 2 on usage errors. If gitk cannot parse the git log
 output it calls `exit 1` itself.
+
+## `--allcommits` mode (task 12.1)
+
+```
+tclsh Tests/Oracle/oracle.tcl --allcommits <dir>
+```
+
+Runs gitk's own `readrefs` and `getallcommits` (which spawns
+`git rev-list --parents --all` and feeds it to `getallclines`) and dumps the
+ancestry arc tables of the whole repository. Keys are sorted; one entry per
+line for `arcs` and the id maps:
+
+```
+{"allchildren": {id: [id, ...]},   // allchildren($id)
+ "allcommits": 0,                  // load counter: 0 once finished
+ "allparents": {id: [id, ...]},    // allparents($id)
+ "arcnos": {id: [arc, ...]},       // arcnos($id)
+ "arcout": {id: [arc, ...]},       // arcout($id), only ids that have it
+ "arcs": [{"a": n, "start": id, "end": id|null, "ids": [id, ...],
+           "growing": bool, "tags": [id, ...], "heads": [id, ...]}, ...],
+ "nextarc": n,
+ "seeds": [id, ...]}
+```
+
+- `arcs` lists arcs 1..`nextarc`; `end` is null while the arc is growing (it
+  never is after a complete load).
+- `tags`/`heads` come from `arctags`/`archeads`, which `getallclines` and
+  `splitarc` fill from `idtags`/`idheads` as filled by the real `readrefs`
+  (`git show-ref -d`, remotes shown).
+- No cache is read or written. gitk looks for `$gitdir/gitk.cache` and saves
+  it with `run savecache`; the oracle sets `gitdir` to a fresh temporary
+  directory (removed afterwards) so there is nothing to read, and stubs
+  `run` (already a no-op) and `savecache`. The repository is never written.
+- `filerun` is redefined for this mode: it makes the pipe blocking and calls
+  the script until it returns 0 (or the empty result of gitk's error path),
+  which is what `dorunq` does one event at a time.
+- The update path of `getallcommits` (`seeds` not empty) is not reachable from
+  this mode; Swift tests cover it against `git`.
 
 ## Known gaps
 

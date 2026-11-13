@@ -39,6 +39,31 @@ struct OracleResult: Decodable, Equatable, Sendable {
     let colors: [String: Int]
 }
 
+/// What `Tests/Oracle/oracle.tcl --allcommits <dir>` prints (task 12.1): the
+/// arc tables gitk's `getallcommits` builds for a whole repository.
+struct OracleAllCommits: Decodable, Equatable, Sendable {
+    /// One arc, numbered from 1.
+    struct Arc: Decodable, Equatable, Sendable {
+        let a: Int
+        let start: String
+        /// nil while the arc is still growing.
+        let end: String?
+        let ids: [String]
+        let growing: Bool
+        let tags: [String]
+        let heads: [String]
+    }
+
+    let allchildren: [String: [String]]
+    let allcommits: Int
+    let allparents: [String: [String]]
+    let arcnos: [String: [Int]]
+    let arcout: [String: [Int]]
+    let arcs: [Arc]
+    let nextarc: Int
+    let seeds: [String]
+}
+
 /// Loads the checked-in oracle outputs in `Tests/GitkCoreTests/Golden/`.
 /// Regenerate them with `Tools/regen-golden.sh`; never edit them by hand.
 enum OracleGolden {
@@ -144,6 +169,28 @@ enum OracleRunner {
             throw RunError(description: "oracle.tcl --repo \(fixture) failed (\(process.terminationStatus)): \(message)")
         }
         return try JSONDecoder().decode(OracleResult.self, from: output)
+    }
+}
+
+extension OracleRunner {
+    /// Runs `tclsh Tests/Oracle/oracle.tcl --allcommits <fixture>`. There is
+    /// no golden fallback: callers gate on ``liveAvailable``.
+    static func liveAllCommits(_ fixture: String) throws -> OracleAllCommits {
+        guard let tclsh = tclshURL else { throw RunError(description: "tclsh not found") }
+        let repo = try FixtureRepo.make(fixture)
+        let process = Process()
+        process.executableURL = tclsh
+        process.arguments = [oracleScript.path, "--allcommits", repo.path]
+        let stdout = Pipe()
+        process.standardOutput = stdout
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        let output = stdout.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            throw RunError(description: "oracle.tcl --allcommits \(fixture) failed (\(process.terminationStatus))")
+        }
+        return try JSONDecoder().decode(OracleAllCommits.self, from: output)
     }
 }
 

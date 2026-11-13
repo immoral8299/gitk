@@ -442,7 +442,7 @@ Order of work:
 
 ## 12. Ancestry index (nearby tags and branches)
 
-- [ ] 12.1 [L] Port `getallcommits`, `getallclines`, `recalcarc`, `splitarc` and `addnewchild` into `AncestryIndex` (`git rev-list --parents --all`, streamed off the main actor) — Verify: `swift test --filter AncestryIndexBuildTests` (arc count and arc endpoints equal values dumped by a new oracle mode `--allcommits` on `merge-simple` and `criss-cross`; extend `oracle.tcl` as part of this task).
+- [x] 12.1 [L] Port `getallcommits`, `getallclines`, `recalcarc`, `splitarc` and `addnewchild` into `AncestryIndex` (`git rev-list --parents --all`, streamed off the main actor) — Verify: `swift test --filter AncestryIndexBuildTests` (arc count and arc endpoints equal values dumped by a new oracle mode `--allcommits` on `merge-simple` and `criss-cross`; extend `oracle.tcl` as part of this task).
   - Files: `Sources/GitkCore/Ancestry/AncestryIndex.swift`, `Tests/Oracle/oracle.tcl`, tests.
   - Port: 10414–10701.
   - Needs: 5.3, 3.2.
