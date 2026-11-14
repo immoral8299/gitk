@@ -342,12 +342,12 @@ Order of work:
   - Port: 7500–7560, 708–720.
   - Needs: 10.1.
   - Spec: commit-list "Select a commit", "Auto-copy", "Default selection"; cli-launch "Select a commit at startup".
-- [ ] 10.5 [M] Implement the navigation commands: next/previous line, page, first/last, scroll-only ⌘ variants, and go to the n-th parent — Verify: `swift test --filter NavigationCommandTests` (view-model level).
+- [x] 10.5 [M] Implement the navigation commands: next/previous line, page, first/last, scroll-only ⌘ variants, and go to the n-th parent — Verify: `swift test --filter NavigationCommandTests` (view-model level).
   - Files: `SelectionModel.swift`, `MainWindowController.swift`, tests.
   - Port: 7668–7726, 7824–7832.
   - Needs: 10.4, 9.7.
   - Spec: commit-list "j/k navigation", "Go to parent".
-- [ ] 10.6 [M] Implement `NavigationHistory` (Core): entries for a commit selection, a line click and a link, each with a saved diff scroll position; back/forward with button enablement — Verify: `swift test --filter NavigationHistoryTests`; the titlebar ← → buttons enable and disable as the history changes.
+- [x] 10.6 [M] Implement `NavigationHistory` (Core): entries for a commit selection, a line click and a link, each with a saved diff scroll position; back/forward with button enablement — Verify: `swift test --filter NavigationHistoryTests`; the titlebar ← → buttons enable and disable as the history changes.
   - Files: `Sources/GitkCore/History/NavigationHistory.swift`, `Sources/GitkUI/Bars/SearchBar.swift` (← → buttons), tests.
   - Port: 7726–7824.
   - Needs: 10.4.
