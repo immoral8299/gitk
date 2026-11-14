@@ -12,6 +12,8 @@ final class MainMenu: NSObject, NSMenuItemValidation {
     private(set) var viewMenu = NSMenu(title: L("View"))
     var dispatch: (AppCommand) -> Void
     var isEnabled: (AppCommand) -> Bool
+    /// The checkmark of a checkable item (View→Details Sidebar); nil for others.
+    var isChecked: (AppCommand) -> Bool? = { _ in nil }
     private var commands: [ObjectIdentifier: AppCommand] = [:]
 
     init(dispatch: @escaping (AppCommand) -> Void, isEnabled: @escaping (AppCommand) -> Bool) {
@@ -50,6 +52,8 @@ final class MainMenu: NSObject, NSMenuItemValidation {
         viewMenu.addItem(.separator())
         let all = add(L("All files"), .showView(0), to: viewMenu)
         all.state = .on
+        viewMenu.addItem(.separator())
+        add(L("Details Sidebar"), .toggleDetailsSidebar, to: viewMenu)
         let help = addMenu(L("Help"))
         add(L("Key bindings"), .keyBindings, to: help)
     }
@@ -83,6 +87,7 @@ final class MainMenu: NSObject, NSMenuItemValidation {
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         guard let command = commands[ObjectIdentifier(menuItem)] else { return true }
+        if let checked = isChecked(command) { menuItem.state = checked ? .on : .off }
         return isEnabled(command)
     }
 }

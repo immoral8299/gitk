@@ -42,7 +42,12 @@ User-visible strings with no gitk msgid. These have no translations.
 - `Copy`
 - `Paste`
 - `Select all`
-- `Commit ID:`
+- `Search commits…`
+- `Go to commit…`
+- `Search in`
+- `Matching`
+- `Field`
+- `Details Sidebar`
 
 ## Performance
 

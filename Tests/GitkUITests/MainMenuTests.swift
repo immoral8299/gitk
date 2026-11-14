@@ -23,6 +23,16 @@ import GitkCore
         #expect(!menu.validateMenuItem(menu.viewMenu.items[1]))
         #expect(!menu.validateMenuItem(menu.viewMenu.items[2]))
         #expect(menu.viewMenu.items[4].state == .on)
+        let sidebar = try #require(menu.viewMenu.items.last)
+        #expect(sidebar.title == L("Details Sidebar"))
+        #expect(sidebar.keyEquivalent.isEmpty)
+        var shown = true
+        menu.isChecked = { $0 == .toggleDetailsSidebar ? shown : nil }
+        #expect(menu.validateMenuItem(sidebar))
+        #expect(sidebar.state == .on)
+        shown = false
+        _ = menu.validateMenuItem(sidebar)
+        #expect(sidebar.state == .off)
     }
 
     @Test func menuDispatchesSameCommandAsKeyBindings() throws {

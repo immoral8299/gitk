@@ -311,7 +311,7 @@ Order of work:
   - Port: 2374–2913 (structure only, relocated).
   - Needs: 9.4.
   - Spec: commit-list "Window layout", "Narrow window".
-- [ ] 9.6 [M] Implement `MainMenu` with the app menu (About, Settings…, Quit), File, Edit, View and Help menus with every item and shortcut from gitk 2398–2442, plus View → Details Sidebar (a checkable item that shows or hides the sidebar), all sending `AppCommand` through `perform(_:)` — Verify: `swift test --filter MainMenuTests` compares the menu tree with an expected table (titles, key equivalents, enabled and checked state).
+- [x] 9.6 [M] Implement `MainMenu` with the app menu (About, Settings…, Quit), File, Edit, View and Help menus with every item and shortcut from gitk 2398–2442, plus View → Details Sidebar (a checkable item that shows or hides the sidebar), all sending `AppCommand` through `perform(_:)` — Verify: `swift test --filter MainMenuTests` compares the menu tree with an expected table (titles, key equivalents, enabled and checked state).
   - Files: `Sources/GitkUI/App/MainMenu.swift`, tests.
   - Needs: 9.1, 9.5.
 - [x] 9.7 [M] Implement `KeyRouter`: an `NSWindow.sendEvent` hook that maps unmodified keys through `KeyBindings` only when the first responder is not an editable text view or field — Verify: `swift test --filter KeyRouterTests` (an offscreen window with a field: `j` with focus in the field is not routed; `j` with focus on the table is routed to `.selectNext`).

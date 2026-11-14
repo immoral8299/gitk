@@ -96,6 +96,8 @@ public enum AppCommand: Sendable, Hashable {
     case deleteView
     /// View menu item for the view at this index in the view list (0 is "All files").
     case showView(Int)
+    /// View→Details Sidebar: show or hide the details sidebar (design D16).
+    case toggleDetailsSidebar
 
     // MARK: Application and window
 
