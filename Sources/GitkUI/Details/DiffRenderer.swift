@@ -179,8 +179,12 @@ final class DiffPane: NSObject, NSTextViewDelegate {
         textView.layoutManager?.allowsNonContiguousLayout = true
         textView.textContainerInset = NSSize(width: 6, height: 6)
         // Diffs never wrap; long lines scroll sideways (gitk's ctext -wrap none).
+        // Apple's recipe for unwrapped text: the view is at least as wide as
+        // the clip view and grows with its longest line.
         textView.isHorizontallyResizable = true
-        textView.autoresizingMask = []
+        textView.isVerticallyResizable = true
+        textView.autoresizingMask = [.width]
+        textView.minSize = .zero
         textView.textContainer?.widthTracksTextView = false
         textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
@@ -259,7 +263,10 @@ final class DiffPane: NSObject, NSTextViewDelegate {
         renderer = DiffRenderer(settings: settings, mode: mode, wordMode: options.wordDiff)
         renderer.encoding = session.repo.guiEncoding
         textView.textStorage?.setAttributedString(NSAttributedString())
-        scrollView.contentView.scroll(to: .zero)
+        // Keep the horizontal offset when moving between commits; start at the top.
+        textView.setSelectedRange(NSRange(location: 0, length: 0))
+        scrollView.contentView.scroll(to: NSPoint(x: scrollView.contentView.bounds.minX, y: 0))
+        scrollView.reflectScrolledClipView(scrollView.contentView)
         onSectionsChanged?(document)
         let child = session.runner.stream(DiffCommandBuilder.blobDiff(ids: ids, options: options))
         process = child
@@ -467,6 +474,18 @@ final class DiffPaneView: NSView {
         super.layout()
         let bar = DiffControlsBar.height
         controls?.frame = NSRect(x: 0, y: 0, width: bounds.width, height: bar)
+        // Resizing must not move the text: keep the scroll origin (clamped).
+        let scroll = scrollView as? NSScrollView
+        let origin = scroll?.contentView.bounds.origin
         scrollView?.frame = NSRect(x: 0, y: bar, width: bounds.width, height: max(0, bounds.height - bar))
+        if let scroll, let origin, let document = scroll.documentView {
+            let clip = scroll.contentView
+            let x = min(origin.x, max(0, document.frame.width - clip.bounds.width))
+            let y = min(origin.y, max(0, document.frame.height - clip.bounds.height))
+            if clip.bounds.origin != NSPoint(x: x, y: y) {
+                clip.scroll(to: NSPoint(x: x, y: y))
+                scroll.reflectScrolledClipView(clip)
+            }
+        }
     }
 }
