@@ -211,34 +211,34 @@ Order of work:
 
 ## 7. Core: graph layout and geometry
 
-- [ ] 7.1 [M] Port `ordertoken`, `idcol`, `initlayout`, `setcanvscroll` (the logic only), `nextuse` and `prevuse` into `GraphLayout` — Verify: `swift test --filter GraphLayoutBasicsTests`.
+- [x] 7.1 [M] Port `ordertoken`, `idcol`, `initlayout`, `setcanvscroll` (the logic only), `nextuse` and `prevuse` into `GraphLayout` — Verify: `swift test --filter GraphLayoutBasicsTests`.
   - Files: `Sources/GitkCore/Graph/GraphLayout.swift`, tests.
   - Port: 5306–5404, 5604–5638.
   - Needs: 6.5.
-- [ ] 7.2 [L] Port `make_idlist`, `rowsequal`, `makeupline` and `layoutrows` — Verify: `swift test --filter LayoutRowsParityTests` (the `idlist` of each row equals the oracle for `linear`, `merge-simple`, `octopus`).
+- [x] 7.2 [L] Port `make_idlist`, `rowsequal`, `makeupline` and `layoutrows` — Verify: `swift test --filter LayoutRowsParityTests` (the `idlist` of each row equals the oracle for `linear`, `merge-simple`, `octopus`).
   - Files: `GraphLayout.swift`, tests.
   - Port: 5638–5840.
   - Needs: 7.1.
-- [ ] 7.3 [L] Port `changedrow`, `insert_pad` and `optimize_rows` — Verify: `swift test --filter LayoutParityTests` (every row's `idlist` and `col` equal the oracle for all fixtures, including `criss-cross`, `many-branches`, `long-lines`).
+- [x] 7.3 [L] Port `changedrow`, `insert_pad` and `optimize_rows` — Verify: `swift test --filter LayoutParityTests` (every row's `idlist` and `col` equal the oracle for all fixtures, including `criss-cross`, `many-branches`, `long-lines`).
   - Files: `GraphLayout.swift`, tests.
   - Port: 5840–5998.
   - Needs: 7.2.
   - Spec: commit-graph "Matches gitk on reference repositories", "Linear history".
-- [ ] 7.4 [M] Port `rowranges`, plus the row-range arithmetic of `drawcommits`/`drawvisible` (6459–6612). Implement the lazy `ensureLaid(visibleRows:)` (D3) so it calls `layoutrows`/`optimize_rows` with exactly the ranges gitk uses for that viewport. Layout results depend on these chunks (see 5.6) — Verify: `swift test --filter RowRangesParityTests`, where `ranges` and rows equal the oracle on every fixture, including `random-dag`, when the test scrolls a 50-row viewport down in 50-row steps like the oracle's default; plus a test that laying out only the first viewport of `many-branches` does not touch later rows.
+- [x] 7.4 [M] Port `rowranges`, plus the row-range arithmetic of `drawcommits`/`drawvisible` (6459–6612). Implement the lazy `ensureLaid(visibleRows:)` (D3) so it calls `layoutrows`/`optimize_rows` with exactly the ranges gitk uses for that viewport. Layout results depend on these chunks (see 5.6) — Verify: `swift test --filter RowRangesParityTests`, where `ranges` and rows equal the oracle on every fixture, including `random-dag`, when the test scrolls a 50-row viewport down in 50-row steps like the oracle's default; plus a test that laying out only the first viewport of `many-branches` does not touch later rows.
   - Files: `GraphLayout.swift`, tests.
   - Port: 5423–5443, 6018–6074, 6459–6612.
   - Needs: 7.3, 5.6.
-- [ ] 7.5 [M] Port `findcrossings` and `assigncolor` as `GraphColors`, assigning colours in gitk's drawing order (the order `drawcmitrow`/`drawlineseg`/`drawparentlinks` would call it for each drawn viewport, see 5.6) — Verify: `swift test --filter ColorParityTests` (equal to the oracle `colors` for all fixtures).
+- [x] 7.5 [M] Port `findcrossings` and `assigncolor` as `GraphColors`, assigning colours in gitk's drawing order (the order `drawcmitrow`/`drawlineseg`/`drawparentlinks` would call it for each drawn viewport, see 5.6) — Verify: `swift test --filter ColorParityTests` (equal to the oracle `colors` for all fixtures).
   - Files: `Sources/GitkCore/Graph/GraphColors.swift`, tests.
   - Port: 6633–6731.
   - Needs: 7.4.
   - Spec: commit-graph "Straight branch keeps colour".
-- [ ] 7.6 [M] Implement `GraphRowGeometry.make(row:)`, which gives line segments (from/to column and top/mid/bottom), the dot column and style (normal, boundary, main head, unstaged, staged), arrows, and `textX` capped by `maxwidth` and `maxgraphpct` (pass in the column width) — Verify: `swift test --filter GraphRowGeometryTests` on `linear`, `merge-simple`, `long-lines` (arrow rows where the oracle `ranges` say), and `many-branches` (textX capped at 16 lanes).
+- [x] 7.6 [M] Implement `GraphRowGeometry.make(row:)`, which gives line segments (from/to column and top/mid/bottom), the dot column and style (normal, boundary, main head, unstaged, staged), arrows, and `textX` capped by `maxwidth` and `maxgraphpct` (pass in the column width) — Verify: `swift test --filter GraphRowGeometryTests` on `linear`, `merge-simple`, `long-lines` (arrow rows where the oracle `ranges` say), and `many-branches` (textX capped at 16 lanes).
   - Files: `Sources/GitkCore/Graph/GraphRowGeometry.swift`, tests.
   - Port: 5998–6018 (`xc`, `yc`, `linewidth`), 6074–6309 (`drawlineseg`, `drawparentlinks`), 6315–6417 (`drawcmittext` positioning only), 6740–6753.
   - Needs: 7.5.
   - Spec: commit-graph "Distant parent", "Very wide graph", "HEAD marker", "Local-changes markers".
-- [ ] 7.7 [S] Add ref labels to the geometry: ordered label list (tags, then heads, then other refs), "n tags..." collapse when there are more than 3 tags or they do not fit (width via an injected measuring closure), `remotes/<x>/` prefix split, current branch bold, notes marker flag — Verify: `swift test --filter RefLabelLayoutTests`.
+- [x] 7.7 [S] Add ref labels to the geometry: ordered label list (tags, then heads, then other refs), "n tags..." collapse when there are more than 3 tags or they do not fit (width via an injected measuring closure), `remotes/<x>/` prefix split, current branch bold, notes marker flag — Verify: `swift test --filter RefLabelLayoutTests`.
   - Files: `Sources/GitkCore/Graph/GraphRowGeometry.swift` (extension), tests.
   - Port: 6753–6881 (`drawtags`, `drawnotesign`).
   - Needs: 7.6, 3.3.
