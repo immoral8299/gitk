@@ -17,6 +17,8 @@ final class MainWindowController: NSWindowController {
     let session: ViewSession
     let listController: CommitListController
     let searchBar: SearchBar
+    let diffPane: DiffPane
+    var sidebar: DetailsSidebar { splitView.sidebar }
     var statusBar: StatusBar { splitView.statusBar }
     /// True when the search bar is in a unified titlebar rather than a content row.
     let unifiedTitlebar: Bool
@@ -48,6 +50,7 @@ final class MainWindowController: NSWindowController {
         listController.dateFormat = settings.dateTimeFormat
         listController.settings = settings
         searchBar = SearchBar(session: session)
+        diffPane = DiffPane(settings: settings, hashLength: startup.repo.hashLength)
         let metrics = MainLayoutMetrics(mainFont: settings.mainFont)
         splitView = MainSplitView(metrics: metrics)
         unifiedTitlebar = Chrome.usesUnifiedTitlebar(environment: environment)
@@ -66,6 +69,17 @@ final class MainWindowController: NSWindowController {
         }
         super.init(window: window)
         splitView.installList(listController.scrollView)
+        splitView.installDiff(diffPane.scrollView)
+        sidebar.settings = settings
+        sidebar.onCommitLink = { [weak self] in self?.followLink($0) }
+        currentDiffScrollPosition = { [weak self] in
+            Double(self?.diffPane.scrollView.contentView.bounds.minY ?? 0)
+        }
+        restoreDiffScrollPosition = { [weak self] y in
+            guard let clip = self?.diffPane.scrollView.contentView else { return }
+            clip.scroll(to: NSPoint(x: 0, y: y))
+            self?.diffPane.scrollView.reflectScrolledClipView(clip)
+        }
         splitView.onSidebarClose = { [weak self] in self?.setSidebarHidden(true) }
         listController.onSelection = { [weak self] in self?.select($0) }
         searchBar.onCommand = { [weak self] in self?.perform($0) }
@@ -214,7 +228,11 @@ final class MainWindowController: NSWindowController {
                 if loadTask?.isCancelled == true { break }
                 try? await Task.sleep(for: .milliseconds(10))
             }
-        } else { await loadTask?.value; await searchBar.waitForSearch() }
+        } else {
+            await loadTask?.value
+            await searchBar.waitForSearch()
+            await diffPane.waitUntilLoaded()
+        }
         updateTopInset()
         window?.contentView?.layoutSubtreeIfNeeded()
         try? await Task.sleep(for: .milliseconds(100))
@@ -253,6 +271,7 @@ final class MainWindowController: NSWindowController {
         listController.restoreSelection(scroll: true)
         splitView.showsDiffPane = true
         refreshBars()
+        showDetails(id)
         if settings.autoCopy {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(id.abbreviated(settings.autoSelLen), forType: .string)
@@ -260,8 +279,26 @@ final class MainWindowController: NSWindowController {
         onSelection?(id)
     }
 
+    /// Port of the display half of gitk proc `selectline` (gitk/gitk 7560–7666):
+    /// fill the sidebar and stream the patch into the diff pane.
+    private func showDetails(_ id: ObjectID) {
+        guard sidebar.shownID != id || diffPane.ids != [id], let index = session.store.index(of: id) else { return }
+        sidebar.show(DetailsHeaderBuilder.build(commit: index, session: session, dateFormat: settings.dateTimeFormat), session: session)
+        diffPane.show(id, session: session)
+    }
+
+    /// A commit link in the sidebar (commit-details "Revert message link").
+    private func followLink(_ id: ObjectID) {
+        guard session.row(of: id) != nil else { return }
+        select(id)
+    }
+
     private func refreshBars() {
-        if session.selection.selectedID.flatMap({ session.row(of: $0) }) == nil { splitView.showsDiffPane = false }
+        if session.selection.selectedID.flatMap({ session.row(of: $0) }) == nil {
+            splitView.showsDiffPane = false
+            sidebar.clear()
+            diffPane.clear()
+        }
         statusBar.refresh(session: session)
         searchBar.refresh(session: session)
     }

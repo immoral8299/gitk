@@ -337,7 +337,7 @@ Order of work:
   - Files: `Sources/GitkUI/CommitList/RefLabelDrawing.swift`, tests.
   - Needs: 10.2, 7.7.
   - Spec: commit-graph "Context menu on a head label".
-- [ ] 10.4 [M] Implement `SelectionModel` (Core) and its wiring: select a row, fill the details sidebar, stream the diff into the bottom pane, put the full ID in the sidebar and "Row N / M" in the status strip, and copy to the clipboard when enabled; default selection is HEAD or the first row; honour `--select-commit` — Verify: `swift test --filter SelectionModelTests`; `Tools/snapshot.sh merge-simple /tmp/s.png --select-commit=<id>` shows that row selected, the sidebar filled and the diff below the list.
+- [x] 10.4 [M] Implement `SelectionModel` (Core) and its wiring: select a row, fill the details sidebar, stream the diff into the bottom pane, put the full ID in the sidebar and "Row N / M" in the status strip, and copy to the clipboard when enabled; default selection is HEAD or the first row; honour `--select-commit` — Verify: `swift test --filter SelectionModelTests`; `Tools/snapshot.sh merge-simple /tmp/s.png --select-commit=<id>` shows that row selected, the sidebar filled and the diff below the list.
   - Files: `Sources/GitkCore/History/SelectionModel.swift`, `CommitListController.swift`, `Sources/GitkUI/Bars/StatusBar.swift`, tests.
   - Port: 7500–7560, 708–720.
   - Needs: 10.1.
