@@ -140,6 +140,9 @@ public struct RepoActions: Sendable {
         let out = try await runMerged(args)
         if out.status != 0 {
             let err = out.text
+            if err.contains("previous cherry-pick is now empty") || err.contains("nothing to commit") {
+                return .noChanges
+            }
             if let files = Self.localChangeFiles(in: err, isRevert: isRevert) {
                 throw RepoActionError.localChanges(files: files, output: err)
             }
@@ -211,7 +214,23 @@ public struct RepoActions: Sendable {
     /// what the dialog's Reverse button does.
     public func makePatch(from: String, to: String, reverse: Bool = false) async throws -> Data {
         let ids = reverse ? [to, from] : [from, to]
+        if let a = ObjectID(hex: ids[0]), let b = ObjectID(hex: ids[1]) {
+            let command = DiffCommandBuilder.diffCommand(ids: [a, b], flags: ["-p"],
+                logShowRoot: false, hashLength: a.hex.count)
+            return try await run(command).stdout
+        }
         return try await run(["diff-tree", "-r", "-p"] + ids).stdout
+    }
+
+    /// Port of gitk proc `wrcomgo` (gitk/gitk 9679–9692), passing the ID on stdin.
+    public func writeCommit(_ id: ObjectID, command: String = "git diff-tree --stdin -p --pretty=email", to file: URL) async throws {
+        let output = try await ProcessRunner().run(executable: URL(fileURLWithPath: "/bin/sh"),
+            arguments: ["-c", command], environment: runner.environment,
+            cwd: runner.cwd, stdin: Data((id.hex + "\n").utf8))
+        guard output.status == 0 else {
+            throw GitError(args: [command], status: output.status, stderr: output.stderrText)
+        }
+        try output.stdout.write(to: file, options: .atomic)
     }
 
     // MARK: Copy reference
