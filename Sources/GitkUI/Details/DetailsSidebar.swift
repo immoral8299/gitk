@@ -30,6 +30,8 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
     let messageView = AutoHeightTextView()
     /// Where task 13.1 mounts the Changed Files section.
     let changedFilesSlot = NSStackView()
+    /// The Changed Files section (13.1).
+    let fileList = FileListController()
     private var content: [NSView] = []
 
     var settings = Settings() { didSet { applySettings() } }
@@ -113,6 +115,8 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
 
         changedFilesSlot.orientation = .vertical
         changedFilesSlot.alignment = .leading
+        changedFilesSlot.addArrangedSubview(fileList.view)
+        fileList.view.widthAnchor.constraint(equalTo: changedFilesSlot.widthAnchor).isActive = true
 
         let lines = [separator(), separator()]
         content = [identity, idButton, refsLabel, lines[0], rowsView, lines[1], messageHeader, messageView, changedFilesSlot]
@@ -127,6 +131,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
             view.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -2 * Self.padding).isActive = true
         }
         stack.setCustomSpacing(4, after: messageHeader)
+        stack.setCustomSpacing(16, after: messageView)
         stack.setCustomSpacing(2, after: idButton)
 
         let document = FlippedView()

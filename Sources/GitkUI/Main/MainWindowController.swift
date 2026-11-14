@@ -79,6 +79,10 @@ final class MainWindowController: NSWindowController {
         splitView.installDiff(diffPane.scrollView)
         sidebar.settings = settings
         sidebar.onCommitLink = { [weak self] in self?.followLink($0) }
+        sidebar.fileList.settings = settings
+        sidebar.fileList.onSelectFile = { [weak self] in self?.diffPane.jumpToFile($0) }
+        diffPane.onSectionsChanged = { [weak self] in self?.sidebar.fileList.update($0) }
+        diffPane.onTopSectionChanged = { [weak self] in self?.sidebar.fileList.highlight($0) }
         currentDiffScrollPosition = { [weak self] in
             Double(self?.diffPane.scrollView.contentView.bounds.minY ?? 0)
         }

@@ -469,12 +469,12 @@ Order of work:
 
 ## 13. File list
 
-- [ ] 13.1 [M] Implement `FileListController` in Patch mode inside the sidebar's Changed Files section: the "N Changed Files" and +/− header, the Patch/Tree switch, and the files in diff order with click-to-jump in the bottom diff pane — Verify: `swift test --filter FileListPatchTests` (entries for `renames`, the header counts); a snapshot shows the list below the message.
+- [x] 13.1 [M] Implement `FileListController` in Patch mode inside the sidebar's Changed Files section: the "N Changed Files" and +/− header, the Patch/Tree switch, and the files in diff order with click-to-jump in the bottom diff pane — Verify: `swift test --filter FileListPatchTests` (entries for `renames`, the header counts); a snapshot shows the list below the message.
   - Files: `Sources/GitkUI/FileList/FileListController.swift`, `Sources/GitkUI/Details/DetailsSidebar.swift`, tests.
   - Port: 3504–3662. Note: gitk builds this list from `git diff-tree -r --no-commit-id [--root] <id>` raw output (no `-z`, no `-C`), while `TreeParser.parseNameStatus` parses `-z --name-status -C`. Use the parser, keep the diff pane's rename detection consistent, and record the choice in `docs/architecture.md`.
   - Needs: 11.5, 11.1.
   - Spec: file-list "Changed Files section", "Jump to file", "Change totals".
-- [ ] 13.2 [S] Keep the Changed Files highlight in sync with the bottom diff's scroll position — Verify: `swift test --filter FileHighlightSyncTests` (scroll offset → file index).
+- [x] 13.2 [S] Keep the Changed Files highlight in sync with the bottom diff's scroll position — Verify: `swift test --filter FileHighlightSyncTests` (scroll offset → file index).
   - Files: `FileListController.swift`, tests.
   - Port: 8549–8574, 8775–8800.
   - Needs: 13.1.

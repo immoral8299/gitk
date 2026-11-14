@@ -124,7 +124,11 @@ final class DiffPane: NSObject {
     private(set) var document = DiffDocument()
     /// Character offset of each file separator in the text.
     private(set) var sectionOffsets: [Int] = []
-    var onSectionsChanged: (([DiffFileSection]) -> Void)?
+    /// Called as file sections stream in (and with an empty document on clear).
+    var onSectionsChanged: ((DiffDocument) -> Void)?
+    /// The file whose separator is at or above the top of the pane (13.2).
+    var onTopSectionChanged: ((Int?) -> Void)?
+    private var topSection: Int?
     private var task: Task<Void, Never>?
     private var process: GitProcess?
     private var generation: UInt64 = 0
@@ -158,6 +162,25 @@ final class DiffPane: NSObject {
         scrollView.drawsBackground = true
         scrollView.backgroundColor = Palette.background(settings)
         scrollView.documentView = textView
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(self, selector: #selector(scrolled),
+                                               name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
+    }
+
+    /// Port of gitk proc `highlightfile_for_scrollpos`: report the file at the top.
+    @objc private func scrolled() { updateTopSection() }
+
+    private func updateTopSection() {
+        guard let manager = textView.layoutManager, let container = textView.textContainer else { return }
+        var section: Int?
+        if !sectionOffsets.isEmpty, (textView.textStorage?.length ?? 0) > 0 {
+            let top = NSPoint(x: 0, y: scrollView.contentView.bounds.minY - textView.textContainerOrigin.y + 1)
+            let glyph = manager.glyphIndex(for: top, in: container)
+            section = DiffDocument.section(at: manager.characterIndexForGlyph(at: glyph), sectionStarts: sectionOffsets) ?? 0
+        }
+        guard section != topSection else { return }
+        topSection = section
+        onTopSectionChanged?(section)
     }
 
     /// Shows the patch of `id` (gitk's `startdiff`/`mergediff`).
@@ -180,7 +203,7 @@ final class DiffPane: NSObject {
         document = DiffDocument()
         sectionOffsets = []
         textView.textStorage?.setAttributedString(NSAttributedString())
-        onSectionsChanged?([])
+        onSectionsChanged?(document)
     }
 
     func refetch() {
@@ -202,7 +225,7 @@ final class DiffPane: NSObject {
         renderer.encoding = session.repo.guiEncoding
         textView.textStorage?.setAttributedString(NSAttributedString())
         scrollView.contentView.scroll(to: .zero)
-        onSectionsChanged?([])
+        onSectionsChanged?(document)
         let child = session.runner.stream(DiffCommandBuilder.blobDiff(ids: ids, options: options))
         process = child
         task = Task { [weak self] in
@@ -242,7 +265,8 @@ final class DiffPane: NSObject {
             renderedLines += 1
         }
         storage.endEditing()
-        onSectionsChanged?(document.sections)
+        onSectionsChanged?(document)
+        updateTopSection()
     }
 
     /// Re-renders from the model, e.g. after a Diff/Old/New change.

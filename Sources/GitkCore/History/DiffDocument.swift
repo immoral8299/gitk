@@ -14,12 +14,45 @@ public struct DiffDocument: Sendable {
     public init() {}
     public var sections: [DiffFileSection] { parser.sections }
     public var hiddenLineCount: Int { max(0, lines.count - lineLimit) }
+    /// Lines added and removed in each file section, aligned with `sections`.
+    /// For a combined diff a line counts as added if any parent marker is `+`,
+    /// else as removed if any is `-`.
+    public private(set) var addedPerFile: [Int] = []
+    public private(set) var removedPerFile: [Int] = []
+    public var totalAdded: Int { addedPerFile.reduce(0, +) }
+    public var totalRemoved: Int { removedPerFile.reduce(0, +) }
 
     /// Port of gitk proc `parseblobdiffline` (gitk/gitk 8231–8542): classify one
     /// streamed line and record file sections.
     public mutating func append(_ raw: Data) {
-        lines.append(parser.parse(line: raw))
+        let line = parser.parse(line: raw)
+        lines.append(line)
         rawLines.append(raw)
+        while addedPerFile.count < parser.sections.count {
+            addedPerFile.append(0)
+            removedPerFile.append(0)
+        }
+        guard !addedPerFile.isEmpty else { return }
+        switch line {
+        case .add: addedPerFile[addedPerFile.count - 1] += 1
+        case .remove: removedPerFile[removedPerFile.count - 1] += 1
+        case .combined(let markers, _):
+            if markers.contains("+") { addedPerFile[addedPerFile.count - 1] += 1 }
+            else if markers.contains("-") { removedPerFile[removedPerFile.count - 1] += 1 }
+        default: break
+        }
+    }
+
+    /// Port of gitk proc `highlightfile_for_scrollpos` (gitk/gitk 8560–8572): the
+    /// file whose section starts at or above `offset` (a character offset or a
+    /// line number, matching `sectionStarts`); nil above the first file.
+    public static func section(at offset: Int, sectionStarts: [Int]) -> Int? {
+        var low = 0, high = sectionStarts.count
+        while low < high {
+            let mid = (low + high) / 2
+            if sectionStarts[mid] <= offset { low = mid + 1 } else { high = mid }
+        }
+        return low == 0 ? nil : low - 1
     }
 
     public func visibleIndices(mode: DiffDisplayMode) -> [Int] {
