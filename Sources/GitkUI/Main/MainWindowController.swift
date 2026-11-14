@@ -80,6 +80,7 @@ final class MainWindowController: NSWindowController {
         sidebar.settings = settings
         sidebar.onCommitLink = { [weak self] in self?.followLink($0) }
         sidebar.fileList.settings = settings
+        if environment["GITK_SWIFT_FILE_LAYOUT"] == "tree" { sidebar.fileList.layout = .tree }
         sidebar.fileList.onSelectFile = { [weak self] in self?.diffPane.jumpToFile($0) }
         if let options = environment["GITK_SWIFT_DIFF_OPTIONS"] { diffPane.applySnapshotOptions(options) }
         diffPane.onSectionsChanged = { [weak self] in self?.sidebar.fileList.update($0) }

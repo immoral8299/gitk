@@ -58,6 +58,10 @@ User-visible strings with no gitk msgid. These have no translations.
 - `Previous match`
 - `Next match`
 - `1 Changed File`
+- `Commit`
+- `Show More`
+- `Show Less`
+- `List`
 - `%d Changed Files`
 
 ## Performance

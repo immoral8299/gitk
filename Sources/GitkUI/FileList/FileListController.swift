@@ -5,16 +5,17 @@
 import AppKit
 import GitkCore
 
-/// The sidebar's Changed Files section (design D16; gitk's `cflist`): a header
-/// with the file count, the +/− totals and the Patch/Tree switch, then the
-/// changed files in diff order. Clicking a file scrolls the diff pane to it.
+/// The sidebar's Changed Files section (design D16; gitk's `cflist`): the
+/// changed files in diff order, as a flat list or grouped into folders, with
+/// the file count, the +/− totals and the List/Tree switch in the section
+/// header. Clicking a file scrolls the diff pane to it.
 ///
 /// The entries come from the streamed diff's file sections rather than a
 /// separate `git diff-tree` call, so the list and the diff pane always agree,
 /// renames included (docs/architecture.md, Deviations).
 @MainActor
 final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDelegate {
-    enum Mode: Int { case patch, tree }
+    enum Layout: Int { case list, tree }
 
     struct Entry: Equatable {
         var path: String
@@ -24,36 +25,54 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
         var removed: Int
     }
 
+    /// One table row: a file (by entry index) or, in Tree layout, a folder.
+    enum Row: Equatable {
+        case file(Int, depth: Int)
+        case folder(String, depth: Int)
+    }
+
     let view = NSStackView()
     let titleLabel = NSTextField(labelWithString: "")
     let totalsLabel = NSTextField(labelWithString: "")
-    let modeSwitch = NSSegmentedControl(labels: [L("Patch"), L("Tree")], trackingMode: .selectOne, target: nil, action: nil)
+    let layoutSwitch = NSSegmentedControl()
     let tableView = NSTableView()
     private var heightConstraint: NSLayoutConstraint?
     private(set) var entries: [Entry] = []
+    private(set) var rows: [Row] = []
     private(set) var highlighted: Int?
     private var updatingSelection = false
 
     var settings = Settings() { didSet { tableView.reloadData() } }
     var onSelectFile: ((Int) -> Void)?
-    var onModeChange: ((Mode) -> Void)?
-    var mode: Mode { Mode(rawValue: modeSwitch.selectedSegment) ?? .patch }
+    /// The section title ("N Changed Files") changed.
+    var onTitleChange: ((String) -> Void)?
+    var layout: Layout = .list {
+        didSet {
+            layoutSwitch.selectedSegment = layout.rawValue
+            rebuildRows()
+        }
+    }
 
     static let rowHeight: CGFloat = 22
+    static let indent: CGFloat = 14
 
     override init() {
         super.init()
         titleLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold)
         titleLabel.textColor = .secondaryLabelColor
         totalsLabel.font = .monospacedDigitSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium)
-        modeSwitch.selectedSegment = 0
-        modeSwitch.controlSize = .small
-        modeSwitch.target = self
-        modeSwitch.action = #selector(modeChanged)
-        let spacer = NSView()
-        spacer.setContentHuggingPriority(.init(1), for: .horizontal)
-        let header = NSStackView(views: [titleLabel, totalsLabel, spacer, modeSwitch])
-        header.spacing = 8
+
+        layoutSwitch.segmentCount = 2
+        layoutSwitch.trackingMode = .selectOne
+        layoutSwitch.controlSize = .small
+        for (index, (symbol, label)) in [("list.bullet", L("List")), ("list.bullet.indent", L("Tree"))].enumerated() {
+            layoutSwitch.setImage(NSImage(systemSymbolName: symbol, accessibilityDescription: label), forSegment: index)
+            layoutSwitch.setToolTip(label, forSegment: index)
+            layoutSwitch.setWidth(26, forSegment: index)
+        }
+        layoutSwitch.selectedSegment = 0
+        layoutSwitch.target = self
+        layoutSwitch.action = #selector(layoutChanged)
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("file"))
         column.resizingMask = .autoresizingMask
@@ -73,12 +92,8 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
 
         view.orientation = .vertical
         view.alignment = .leading
-        view.spacing = 6
-        view.addArrangedSubview(header)
         view.addArrangedSubview(tableView)
-        for child in [header, tableView] {
-            child.widthAnchor.constraint(equalTo: view.widthAnchor).isActive = true
-        }
+        tableView.widthAnchor.constraint(equalTo: view.widthAnchor).isActive = true
         update(nil)
     }
 
@@ -92,19 +107,37 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
                   removed: document?.removedPerFile[safe: index] ?? 0)
         }
         titleLabel.stringValue = Self.title(fileCount: new.count)
+        onTitleChange?(titleLabel.stringValue)
         totalsLabel.attributedStringValue = Self.totals(added: document?.totalAdded ?? 0, removed: document?.totalRemoved ?? 0,
                                                        settings: settings)
         guard new != entries else { return }
-        let grew = new.count >= entries.count && Array(new.prefix(entries.count)) == entries
+        let grew = layout == .list && new.count > entries.count && Array(new.prefix(entries.count)) == entries
         let old = entries.count
         entries = new
-        if grew, new.count > old {
+        if new.isEmpty { highlighted = nil }
+        if grew {
+            rows = entries.indices.map { .file($0, depth: 0) }
             tableView.insertRows(at: IndexSet(integersIn: old..<new.count), withAnimation: [])
+            heightConstraint?.constant = CGFloat(rows.count) * Self.rowHeight
         } else {
-            tableView.reloadData()
-            if new.isEmpty { highlighted = nil }
+            rebuildRows()
         }
-        heightConstraint?.constant = CGFloat(entries.count) * Self.rowHeight
+    }
+
+    private func rebuildRows() {
+        switch layout {
+        case .list:
+            rows = entries.indices.map { .file($0, depth: 0) }
+        case .tree:
+            rows = ChangedFileTree.rows(paths: entries.map(\.path)).map { row in
+                row.fileIndex.map { .file($0, depth: row.depth) } ?? .folder(row.name, depth: row.depth)
+            }
+        }
+        tableView.reloadData()
+        heightConstraint?.constant = CGFloat(rows.count) * Self.rowHeight
+        let current = highlighted
+        highlighted = nil
+        highlight(current)
     }
 
     /// "N Changed Files" (file-list "Change totals").
@@ -120,63 +153,91 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
         return result
     }
 
-    /// Port of gitk proc `highlightfile` (gitk/gitk 8549–8558).
+    /// The table row showing file `index` (its diff section), if any.
+    func row(ofFile index: Int) -> Int? {
+        rows.firstIndex { if case .file(index, _) = $0 { true } else { false } }
+    }
+
+    /// Port of gitk proc `highlightfile` (gitk/gitk 8549–8558): `index` is the file's diff section.
     func highlight(_ index: Int?) {
         guard index != highlighted else { return }
         highlighted = index
         updatingSelection = true
-        if let index, entries.indices.contains(index) {
-            tableView.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
+        if let index, let row = row(ofFile: index) {
+            tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         } else {
             tableView.deselectAll(nil)
         }
         updatingSelection = false
     }
 
-    @objc private func modeChanged() { onModeChange?(mode) }
+    @objc private func layoutChanged() {
+        layout = Layout(rawValue: layoutSwitch.selectedSegment) ?? .list
+    }
 
     // MARK: Table
 
-    func numberOfRows(in tableView: NSTableView) -> Int { entries.count }
+    func numberOfRows(in tableView: NSTableView) -> Int { rows.count }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let cell = (tableView.makeView(withIdentifier: FileRowView.id, owner: self) as? FileRowView) ?? FileRowView()
         cell.identifier = FileRowView.id
-        cell.configure(entries[row], settings: settings)
+        switch rows[row] {
+        case .file(let index, let depth):
+            cell.configure(entries[index], depth: depth, showDirectory: layout == .list, settings: settings)
+        case .folder(let name, let depth):
+            cell.configureFolder(name, depth: depth)
+        }
         return cell
     }
 
+    func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
+        if case .file = rows[row] { true } else { false }
+    }
+
     func tableViewSelectionDidChange(_ notification: Notification) {
-        guard !updatingSelection, tableView.selectedRow >= 0 else { return }
-        highlighted = tableView.selectedRow
-        onSelectFile?(tableView.selectedRow)
+        guard !updatingSelection, rows.indices.contains(tableView.selectedRow),
+              case .file(let index, _) = rows[tableView.selectedRow] else { return }
+        highlighted = index
+        onSelectFile?(index)
     }
 }
 
-/// One changed file: a status symbol, the file name with its directory, and
-/// the +/− counts.
+/// One changed file (a status symbol, the name, the +/− counts) or a folder.
+/// Text stays on one line and truncates.
 @MainActor
 final class FileRowView: NSTableCellView {
     static let id = NSUserInterfaceItemIdentifier("fileRow")
     private let icon = NSImageView()
     private let name = NSTextField(labelWithString: "")
     private let counts = NSTextField(labelWithString: "")
+    private var leading: NSLayoutConstraint?
 
     init() {
         super.init(frame: .zero)
-        name.lineBreakMode = .byTruncatingMiddle
+        for field in [name, counts] {
+            field.maximumNumberOfLines = 1
+            field.usesSingleLineMode = true
+            field.cell?.wraps = false
+            field.cell?.truncatesLastVisibleLine = true
+        }
+        name.lineBreakMode = .byTruncatingTail
         name.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         name.setContentHuggingPriority(.init(1), for: .horizontal)
         counts.alignment = .right
         counts.setContentCompressionResistancePriority(.required, for: .horizontal)
         let stack = NSStackView(views: [icon, name, counts])
         stack.spacing = 6
+        stack.setClippingResistancePriority(.defaultLow, for: .horizontal)
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
+        let leading = stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: SidebarSection.padding)
+        self.leading = leading
         NSLayoutConstraint.activate([
             icon.widthAnchor.constraint(equalToConstant: 14),
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -2),
+            // Rows span the sidebar; their content is padded like the other sections.
+            leading,
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -SidebarSection.padding),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
     }
@@ -184,7 +245,31 @@ final class FileRowView: NSTableCellView {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
-    func configure(_ entry: FileListController.Entry, settings: Settings) {
+    private func setDepth(_ depth: Int) {
+        leading?.constant = SidebarSection.padding + CGFloat(depth) * FileListController.indent
+    }
+
+    /// Single-line, tail-truncated text: the file name stays whole and the
+    /// folder after it is shortened.
+    private static func attributes(_ font: NSFont, _ color: NSColor) -> [NSAttributedString.Key: Any] {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineBreakMode = .byTruncatingTail
+        return [.font: font, .foregroundColor: color, .paragraphStyle: paragraph]
+    }
+
+    func configureFolder(_ folder: String, depth: Int) {
+        setDepth(depth)
+        icon.image = NSImage(systemSymbolName: "folder", accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 10, weight: .regular))
+        icon.contentTintColor = .secondaryLabelColor
+        name.attributedStringValue = NSAttributedString(string: folder, attributes: Self.attributes(
+            .systemFont(ofSize: NSFont.smallSystemFontSize), .secondaryLabelColor))
+        name.toolTip = folder
+        counts.attributedStringValue = NSAttributedString()
+    }
+
+    func configure(_ entry: FileListController.Entry, depth: Int, showDirectory: Bool, settings: Settings) {
+        setDepth(depth)
         let (symbol, color): (String, NSColor) = switch entry.status {
         case .added: ("plus.circle.fill", Palette.diff(settings, 1))
         case .deleted: ("minus.circle.fill", Palette.diff(settings, 0))
@@ -196,15 +281,13 @@ final class FileRowView: NSTableCellView {
         icon.contentTintColor = color
         let file = (entry.path as NSString).lastPathComponent
         let directory = (entry.path as NSString).deletingLastPathComponent
-        let text = NSMutableAttributedString(string: file, attributes: [
-            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium), .foregroundColor: NSColor.labelColor,
-        ])
-        var detail = directory
-        if let old = entry.oldPath { detail = "← " + old }
+        let text = NSMutableAttributedString(string: file, attributes: Self.attributes(
+            .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium), .labelColor))
+        var detail = showDirectory ? directory : ""
+        if let old = entry.oldPath { detail = "← " + (showDirectory ? old : (old as NSString).lastPathComponent) }
         if !detail.isEmpty {
-            text.append(NSAttributedString(string: "  " + detail, attributes: [
-                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize), .foregroundColor: NSColor.secondaryLabelColor,
-            ]))
+            text.append(NSAttributedString(string: "  " + detail, attributes: Self.attributes(
+                .systemFont(ofSize: NSFont.smallSystemFontSize), .secondaryLabelColor)))
         }
         name.attributedStringValue = text
         name.toolTip = entry.oldPath.map { "\($0) → \(entry.path)" } ?? entry.path

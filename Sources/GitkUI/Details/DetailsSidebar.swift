@@ -5,13 +5,11 @@
 import AppKit
 import GitkCore
 
-/// The right-hand details sidebar (design D16), gitk's commit header and
-/// comment relocated. Top to bottom: the identity header, gitk's header rows,
-/// a collapsible Message section and the Changed Files mount point (13.1).
-///
-/// The content sits on a floating Liquid Glass panel inset from the window
-/// edges, like Finder's sidebar (macOS 26+); earlier systems use the sidebar
-/// material edge to edge (`Chrome.sidebarBackground`).
+/// The right-hand details sidebar (design D16), gitk's commit header, comment
+/// and file list relocated into three collapsible, full-width sections:
+/// Commit (identity, ID, refs and gitk's header rows), Message (the subject,
+/// with Show More for the rest and the notes) and Changed Files (13.1).
+/// Section headers and dividers span the sidebar; their contents are padded.
 @MainActor
 final class DetailsSidebar: NSView, NSTextViewDelegate {
     private static let padding: CGFloat = 14
@@ -26,13 +24,17 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
     let idButton = NSButton(title: "", target: nil, action: nil)
     private let refsLabel = NSTextField(labelWithString: "")
     private let rowsView = AutoHeightTextView()
-    let messageToggle = NSButton(title: "", target: nil, action: nil)
     let messageView = AutoHeightTextView()
-    /// Where task 13.1 mounts the Changed Files section.
-    let changedFilesSlot = NSStackView()
-    /// The Changed Files section (13.1).
+    /// Show More / Show Less for the message beyond its first line.
+    let moreButton = NSButton(title: "", target: nil, action: nil)
+    private(set) var messageExpanded = false
+    private var fullMessage = NSAttributedString()
+    /// The Changed Files list (13.1).
     let fileList = FileListController()
-    private var content: [NSView] = []
+    private(set) var commitSection: SidebarSection!
+    private(set) var messageSection: SidebarSection!
+    private(set) var filesSection: SidebarSection!
+    private var sections: [SidebarSection] { [commitSection, messageSection, filesSection] }
 
     var settings = Settings() { didSet { applySettings() } }
     var onCommitLink: ((ObjectID) -> Void)?
@@ -100,39 +102,28 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
             view.textContainerInset = .zero
             view.textContainer?.lineFragmentPadding = 0
         }
+        moreButton.isBordered = false
+        moreButton.font = .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium)
+        moreButton.contentTintColor = .linkColor
+        moreButton.target = self
+        moreButton.action = #selector(toggleMore)
 
-        messageToggle.bezelStyle = .disclosure
-        messageToggle.setButtonType(.onOff)
-        messageToggle.state = .on
-        messageToggle.target = self
-        messageToggle.action = #selector(toggleMessage)
-        let messageTitle = NSButton(title: L("Message"), target: self, action: #selector(toggleMessageFromTitle))
-        messageTitle.isBordered = false
-        messageTitle.font = .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold)
-        messageTitle.contentTintColor = .secondaryLabelColor
-        let messageHeader = NSStackView(views: [messageToggle, messageTitle])
-        messageHeader.spacing = 2
+        let commitBody = Self.column([identity, idButton, refsLabel, rowsView], spacing: 8)
+        commitBody.setCustomSpacing(2, after: idButton)
+        commitSection = SidebarSection(title: L("Commit"), body: commitBody)
+        messageSection = SidebarSection(title: L("Message"), body: Self.column([messageView, moreButton], spacing: 4))
+        filesSection = SidebarSection(title: "", body: fileList.view, padded: false)
+        filesSection.titleLabel.attributedStringValue = NSAttributedString()
+        filesSection.accessory = [fileList.totalsLabel, fileList.layoutSwitch]
+        fileList.onTitleChange = { [weak self] in self?.filesSection.title = $0 }
 
-        changedFilesSlot.orientation = .vertical
-        changedFilesSlot.alignment = .leading
-        changedFilesSlot.addArrangedSubview(fileList.view)
-        fileList.view.widthAnchor.constraint(equalTo: changedFilesSlot.widthAnchor).isActive = true
-
-        let lines = [separator(), separator()]
-        content = [identity, idButton, refsLabel, lines[0], rowsView, lines[1], messageHeader, messageView, changedFilesSlot]
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 8
-        stack.edgeInsets = NSEdgeInsets(top: 4, left: Self.padding, bottom: Self.padding, right: Self.padding)
-        for view in content { stack.addArrangedSubview(view) }
-        // Every block spans the content width, so a long name or email truncates
-        // instead of widening the sidebar and eating its padding.
-        for view in [identity, idButton, refsLabel, rowsView, messageView, changedFilesSlot] + lines {
-            view.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -2 * Self.padding).isActive = true
+        stack.spacing = 0
+        for section in sections {
+            stack.addArrangedSubview(section)
+            section.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         }
-        stack.setCustomSpacing(4, after: messageHeader)
-        stack.setCustomSpacing(16, after: messageView)
-        stack.setCustomSpacing(2, after: idButton)
 
         let document = FlippedView()
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -153,11 +144,17 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         document.topAnchor.constraint(equalTo: scrollView.contentView.topAnchor).isActive = true
     }
 
-    private func separator() -> NSView {
-        let line = NSBox()
-        line.boxType = .separator
-        line.translatesAutoresizingMaskIntoConstraints = false
-        return line
+    /// A vertical stack whose rows all span its width.
+    private static func column(_ views: [NSView], spacing: CGFloat) -> NSStackView {
+        let column = NSStackView(views: views)
+        column.orientation = .vertical
+        column.alignment = .leading
+        column.spacing = spacing
+        for view in views where !(view is NSButton) {
+            view.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true
+        }
+        column.setClippingResistancePriority(.defaultLow, for: .horizontal)
+        return column
     }
 
     private func applySettings() {
@@ -184,14 +181,14 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
     /// Empties the sidebar (no selection).
     func clear() {
         shownID = nil
-        for view in content { view.isHidden = true }
+        for section in sections { section.isHidden = true }
     }
 
     /// Shows `header` (commit-details "Sidebar follows selection").
     func show(_ header: DetailsHeader, session: ViewSession) {
         self.session = session
         shownID = header.id
-        for view in content { view.isHidden = false }
+        for section in sections { section.isHidden = false }
         monogram.initials = header.initials
         monogram.seed = header.authorEmail.isEmpty ? header.authorName : header.authorEmail
         nameLabel.stringValue = header.authorName
@@ -212,8 +209,9 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
             .font: MainLayoutMetrics.nsFont(settings.textFont), .foregroundColor: NSColor.textColor,
         ])
         LinkHandling.addLinks(to: body, session: session, settings: settings)
-        setText(messageView, body)
-        messageView.isHidden = messageToggle.state == .off
+        fullMessage = body
+        messageExpanded = false
+        showMessage()
         scrollView.contentView.scroll(to: .zero)
     }
 
@@ -225,7 +223,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
     private func refsText(_ refs: [String], id: ObjectID, session: ViewSession) -> NSAttributedString {
         let tags = Set(session.refs.tags(of: id))
         let result = NSMutableAttributedString()
-        let font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium)
+        let font = NSFont.monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium)
         for (n, ref) in refs.enumerated() {
             if n > 0 { result.append(NSAttributedString(string: "  ", attributes: [.font: font])) }
             let isTag = tags.contains(ref)
@@ -288,10 +286,24 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         NSPasteboard.general.setString(shownID.hex, forType: .string)
     }
 
-    @objc private func toggleMessage() { messageView.isHidden = messageToggle.state == .off }
-    @objc private func toggleMessageFromTitle() {
-        messageToggle.state = messageToggle.state == .on ? .off : .on
-        toggleMessage()
+    /// The subject only, or the whole message and notes when expanded.
+    private func showMessage() {
+        let text = fullMessage.string as NSString
+        let firstLineEnd = text.range(of: "\n").location
+        let hasMore = firstLineEnd != NSNotFound
+            && !text.substring(from: firstLineEnd).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if messageExpanded || !hasMore {
+            setText(messageView, fullMessage)
+        } else {
+            setText(messageView, fullMessage.attributedSubstring(from: NSRange(location: 0, length: firstLineEnd)))
+        }
+        moreButton.isHidden = !hasMore
+        moreButton.title = messageExpanded ? L("Show Less") : L("Show More")
+    }
+
+    @objc private func toggleMore() {
+        messageExpanded.toggle()
+        showMessage()
     }
 }
 
@@ -350,4 +362,114 @@ final class Monogram: NSView {
         let size = text.size(withAttributes: attrs)
         text.draw(at: NSPoint(x: (bounds.width - size.width) / 2, y: (bounds.height - size.height) / 2), withAttributes: attrs)
     }
+}
+
+/// One collapsible sidebar section: a full-width header (title, optional
+/// accessory controls and a disclosure chevron) with a divider above it, and a
+/// padded body.
+@MainActor
+final class SidebarSection: NSView {
+    static let padding: CGFloat = 14
+    let titleLabel = NSTextField(labelWithString: "")
+    private let titleButton = NSButton(title: "", target: nil, action: nil)
+    private let chevron = NSButton(title: "", target: nil, action: nil)
+    private let accessoryStack = NSStackView()
+    private let header = NSStackView()
+    private let bodyContainer = NSView()
+    let body: NSView
+    private var bodyHeight: NSLayoutConstraint?
+
+    var title: String {
+        get { titleLabel.stringValue }
+        set { titleLabel.stringValue = newValue }
+    }
+    var accessory: [NSView] = [] {
+        didSet {
+            oldValue.forEach { $0.removeFromSuperview() }
+            accessory.forEach { accessoryStack.addArrangedSubview($0) }
+        }
+    }
+    var isExpanded = true { didSet { update() } }
+
+    init(title: String, body: NSView, padded: Bool = true) {
+        self.body = body
+        super.init(frame: NSRect(x: 0, y: 0, width: 300, height: 40))
+        translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.stringValue = title
+        titleLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold)
+        titleLabel.textColor = .secondaryLabelColor
+        titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.setContentCompressionResistancePriority(.init(740), for: .horizontal)
+        // The title area is a borderless button so the whole label toggles.
+        titleButton.isBordered = false
+        titleButton.title = ""
+        titleButton.target = self
+        titleButton.action = #selector(toggle)
+        chevron.isBordered = false
+        chevron.target = self
+        chevron.action = #selector(toggle)
+        chevron.contentTintColor = .tertiaryLabelColor
+        accessoryStack.spacing = 8
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.init(1), for: .horizontal)
+        for view in [titleLabel, spacer, accessoryStack, chevron] { header.addArrangedSubview(view) }
+        header.spacing = 8
+        // The title gives way only after the spacer, and truncates rather than
+        // being detached when the sidebar is narrow.
+        header.setVisibilityPriority(.mustHold, for: titleLabel)
+        spacer.setContentCompressionResistancePriority(.init(1), for: .horizontal)
+        header.edgeInsets = NSEdgeInsets(top: 0, left: Self.padding, bottom: 0, right: Self.padding - 4)
+        header.translatesAutoresizingMaskIntoConstraints = false
+        titleButton.translatesAutoresizingMaskIntoConstraints = false
+        bodyContainer.translatesAutoresizingMaskIntoConstraints = false
+        body.translatesAutoresizingMaskIntoConstraints = false
+        let divider = NSBox()
+        divider.boxType = .separator
+        divider.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(divider)
+        addSubview(header)
+        addSubview(titleButton)
+        addSubview(bodyContainer)
+        bodyContainer.addSubview(body)
+        let inset: CGFloat = padded ? Self.padding : 0
+        let hidden = bodyContainer.heightAnchor.constraint(equalToConstant: 0)
+        hidden.priority = .required
+        bodyHeight = hidden
+        NSLayoutConstraint.activate([
+            divider.topAnchor.constraint(equalTo: topAnchor),
+            divider.leadingAnchor.constraint(equalTo: leadingAnchor),
+            divider.trailingAnchor.constraint(equalTo: trailingAnchor),
+            header.topAnchor.constraint(equalTo: topAnchor, constant: 1),
+            header.leadingAnchor.constraint(equalTo: leadingAnchor),
+            header.trailingAnchor.constraint(equalTo: trailingAnchor),
+            header.heightAnchor.constraint(equalToConstant: 30),
+            titleButton.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            titleButton.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+            titleButton.topAnchor.constraint(equalTo: header.topAnchor),
+            titleButton.bottomAnchor.constraint(equalTo: header.bottomAnchor),
+            bodyContainer.topAnchor.constraint(equalTo: header.bottomAnchor),
+            bodyContainer.leadingAnchor.constraint(equalTo: leadingAnchor),
+            bodyContainer.trailingAnchor.constraint(equalTo: trailingAnchor),
+            bodyContainer.bottomAnchor.constraint(equalTo: bottomAnchor),
+            body.topAnchor.constraint(equalTo: bodyContainer.topAnchor),
+            body.leadingAnchor.constraint(equalTo: bodyContainer.leadingAnchor, constant: inset),
+            body.trailingAnchor.constraint(equalTo: bodyContainer.trailingAnchor, constant: -inset),
+            body.bottomAnchor.constraint(equalTo: bodyContainer.bottomAnchor, constant: -12),
+        ])
+        update()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    private func update() {
+        body.isHidden = !isExpanded
+        bodyHeight?.isActive = !isExpanded
+        let symbol = isExpanded ? "chevron.down" : "chevron.right"
+        chevron.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 10, weight: .semibold))
+        chevron.setAccessibilityLabel(title)
+    }
+
+    @objc private func toggle() { isExpanded.toggle() }
 }
