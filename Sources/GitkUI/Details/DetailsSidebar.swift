@@ -206,7 +206,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         let body = NSMutableAttributedString(string: message, attributes: [
             .font: MainLayoutMetrics.nsFont(settings.textFont), .foregroundColor: NSColor.textColor,
         ])
-        addLinks(to: body, session: session)
+        LinkHandling.addLinks(to: body, session: session, settings: settings)
         setText(messageView, body)
         messageView.isHidden = messageToggle.state == .off
         scrollView.contentView.scroll(to: .zero)
@@ -253,7 +253,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
             if let commit = row.commit {
                 let short = NSMutableAttributedString(string: commit.abbreviated(8), attributes: [
                     .font: NSFont.monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular),
-                    .link: "gitk-commit:" + commit.hex, .foregroundColor: Palette.link(settings), .paragraphStyle: paragraph,
+                    .link: LinkHandling.commitScheme + commit.hex, .foregroundColor: Palette.link(settings), .paragraphStyle: paragraph,
                 ])
                 result.append(short)
                 result.append(NSAttributedString(string: " ", attributes: attrs))
@@ -265,28 +265,11 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         return result
     }
 
-    /// Port of gitk proc `appendwithlinks` (gitk/gitk 7222–7262): commit IDs and URLs become links.
-    private func addLinks(to text: NSMutableAttributedString, session: ViewSession) {
-        let links = LinkScanner.scan(text.string, hashLength: session.repo.hashLength) { prefix in
-            let matches = (0..<session.rowCount).compactMap { session.id(at: $0) }.filter { $0.hex.hasPrefix(prefix) }
-            return matches.count == 1 ? matches.first : nil
-        }
-        for link in links {
-            let value: String
-            switch link.target {
-            case .commit(let id): value = "gitk-commit:" + id.hex
-            case .web(let url): value = url.absoluteString
-            }
-            text.addAttributes([.link: value, .foregroundColor: Palette.link(settings)], range: link.range)
-        }
-    }
-
     func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
-        let value = (link as? String) ?? (link as? URL)?.absoluteString ?? ""
-        if value.hasPrefix("gitk-commit:"), let id = ObjectID(hex: String(value.dropFirst(12))) {
+        if let id = LinkHandling.commit(in: link) {
             onCommitLink?(id)
-        } else if let url = URL(string: value) {
-            NSWorkspace.shared.open(url)
+        } else {
+            LinkHandling.openWeb(link, settings: settings, parent: window)
         }
         return true
     }

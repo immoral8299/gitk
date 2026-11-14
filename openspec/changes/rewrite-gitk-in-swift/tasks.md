@@ -385,7 +385,7 @@ Order of work:
   - Port: 7207–7222, 7590–7668.
   - Needs: 10.4, 9.5.
   - Spec: commit-details "Merge commit", "Commit with notes", "Message section collapses", "Sidebar follows selection".
-- [ ] 11.2 [M] Implement `LinkScanner` (Core) for hex IDs of 6 to hashLength characters and `-g<hex>`, and for http(s) URLs, plus click handling: commit links select the commit (and record history); URLs run the `web_browser` command — Verify: `swift test --filter LinkScannerTests` (a revert message, an unknown hash that is not a link, URLs).
+- [x] 11.2 [M] Implement `LinkScanner` (Core) for hex IDs of 6 to hashLength characters and `-g<hex>`, and for http(s) URLs, plus click handling: commit links select the commit (and record history); URLs run the `web_browser` command — Verify: `swift test --filter LinkScannerTests` (a revert message, an unknown hash that is not a link, URLs).
   - Files: `Sources/GitkCore/History/LinkScanner.swift`, `Sources/GitkUI/Details/LinkHandling.swift`, tests.
   - Port: 7222–7340.
   - Needs: 11.1, 10.6.
