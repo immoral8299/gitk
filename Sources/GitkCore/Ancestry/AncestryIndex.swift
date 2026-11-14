@@ -136,8 +136,11 @@ public final class AncestryIndex {
     /// same.
     public internal(set) var generation = 0
 
-    public init(refs: RefSet = RefSet()) {
+    public let cacheURL: URL?
+
+    public init(refs: RefSet = RefSet(), gitDir: URL? = nil) {
         self.refs = refs
+        self.cacheURL = gitDir?.appendingPathComponent(AncestryCache.filename)
     }
 
     // MARK: - Interning and accessors
@@ -241,8 +244,7 @@ public final class AncestryIndex {
     /// caller streams the command's lines into ``add(_:)``, then calls
     /// ``finish(error:)``.
     ///
-    /// Deviation: gitk tries `readcache`/`getcache` on the first call; the
-    /// cache is task 12.2, which hooks in where the comment says.
+    /// The asynchronous driver restores the cache before the first call.
     public func beginLoad() -> RevListCommand? {
         if allCommits == nil {
             nextArc = 0
@@ -250,7 +252,6 @@ public final class AncestryIndex {
             seeds = []
             allCWait = false
             cachedArcs = 0
-            // 12.2: read <gitdir>/gitk-swift.cache here; on success `return`.
         }
 
         if allCWait {
@@ -545,6 +546,25 @@ public final class AncestryIndex {
     /// `CancellationError` without calling `finish`.
     @MainActor
     public func load(runner: GitRunner) async throws -> AncestryFinish {
+        if allCommits == nil, let cacheURL,
+           let cached = AncestryCache.read(from: cacheURL, refs: refs), cached.nextArc > 0 {
+            indexByID = cached.indexByID
+            ids = cached.ids
+            allParents = cached.allParents
+            allChildren = cached.allChildren
+            arcNos = cached.arcNos
+            arcOut = cached.arcOut
+            arcIDs = cached.arcIDs
+            arcStart = cached.arcStart
+            arcEnd = cached.arcEnd
+            arcTags = cached.arcTags
+            arcHeads = cached.arcHeads
+            growing = cached.growing
+            seeds = cached.seeds
+            nextArc = cached.nextArc
+            cachedArcs = cached.cachedArcs
+            allCommits = 0
+        }
         while true {
             guard let command = beginLoad() else { return AncestryFinish() }
             let process = runner.stream(command.arguments, stdin: command.stdin)
@@ -562,7 +582,10 @@ public final class AncestryIndex {
             }
             try Task.checkCancellation()
             let result = finish(error: failure)
-            if !result.restart { return result }
+            if !result.restart {
+                if result.saveCache, let cacheURL { try? AncestryCache.write(self, to: cacheURL) }
+                return result
+            }
         }
     }
 
@@ -603,5 +626,136 @@ private extension Array {
     subscript<T>(index: Int, orEmpty _: Void) -> [T] where Element == [T]? {
         get { self[index] ?? [] }
         set { self[index] = newValue }
+    }
+}
+
+extension AncestryIndex {
+    /// Port of gitk proc `anc_or_desc` (gitk/gitk 10866–10957).
+    /// Returns 1 when a is an ancestor of b, -1 for the reverse, 0 otherwise.
+    /// Equal commits return 0, as in gitk.
+    public func ancOrDesc(_ aID: ObjectID, _ bID: ObjectID) -> Int {
+        guard var a = index(of: aID), var b = index(of: bID),
+              let an = arcNos[Int(a)], let bn = arcNos[Int(b)] else { return 0 }
+        if an == bn {
+            if a == b || an.isEmpty { return 0 }
+            let arc = an[0]
+            let i = arcIDs[arc].firstIndex(of: a) ?? -1
+            let j = arcIDs[arc].firstIndex(of: b) ?? -1
+            return i < 0 || i > j ? 1 : -1
+        }
+        let aEnd: CommitIndex?
+        if arcOut[Int(a)] == nil, let arc = an.first, let start = arcStart[arc] {
+            aEnd = arcEnd[arc]
+            a = start
+        } else { aEnd = a }
+        let bEnd: CommitIndex?
+        if arcOut[Int(b)] == nil, let arc = bn.first, let start = arcStart[arc] {
+            bEnd = arcEnd[arc]
+            b = start
+        } else { bEnd = b }
+        if a == bEnd { return 1 }
+        if b == aEnd { return -1 }
+        var todo = [a, b]
+        // 0 marks a node reached from both sides; 1 and 2 are the two fronts.
+        var front: [CommitIndex: Int] = [a: 1]
+        front[b] = 2
+        var i = 0
+        while i < todo.count {
+            let x = todo[i]
+            i += 1
+            guard let side = front[x], side != 0 else { continue }
+            for arc in arcNos[Int(x)] ?? [] {
+                guard let descendant = arcStart[arc] else { continue }
+                if descendant == bEnd { return 1 }
+                if descendant == aEnd { return -1 }
+                if let other = front[descendant] {
+                    if other != side { front[descendant] = 0 }
+                } else {
+                    front[descendant] = side
+                    todo.append(descendant)
+                }
+            }
+        }
+        return 0
+    }
+
+    /// Port of gitk proc `is_certain` (gitk/gitk 10972–11066).
+    /// A growing arc can reveal a nearer tag, making a provisional result uncertain.
+    public func isCertain(descendant: ObjectID, ancestor: ObjectID) -> Bool {
+        guard let desc = index(of: descendant), var anc = index(of: ancestor),
+              let dn = arcNos[Int(desc)], let an = arcNos[Int(anc)] else { return false }
+        if an.count == 1 {
+            if dn == an { return true }
+            if arcOut[Int(anc)] == nil, let start = arcStart[an[0]] { anc = start }
+        }
+        let initial: CommitIndex
+        if dn.count > 1 || arcOut[Int(desc)] != nil { initial = desc }
+        else if let arc = dn.first, let end = arcEnd[arc] { initial = end }
+        else { return false }
+        if initial == anc { return true }
+        var list = [initial]
+        var dl: [CommitIndex: Bool] = [initial: true]
+        var done = Set<CommitIndex>()
+        var growingAncestors = Set<CommitIndex>()
+        var nnh = 1
+        var ngrowanc = 0
+        var i = 0
+        while i < list.count && (nnh > 0 || ngrowanc > 0) {
+            let x = list[i]
+            i += 1
+            if dl[x] == true { nnh -= 1 }
+            done.insert(x)
+            for arc in arcOut[Int(x)] ?? [] {
+                if growing.contains(arc) {
+                    if !growingAncestors.contains(x), dl[x] == true {
+                        growingAncestors.insert(x)
+                        ngrowanc += 1
+                    }
+                } else if let y = arcEnd[arc] {
+                    if let known = dl[y] {
+                        if known, dl[x] == false {
+                            dl[y] = false
+                            if !done.contains(y) { nnh -= 1 }
+                            if growingAncestors.contains(x) { ngrowanc -= 1 }
+                            var descendants = [y]
+                            var k = 0
+                            while k < descendants.count {
+                                let z = descendants[k]
+                                k += 1
+                                for c in arcOut[Int(z)] ?? [] {
+                                    if let v = arcEnd[c], dl[v] == true {
+                                        dl[v] = false
+                                        if !done.contains(v) { nnh -= 1 }
+                                        if growingAncestors.contains(v) { ngrowanc -= 1 }
+                                        descendants.append(v)
+                                    }
+                                }
+                            }
+                        }
+                    } else if y == anc || dl[x] == false {
+                        dl[y] = false
+                        list.append(y)
+                    } else {
+                        dl[y] = true
+                        list.append(y)
+                        nnh += 1
+                    }
+                }
+            }
+        }
+        // gitk returns false for any recorded growing ancestor, even if dl is now false.
+        return growingAncestors.isEmpty
+    }
+
+    /// Port of gitk proc `validate_arctags` (gitk/gitk 11068–11082).
+    public func validateArcTags(_ a: Int) {
+        guard arcTags.indices.contains(a) else { return }
+        arcTags[a] = arcTags[a].filter { refs.idTags[ids[Int($0)]] != nil }
+    }
+
+    /// Port of gitk proc `validate_archeads` (gitk/gitk 11084–11098).
+    public func validateArcHeads(_ a: Int) {
+        guard arcHeads.indices.contains(a) else { return }
+        arcHeads[a] = arcHeads[a].filter { refs.idHeads[ids[Int($0)]] != nil }
     }
 }

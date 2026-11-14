@@ -594,7 +594,7 @@ proc oracle::allcommitsMode {args} {
 
     ::getallcommits
     file delete -force $tmp
-    puts [dumpAllCommits]
+    realputs stdout [dumpAllCommits]
     return [expr {[llength $::oracle::errors] ? 1 : 0}]
 }
 

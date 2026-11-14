@@ -452,7 +452,7 @@ Order of work:
   - Port: 10701–10866.
   - Needs: 12.1.
   - Spec: commit-details "Index reused across launches".
-- [ ] 12.3 [L] Port `anc_or_desc`, `is_certain`, `validate_arctags` and `validate_archeads` — Verify: `swift test --filter AncestryQueryTests` (results for 20 random commit pairs on `criss-cross` equal `git merge-base --is-ancestor`).
+- [x] 12.3 [L] Port `anc_or_desc`, `is_certain`, `validate_arctags` and `validate_archeads` — Verify: `swift test --filter AncestryQueryTests` (results for 20 random commit pairs on `criss-cross` equal `git merge-base --is-ancestor`).
   - Files: `AncestryIndex.swift`, tests.
   - Port: 10866–11098.
   - Needs: 12.1.
