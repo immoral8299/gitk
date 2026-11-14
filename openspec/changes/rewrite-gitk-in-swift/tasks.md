@@ -390,7 +390,7 @@ Order of work:
   - Port: 7222–7340.
   - Needs: 11.1, 10.6.
   - Spec: commit-details "Revert message link", "Unknown hash", "Open a URL".
-- [ ] 11.3 [S] Implement comment wrapping (none, char, word) for the sidebar message and other text — Verify: `swift test --filter WrapModeTests` (mapping to text container settings).
+- [x] 11.3 [S] Implement comment wrapping (none, char, word) for the sidebar message and other text — Verify: `swift test --filter WrapModeTests` (mapping to text container settings).
   - Files: `DetailsSidebar.swift`, tests.
   - Needs: 11.1.
   - Spec: commit-details "Word wrap".
