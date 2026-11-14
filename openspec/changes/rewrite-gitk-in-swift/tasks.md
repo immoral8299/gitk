@@ -437,7 +437,7 @@ Order of work:
   - Port: 11556–11610.
   - Needs: 11.1.
   - Spec: commit-details "Click a tag".
-- [ ] 11.13 [S] Cap very large diffs at 200,000 lines with a "load the rest" control (D7 risk) — Verify: `swift test --filter DiffTruncationTests`; record the deviation in `docs/architecture.md`.
+- [x] 11.13 [S] Cap very large diffs at 200,000 lines with a "load the rest" control (D7 risk) — Verify: `swift test --filter DiffTruncationTests`; record the deviation in `docs/architecture.md`.
   - Files: `DiffDocument.swift`, `DiffRenderer.swift`, tests.
   - Needs: 11.5.
 

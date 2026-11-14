@@ -123,7 +123,7 @@ struct DiffRenderer {
 /// The diff pane below the history list (design D16): streams `git diff-tree`
 /// output for the selected commit into a TextKit 1 text view.
 @MainActor
-final class DiffPane: NSObject {
+final class DiffPane: NSObject, NSTextViewDelegate {
     let textView = DiffTextView(usingTextLayoutManager: false)
     let scrollView = NSScrollView()
     /// The pane as installed in the window: the controls bar over the text.
@@ -141,6 +141,8 @@ final class DiffPane: NSObject {
     var onTopSectionChanged: ((Int?) -> Void)?
     private var topSection: Int?
     private var task: Task<Void, Never>?
+    /// True once the current diff has streamed completely.
+    private var finished = false
     private var process: GitProcess?
     private var generation: UInt64 = 0
     private var renderer: DiffRenderer
@@ -170,6 +172,7 @@ final class DiffPane: NSObject {
         textView.isEditable = false
         textView.isSelectable = true
         textView.isRichText = true
+        textView.delegate = self
         textView.drawsBackground = true
         textView.backgroundColor = Palette.background(settings)
         textView.separatorColor = Palette.fileSeparatorBackground(settings)
@@ -250,6 +253,8 @@ final class DiffPane: NSObject {
         self.ids = ids
         document = DiffDocument()
         renderedLines = 0
+        truncationNotice = nil
+        finished = false
         sectionOffsets = []
         renderer = DiffRenderer(settings: settings, mode: mode, wordMode: options.wordDiff)
         renderer.encoding = session.repo.guiEncoding
@@ -273,6 +278,8 @@ final class DiffPane: NSObject {
                 }
                 guard generation == token, !Task.isCancelled else { return }
                 appendPending()
+                finished = true
+                appendTruncationNotice()
                 if let restore { scrollView.contentView.scroll(to: restore) }
             } catch {
                 guard generation == token, !Task.isCancelled else { return }
@@ -337,15 +344,46 @@ final class DiffPane: NSObject {
     func renderAgain() {
         let position = scrollView.contentView.bounds.origin
         textView.textStorage?.setAttributedString(NSAttributedString())
+        truncationNotice = nil
         renderedLines = 0
         sectionOffsets = []
         renderer = DiffRenderer(settings: settings, mode: mode, wordMode: options.wordDiff)
         renderer.encoding = session?.repo.guiEncoding ?? "utf-8"
         appendPending()
+        if finished { appendTruncationNotice() }
         scrollView.contentView.scroll(to: position)
     }
 
-    func showAllLines() { document.lineLimit = Int.max; appendPending() }
+    /// The "load the rest" control after a capped diff (design D7 risk).
+    private static let showAllLink = "gitk-showall:"
+    private var truncationNotice: NSRange?
+
+    private func appendTruncationNotice() {
+        guard document.hiddenLineCount > 0, let storage = textView.textStorage else { return }
+        let text = L("%d more lines not shown.", document.hiddenLineCount)
+        let notice = NSMutableAttributedString(string: "\n" + text + " ", attributes: renderer.base)
+        notice.append(NSAttributedString(string: L("Show all"), attributes: [
+            .font: renderer.base[.font] as Any, .link: Self.showAllLink, .foregroundColor: Palette.link(settings),
+        ]))
+        notice.append(NSAttributedString(string: "\n", attributes: renderer.base))
+        truncationNotice = NSRange(location: storage.length, length: notice.length)
+        storage.append(notice)
+    }
+
+    func showAllLines() {
+        if let notice = truncationNotice, let storage = textView.textStorage, NSMaxRange(notice) <= storage.length {
+            storage.deleteCharacters(in: notice)
+        }
+        truncationNotice = nil
+        document.lineLimit = Int.max
+        appendPending()
+    }
+
+    func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+        guard (link as? String) == Self.showAllLink else { return false }
+        showAllLines()
+        return true
+    }
 
     /// Scrolls file section `index` (0-based) to the top of the pane.
     func jumpToFile(_ index: Int) {
