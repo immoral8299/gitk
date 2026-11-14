@@ -266,15 +266,15 @@ Order of work:
   - Port: 587–720.
   - Needs: 8.3, 3.1, 2.3.
   - Spec: history-loading "Switch view mid-load", "git log fails".
-- [ ] 8.5 [M] Implement `@MainActor ViewSession`: owns the store, ordering, layout, colours and refs; `ingest(batch:)`; publishes `rowsChanged(range)`, `refsChanged`, `loadProgress`, `loadFinished`; exposes `rowCount`, `commit(at:)`, `geometry(row:)` and `row(of:)` — Verify: `swift test --filter ViewSessionTests` (loading `merge-simple` gives the same order as the oracle; events arrive in the order started → progress → finished).
+- [x] 8.5 [M] Implement `@MainActor ViewSession`: owns the store, ordering, layout, colours and refs; `ingest(batch:)`; publishes `rowsChanged(range)`, `refsChanged`, `loadProgress`, `loadFinished`; exposes `rowCount`, `commit(at:)`, `geometry(row:)` and `row(of:)` — Verify: `swift test --filter ViewSessionTests` (loading `merge-simple` gives the same order as the oracle; events arrive in the order started → progress → finished).
   - Files: `Sources/GitkCore/History/ViewSession.swift`, tests.
   - Needs: 8.4, 7.7.
-- [ ] 8.6 [M] Port local changes into `LocalChanges`: run `diff-index --cached --ignore-submodules=dirty HEAD` and then `diff-files` (both with path limits), and insert or remove the fake rows through `VarcOrdering` — Verify: `swift test --filter LocalChangesTests` on copies of `local-changes` (staged+unstaged gives the unstaged, staged, HEAD order; after committing everything both rows are gone; a path limit outside the changes gives no rows; a bare repository gives no rows).
+- [x] 8.6 [M] Port local changes into `LocalChanges`: run `diff-index --cached --ignore-submodules=dirty HEAD` and then `diff-files` (both with path limits), and insert or remove the fake rows through `VarcOrdering` — Verify: `swift test --filter LocalChangesTests` on copies of `local-changes` (staged+unstaged gives the unstaged, staged, HEAD order; after committing everything both rows are gone; a path limit outside the changes gives no rows; a bare repository gives no rows).
   - Files: `Sources/GitkCore/History/LocalChanges.swift`, tests.
   - Port: 5483–5604.
   - Needs: 8.5.
   - Spec: history-loading "Staged and unstaged changes", "Changes resolved", "Path-limited view".
-- [ ] 8.7 [M] Port `updatecommits`, `reloadcommits` and `rereadrefs`/`changedrefs` into `ViewSession` — Verify: `swift test --filter UpdateReloadTests` (on a temp copy of `linear`: add a commit, call `update()`, the new row is at the top and the selected ID is kept; force-move a branch, call `reload()`, the unreachable commits are gone).
+- [x] 8.7 [M] Port `updatecommits`, `reloadcommits` and `rereadrefs`/`changedrefs` into `ViewSession` — Verify: `swift test --filter UpdateReloadTests` (on a temp copy of `linear`: add a commit, call `update()`, the new row is at the top and the selected ID is kept; force-move a branch, call `reload()`, the unreachable commits are gone).
   - Files: `ViewSession.swift`, tests.
   - Port: 720–860, 11454–11538.
   - Needs: 8.6.
