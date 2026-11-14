@@ -10,30 +10,31 @@ import Testing
 @MainActor
 @Suite struct WrapModeTests {
     @Test func mapping() {
-        #expect(CommentWrap(setting: "none").lineBreakMode == .byClipping)
-        #expect(!CommentWrap(setting: "none").tracksWidth)
+        #expect(CommentWrap(setting: "none").lineBreakMode == .byWordWrapping)
         #expect(CommentWrap(setting: "char").lineBreakMode == .byCharWrapping)
         #expect(CommentWrap(setting: "word").lineBreakMode == .byWordWrapping)
-        #expect(CommentWrap(setting: "word").tracksWidth)
-        #expect(CommentWrap(setting: "bogus").mode == .none)
+        #expect(CommentWrap(setting: "bogus").mode == .word)
     }
 
-    @Test func wordWrapFitsThePaneWidth() throws {
+    @Test(arguments: ["none", "bogus", "word", "char"], [12.0, 20.0])
+    func messagesWrapAndReflowAtThePaneWidth(setting: String, fontSize: Double) throws {
         let view = AutoHeightTextView()
         view.frame = NSRect(x: 0, y: 0, width: 200, height: 20)
-        let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         view.textStorage?.setAttributedString(NSAttributedString(
             string: "a message line that is clearly longer than two hundred points of text", attributes: [.font: font]))
-        CommentWrap(setting: "word").apply(to: view)
+        CommentWrap(setting: setting).apply(to: view)
         let container = try #require(view.textContainer)
+        #expect(container.widthTracksTextView)
         view.layoutManager?.ensureLayout(for: container)
         let wrapped = try #require(view.layoutManager?.usedRect(for: container))
         #expect(wrapped.width <= 200)
         #expect(wrapped.height > font.boundingRectForFont.height * 1.5)
-        CommentWrap(setting: "none").apply(to: view)
+        view.setFrameSize(NSSize(width: 100, height: 20))
         view.layoutManager?.ensureLayout(for: container)
-        let single = try #require(view.layoutManager?.usedRect(for: container))
-        #expect(single.width > 200)
-        #expect(single.height < wrapped.height)
+        let narrow = try #require(view.layoutManager?.usedRect(for: container))
+        #expect(narrow.width <= 100)
+        #expect(narrow.height > wrapped.height)
+        #expect(view.intrinsicContentSize.height >= narrow.height)
     }
 }

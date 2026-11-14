@@ -65,6 +65,7 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
         layoutSwitch.segmentCount = 2
         layoutSwitch.trackingMode = .selectOne
         layoutSwitch.controlSize = .small
+        layoutSwitch.focusRingType = .none
         for (index, (symbol, label)) in [("list.bullet", L("List")), ("list.bullet.indent", L("Tree"))].enumerated() {
             layoutSwitch.setImage(NSImage(systemSymbolName: symbol, accessibilityDescription: label), forSegment: index)
             layoutSwitch.setToolTip(label, forSegment: index)
@@ -82,6 +83,7 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
         tableView.intercellSpacing = NSSize(width: 0, height: 0)
         tableView.backgroundColor = .clear
         tableView.style = .plain
+        tableView.focusRingType = .none
         tableView.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
         tableView.dataSource = self
         tableView.delegate = self
@@ -106,22 +108,29 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
                   status: section.status, added: document?.addedPerFile[safe: index] ?? 0,
                   removed: document?.removedPerFile[safe: index] ?? 0)
         }
-        titleLabel.stringValue = Self.title(fileCount: new.count)
-        onTitleChange?(titleLabel.stringValue)
+        guard new != entries || totalsLabel.attributedStringValue.length == 0 else { return }
+        if new.count != entries.count || titleLabel.stringValue.isEmpty {
+            titleLabel.stringValue = Self.title(fileCount: new.count)
+            onTitleChange?(titleLabel.stringValue)
+        }
         totalsLabel.attributedStringValue = Self.totals(added: document?.totalAdded ?? 0, removed: document?.totalRemoved ?? 0,
                                                        settings: settings)
-        guard new != entries else { return }
-        let grew = layout == .list && new.count > entries.count && Array(new.prefix(entries.count)) == entries
-        let old = entries.count
+        let old = entries
         entries = new
         if new.isEmpty { highlighted = nil }
-        if grew {
-            rows = entries.indices.map { .file($0, depth: 0) }
-            tableView.insertRows(at: IndexSet(integersIn: old..<new.count), withAnimation: [])
-            heightConstraint?.constant = CGFloat(rows.count) * Self.rowHeight
-        } else {
+        if old.isEmpty || new.count < old.count || (layout == .tree && new.map(\.path) != old.map(\.path)) {
             rebuildRows()
+            return
         }
+        if new.count > old.count {
+            rows += (old.count..<new.count).map { .file($0, depth: 0) }
+            tableView.insertRows(at: IndexSet(integersIn: old.count..<new.count), withAnimation: [])
+            heightConstraint?.constant = CGFloat(rows.count) * Self.rowHeight
+        }
+        let changed = IndexSet(old.indices.compactMap { index in
+            new[index] != old[index] ? row(ofFile: index) : nil
+        })
+        tableView.reloadData(forRowIndexes: changed, columnIndexes: IndexSet(integer: 0))
     }
 
     private func rebuildRows() {
@@ -226,7 +235,10 @@ final class FileRowView: NSTableCellView {
         name.setContentHuggingPriority(.init(1), for: .horizontal)
         counts.alignment = .right
         counts.setContentCompressionResistancePriority(.required, for: .horizontal)
-        let stack = NSStackView(views: [icon, name, counts])
+        let iconContainer = NSView()
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        iconContainer.addSubview(icon)
+        let stack = NSStackView(views: [iconContainer, name, counts])
         stack.spacing = 6
         stack.setClippingResistancePriority(.defaultLow, for: .horizontal)
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -234,11 +246,15 @@ final class FileRowView: NSTableCellView {
         let leading = stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: SidebarSection.padding)
         self.leading = leading
         NSLayoutConstraint.activate([
-            icon.widthAnchor.constraint(equalToConstant: 14),
+            iconContainer.widthAnchor.constraint(equalToConstant: 14),
+            iconContainer.heightAnchor.constraint(equalTo: icon.heightAnchor),
+            icon.widthAnchor.constraint(equalTo: iconContainer.widthAnchor),
+            icon.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
+            icon.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor, constant: 2),
             // Rows span the sidebar; their content is padded like the other sections.
             leading,
             stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -SidebarSection.padding),
-            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            stack.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -2),
         ])
     }
 

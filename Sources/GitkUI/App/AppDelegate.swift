@@ -79,7 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func openMainWindow(startup: StartupContext, launch: LaunchArguments, cwd: URL) {
         let controller = MainWindowController(
             startup: startup, launch: launch,
-            settings: UISettings.load(environment: environment), cwd: cwd, environment: environment)
+            settingsStore: SettingsStore(environment: environment), cwd: cwd, environment: environment)
         mainWindowController = controller
         NSApp.mainMenu = controller.mainMenu?.menu
         guard let w = controller.window else { return }

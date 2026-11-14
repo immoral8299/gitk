@@ -162,7 +162,7 @@ public struct GraphRowGeometry: Sendable, Equatable {
         let oid = store.id(at: commit)
         let tags = refs.tags(of: oid)
         let delta = floor(0.5 * (lineSpacing - lineThickness))
-        let extra = delta + lineThickness + lineSpacing
+        let extra = delta + lineThickness + lineSpacing / 2
         let collapse = tags.count > 3 || tags.reduce(0) { $0 + measure($1, false) + extra } > columnWidth * 0.25
         var labels: [(String, String, RefLabel.Kind, Int)] = []
         if collapse && !tags.isEmpty {

@@ -79,7 +79,8 @@ import Testing
 }
 
 @Suite struct RefLabelLayoutTests {
-    @Test func labelsKeepTagHeadOtherOrderAndRemotePrefix() async throws {
+    @Test(arguments: [18.0, 27.0])
+    func labelsKeepTagHeadOtherOrderAndRemotePrefix(lineSpacing: Double) async throws {
         let layout = try await LayoutTestSupport.graph("linear")
         let colors = GraphColors(layout: layout)
         let id = try #require(layout.ordering.commitOnRow(0))
@@ -91,12 +92,19 @@ import Testing
         refs.addOtherRef("notes/commits", oid)
         refs.mainHeadName = "main"
         let geometry = try #require(GraphRowGeometry.make(row: 0, layout: layout, colors: colors))
-            .addingRefLabels(refs: refs, store: layout.ordering.store, columnWidth: 1000, measure: { text, _ in Double(text.count * 7) })
+            .addingRefLabels(refs: refs, store: layout.ordering.store, columnWidth: 1000,
+                lineSpacing: lineSpacing, measure: { text, _ in Double(text.count * 7) })
         #expect(geometry.labels.map(\.kind) == [.tag, .head, .remote, .other])
         #expect(geometry.labels[1].isBold)
         #expect(geometry.labels[2].remotePrefix == "remotes/origin/")
         #expect(geometry.labels[2].text == "remotes/origin/main")
-        #expect(geometry.labels[0].x < geometry.labels[1].x)
+        for (label, next) in zip(geometry.labels, geometry.labels.dropFirst()) {
+            let badgeWidth = Double(label.text.count * 7) + floor((lineSpacing - 1) / 2) + 1
+            #expect(next.x - (label.x + badgeWidth) == lineSpacing / 2)
+            #expect(next.x == label.x + label.width)
+        }
+        let last = try #require(geometry.labels.last)
+        #expect(geometry.textX == last.x + last.width)
     }
 
     @Test func manyTagsOrWideTagsCollapse() async throws {

@@ -357,41 +357,31 @@ private final class FlippedView: NSView {
 }
 
 /// gitk's `wrapcomment` setting (gitk/gitk 2660 and 11760–11762, the ctext `-wrap`
-/// option) applied to the sidebar message: word or character wrapping at the
-/// sidebar width, or none, where long lines run past the edge and are clipped
-/// as in gitk's comment pane.
+/// option) applied to the sidebar message. Fall back to word wrapping so
+/// messages remain readable without a horizontal scroller.
 struct CommentWrap: Equatable {
-    enum Mode: Equatable { case none, char, word }
+    enum Mode: Equatable { case char, word }
     var mode: Mode
 
     init(setting: String) {
         switch setting {
         case "char": mode = .char
-        case "word": mode = .word
-        default: mode = .none
+        default: mode = .word
         }
     }
 
     var lineBreakMode: NSLineBreakMode {
         switch mode {
-        case .none: .byClipping
         case .char: .byCharWrapping
         case .word: .byWordWrapping
         }
     }
 
-    /// Whether the text container follows the view's width (wrapping modes).
-    var tracksWidth: Bool { mode != .none }
-
     @MainActor func apply(to textView: NSTextView) {
         guard let container = textView.textContainer else { return }
-        container.widthTracksTextView = tracksWidth
+        container.widthTracksTextView = true
         container.lineBreakMode = lineBreakMode
-        if !tracksWidth {
-            container.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        } else {
-            container.containerSize = NSSize(width: textView.frame.width, height: CGFloat.greatestFiniteMagnitude)
-        }
+        container.containerSize = NSSize(width: textView.frame.width, height: CGFloat.greatestFiniteMagnitude)
         textView.invalidateIntrinsicContentSize()
     }
 }

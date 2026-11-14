@@ -25,7 +25,7 @@ enum RefLabelDrawing {
         for label in labels {
             let isTag = label.kind == .tag || label.kind == .collapsedTags
             let x = CGFloat(label.x)
-            let right = x + CGFloat(label.width) - height
+            let right = x + CGFloat(label.width) - height / 2
             let path = NSBezierPath()
             if isTag {
                 path.move(to: NSPoint(x: x, y: delta))

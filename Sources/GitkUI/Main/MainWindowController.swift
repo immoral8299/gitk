@@ -21,6 +21,8 @@ final class MainWindowController: NSWindowController {
     private var ancestry: AncestryIndex?
     private var ancestryTask: Task<Void, Never>?
     private let cwd: URL
+    /// The per-run temp directory (gitk `gitknewtmpdir`), removed on quit.
+    private(set) lazy var tempFiles: TempFiles? = try? TempFiles(environment: environment)
     let session: ViewSession
     let listController: CommitListController
     let searchBar: SearchBar
@@ -41,7 +43,20 @@ final class MainWindowController: NSWindowController {
     var commandValidator: ((AppCommand) -> Bool)?
     private(set) var mainMenu: MainMenu?
 
-    init(startup: StartupContext, launch: LaunchArguments, settings: UISettings, cwd: URL, environment: [String: String] = ProcessInfo.processInfo.environment) {
+    /// The store the settings came from; it keeps a corrupt file from being overwritten.
+    let settingsStore: SettingsStore?
+    /// The settings as loaded; quitting writes only if they changed.
+    private let loadedSettings: UISettings
+
+    convenience init(startup: StartupContext, launch: LaunchArguments, settingsStore: SettingsStore, cwd: URL,
+                     environment: [String: String] = ProcessInfo.processInfo.environment) {
+        self.init(startup: startup, launch: launch, settings: settingsStore.load(), store: settingsStore, cwd: cwd, environment: environment)
+    }
+
+    init(startup: StartupContext, launch: LaunchArguments, settings: UISettings, store: SettingsStore? = nil, cwd: URL,
+         environment: [String: String] = ProcessInfo.processInfo.environment) {
+        self.settingsStore = store
+        loadedSettings = settings
         self.startup = startup
         self.launch = launch
         self.settings = settings
@@ -139,6 +154,15 @@ final class MainWindowController: NSWindowController {
 
     @objc private func windowDidResize(_ notification: Notification) { fitToolbar() }
 
+    /// Writes the settings when they changed (gitk's `savestuff`), never in
+    /// snapshot runs. Unchanged defaults are not written, so a first launch does
+    /// not block the later legacy gitk config import.
+    func saveSettings() {
+        guard environment["GITK_SWIFT_SNAPSHOT"] == nil, settings != loadedSettings else { return }
+        settingsStore?.markChanged()
+        _ = try? settingsStore?.save(settings)
+    }
+
     /// Gives the titlebar search field the width of the content column.
     func fitToolbar() {
         searchToolbar?.fit(contentWidth: splitView.bounds.width)
@@ -213,7 +237,10 @@ final class MainWindowController: NSWindowController {
         case .goBack: stepHistory(forward: false)
         case .goForward: stepHistory(forward: true)
         case .quit: NSApp.terminate(nil)
-        case .closeWindow: NSApp.keyWindow?.performClose(nil)
+        // ⌘-W in the main window quits (gitk binds it to doquit); other windows close.
+        case .closeWindow:
+            if NSApp.keyWindow == nil || NSApp.keyWindow === window { NSApp.terminate(nil) }
+            else { NSApp.keyWindow?.performClose(nil) }
         case .about: NSApp.orderFrontStandardAboutPanel(nil)
         default: commandHandler?(command)
         }
@@ -235,11 +262,16 @@ final class MainWindowController: NSWindowController {
         }
     }
 
+    /// Port of gitk proc `doquit` (gitk/gitk 11610–11623): stop the loaders and
+    /// git children, save the settings, and remove the temp directory.
     func stop() async {
+        diffPane.cancel()
         searchBar.cancel()
         ancestryTask?.cancel()
         loadTask?.cancel()
         await session.cancel()
+        saveSettings()
+        try? tempFiles?.cleanup()
     }
 
     func waitForSnapshot(early: Bool) async {
