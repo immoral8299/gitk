@@ -408,12 +408,12 @@ Order of work:
   - Files: `DiffRenderer.swift`.
   - Needs: 11.5.
   - Spec: diff-viewer "Octopus merge".
-- [ ] 11.7 [M] Build `DiffControlsBar`: Diff/Old/New (re-render from the model), the Lines of context field, Ignore space change, and the Line/Markup/Color words dropdown (re-fetch) — Verify: `swift test --filter DiffModeTests` (Old mode hides adds); a snapshot after setting context to 10 shows the longer hunks.
+- [x] 11.7 [M] Build `DiffControlsBar`: Diff/Old/New (re-render from the model), the Lines of context field, Ignore space change, and the Line/Markup/Color words dropdown (re-fetch) — Verify: `swift test --filter DiffModeTests` (Old mode hides adds); a snapshot after setting context to 10 shows the longer hunks.
   - Files: `Sources/GitkUI/Details/DiffControlsBar.swift`, `DiffRenderer.swift`, tests.
   - Port: 8169–8192, 8542–8549.
   - Needs: 11.5.
   - Spec: diff-viewer "Old version", "Context lines".
-- [ ] 11.8 [M] Render word diffs in Markup words and Color words styles from `WordDiffParser` output — Verify: a snapshot of `linear` with `Color words` shows inline coloured words and no +/- lines.
+- [x] 11.8 [M] Render word diffs in Markup words and Color words styles from `WordDiffParser` output — Verify: a snapshot of `linear` with `Color words` shows inline coloured words and no +/- lines.
   - Files: `DiffRenderer.swift`.
   - Needs: 11.7, 3.5.
   - Spec: diff-viewer "Color words".

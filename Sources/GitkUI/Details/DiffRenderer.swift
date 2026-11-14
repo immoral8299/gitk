@@ -44,6 +44,14 @@ struct DiffRenderer {
         return attrs
     }
 
+    /// The separator line for a file section, from the section's final paths
+    /// (gitk shows `old -> new` for renames and copies).
+    func separator(for section: DiffFileSection) -> NSAttributedString {
+        let old = section.oldPath, new = section.newPath
+        let text = old != nil && new != nil && old != new ? "\(old!) → \(new!)" : (new ?? old ?? "")
+        return NSAttributedString(string: text + "\n", attributes: separatorAttributes())
+    }
+
     /// Port of gitk proc `parseblobdiffline` (gitk/gitk 8272–8542), the display part.
     mutating func render(_ line: DiffLine) -> NSAttributedString {
         if wordMode != .line {
@@ -118,6 +126,9 @@ struct DiffRenderer {
 final class DiffPane: NSObject {
     let textView = DiffTextView(usingTextLayoutManager: false)
     let scrollView = NSScrollView()
+    /// The pane as installed in the window: the controls bar over the text.
+    let view = DiffPaneView()
+    let controls: DiffControlsBar
     var settings: Settings
     var options: DiffOptions
     var mode: DiffDisplayMode = .diff
@@ -141,7 +152,21 @@ final class DiffPane: NSObject {
         self.settings = settings
         options = DiffOptions(context: settings.diffContext, hashLength: hashLength)
         renderer = DiffRenderer(settings: settings)
+        controls = DiffControlsBar(context: settings.diffContext)
         super.init()
+        view.controls = controls
+        view.scrollView = scrollView
+        controls.onModeChange = { [weak self] mode in
+            self?.mode = mode
+            self?.renderAgain()
+        }
+        controls.onOptionsChange = { [weak self] context, ignoreSpace, wordDiff in
+            guard let self else { return }
+            options.context = context
+            options.ignoreSpace = ignoreSpace
+            options.wordDiff = wordDiff
+            refetch()
+        }
         textView.isEditable = false
         textView.isSelectable = true
         textView.isRichText = true
@@ -236,7 +261,7 @@ final class DiffPane: NSObject {
                     guard generation == token, !Task.isCancelled else { return }
                     document.append(line)
                     if document.lines.count % 500 == 0 || lastPaint.duration(to: .now) > .milliseconds(50) {
-                        appendPending()
+                        appendPending(final: false)
                         lastPaint = .now
                         await Task.yield()
                     }
@@ -251,16 +276,50 @@ final class DiffPane: NSObject {
         }
     }
 
+    /// Applies `GITK_SWIFT_DIFF_OPTIONS` for snapshots: comma-separated
+    /// `context=N`, `words=line|markup|color`, `mode=diff|old|new`, `ignorespace`.
+    func applySnapshotOptions(_ text: String) {
+        for item in text.split(separator: ",") {
+            let parts = item.split(separator: "=", maxSplits: 1).map { String($0).trimmingCharacters(in: .whitespaces) }
+            switch (parts.first, parts.count > 1 ? parts[1] : nil) {
+            case ("context", let value?): controls.context.stringValue = value; controls.contextStepper.integerValue = Int(value) ?? 3
+            case ("words", let value?): controls.wordDiff.selectItem(at: ["line", "markup", "color"].firstIndex(of: value) ?? 0)
+            case ("mode", let value?): controls.mode.selectedSegment = ["diff", "old", "new"].firstIndex(of: value) ?? 0
+            case ("ignorespace", _): controls.ignoreSpace.state = .on
+            default: break
+            }
+        }
+        options.context = max(0, controls.context.integerValue)
+        options.ignoreSpace = controls.ignoreSpace.state == .on
+        options.wordDiff = controls.wordDiffMode
+        mode = controls.displayMode
+    }
+
     /// Waits for the current diff to finish streaming (snapshots).
     func waitUntilLoaded() async { await task?.value }
 
-    private func appendPending() {
+    /// Renders the lines parsed since the last call. A file separator waits
+    /// until its header lines have arrived (unless `final`), because a rename's
+    /// paths are only known from the `rename from`/`rename to` lines after it.
+    private func appendPending(final: Bool = true) {
         guard let storage = textView.textStorage else { return }
         storage.beginEditing()
         let end = min(document.lines.count, document.lineLimit)
         while renderedLines < end {
             let line = document.lines[renderedLines]
-            if case .fileHeader = line { sectionOffsets.append(storage.length) }
+            if case .fileHeader = line {
+                let index = sectionOffsets.count
+                if !final, document.lines.count - renderedLines < 12, document.sections.count <= index + 1,
+                   !document.lines[(renderedLines + 1)...].contains(where: { if case .hunkHeader = $0 { true } else { false } }) {
+                    break
+                }
+                sectionOffsets.append(storage.length)
+                if document.sections.indices.contains(index) {
+                    storage.append(renderer.separator(for: document.sections[index]))
+                    renderedLines += 1
+                    continue
+                }
+            }
             storage.append(renderer.render(line))
             renderedLines += 1
         }
@@ -318,5 +377,20 @@ final class DiffTextView: NSTextView {
                 NSRect(x: rect.minX, y: top + origin.y, width: rect.width, height: used.height).fill()
             }
         }
+    }
+}
+
+/// The diff pane's container: `DiffControlsBar` on top, the text below.
+final class DiffPaneView: NSView {
+    var controls: NSView? { didSet { oldValue?.removeFromSuperview(); controls.map(addSubview) } }
+    var scrollView: NSView? { didSet { oldValue?.removeFromSuperview(); scrollView.map(addSubview) } }
+
+    override var isFlipped: Bool { true }
+
+    override func layout() {
+        super.layout()
+        let bar = DiffControlsBar.height
+        controls?.frame = NSRect(x: 0, y: 0, width: bounds.width, height: bar)
+        scrollView?.frame = NSRect(x: 0, y: bar, width: bounds.width, height: max(0, bounds.height - bar))
     }
 }
