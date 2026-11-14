@@ -456,7 +456,7 @@ Order of work:
   - Files: `AncestryIndex.swift`, tests.
   - Port: 10866–11098.
   - Needs: 12.1.
-- [ ] 12.4 [M] Port `desctags`, `anctags` and `descheads`, and implement `NearbyRefs` (`maxrefs`, `visiblerefs`, "and many more"/"many") — Verify: `swift test --filter NearbyRefsTests` (on `tags-notes`, Follows/Precedes match `git describe --tags` and `git describe --contains` for 5 commits; the overflow text appears).
+- [x] 12.4 [M] Port `desctags`, `anctags` and `descheads`, and implement `NearbyRefs` (`maxrefs`, `visiblerefs`, "and many more"/"many") — Verify: `swift test --filter NearbyRefsTests` (on `tags-notes`, Follows/Precedes match `git describe --tags` and `git describe --contains` for 5 commits; the overflow text appears).
   - Files: `Sources/GitkCore/Ancestry/NearbyRefs.swift`, tests.
   - Port: 11098–11454, 7358–7472.
   - Needs: 12.3.
