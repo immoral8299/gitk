@@ -279,7 +279,7 @@ Order of work:
   - Port: 720–860, 11454–11538.
   - Needs: 8.6.
   - Spec: history-loading "New commit then Update", "Reload after a ref moved away".
-- [ ] 8.8 [S] Implement the `gitk-core-dump` executable, which prints oracle-schema JSON for `--repo <dir> [args]` using `ViewSession`, and the end-to-end `CoreDumpParityTests` — Verify: `swift run gitk-core-dump --repo <fixture>` output equals the golden file for every fixture.
+- [x] 8.8 [S] Implement the `gitk-core-dump` executable, which prints oracle-schema JSON for `--repo <dir> [args]` using `ViewSession`, and the end-to-end `CoreDumpParityTests` — Verify: `swift run gitk-core-dump --repo <fixture>` output equals the golden file for every fixture.
   - Files: `Sources/gitk-core-dump/main.swift`, tests.
   - Needs: 8.5.
 - [ ] 8.9 [M] Add a performance test, enabled by `GITK_PERF=1`, on `huge`: first 100 rows laid out in under 1.5s, full load in under 10s, resident memory under 1.5GB (`task_info`) — Verify: `GITK_PERF=1 swift test -c release --filter PerfTests` passes; record the timings in `docs/architecture.md`.
