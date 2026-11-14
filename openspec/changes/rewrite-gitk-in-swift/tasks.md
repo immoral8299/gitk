@@ -422,7 +422,7 @@ Order of work:
   - Port: 8638–8800.
   - Needs: 11.5.
   - Spec: diff-viewer "Incremental search".
-- [ ] 11.10 [S] Add the pane scroll keys (Space, Delete, Backspace, d, u) and next/previous file (f, b) using the `DiffDocument` section offsets — Verify: `swift test --filter FileJumpTests`.
+- [x] 11.10 [S] Add the pane scroll keys (Space, Delete, Backspace, d, u) and next/previous file (f, b) using the `DiffDocument` section offsets — Verify: `swift test --filter FileJumpTests`.
   - Files: `DiffRenderer.swift`, tests.
   - Port: 8574–8603.
   - Needs: 11.5, 9.7.

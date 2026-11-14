@@ -43,6 +43,15 @@ public struct DiffDocument: Sendable {
         }
     }
 
+    /// Ports of gitk procs `nextfile` and `prevfile` (gitk/gitk 8574–8603): the
+    /// file start to scroll to from `offset` (the top of the pane). Forward is
+    /// the first start after `offset` (nil at the last file); backward is the
+    /// last start before it, or the top of the text.
+    public static func fileJump(from offset: Int, sectionStarts: [Int], forward: Bool) -> Int? {
+        if forward { return sectionStarts.first { $0 > offset } }
+        return sectionStarts.last { $0 < offset } ?? 0
+    }
+
     /// Port of gitk proc `highlightfile_for_scrollpos` (gitk/gitk 8560–8572): the
     /// file whose section starts at or above `offset` (a character offset or a
     /// line number, matching `sectionStarts`); nil above the first file.

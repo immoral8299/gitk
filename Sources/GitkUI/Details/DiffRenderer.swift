@@ -195,13 +195,18 @@ final class DiffPane: NSObject {
     /// Port of gitk proc `highlightfile_for_scrollpos`: report the file at the top.
     @objc private func scrolled() { updateTopSection() }
 
+    /// The character at the top of the visible text.
+    private func topCharacterIndex() -> Int? {
+        guard let manager = textView.layoutManager, let container = textView.textContainer,
+              (textView.textStorage?.length ?? 0) > 0 else { return nil }
+        let top = NSPoint(x: 0, y: scrollView.contentView.bounds.minY - textView.textContainerOrigin.y + 1)
+        return manager.characterIndexForGlyph(at: manager.glyphIndex(for: top, in: container))
+    }
+
     private func updateTopSection() {
-        guard let manager = textView.layoutManager, let container = textView.textContainer else { return }
         var section: Int?
-        if !sectionOffsets.isEmpty, (textView.textStorage?.length ?? 0) > 0 {
-            let top = NSPoint(x: 0, y: scrollView.contentView.bounds.minY - textView.textContainerOrigin.y + 1)
-            let glyph = manager.glyphIndex(for: top, in: container)
-            section = DiffDocument.section(at: manager.characterIndexForGlyph(at: glyph), sectionStarts: sectionOffsets) ?? 0
+        if !sectionOffsets.isEmpty, let top = topCharacterIndex() {
+            section = DiffDocument.section(at: top, sectionStarts: sectionOffsets) ?? 0
         }
         guard section != topSection else { return }
         topSection = section
@@ -344,13 +349,46 @@ final class DiffPane: NSObject {
 
     /// Scrolls file section `index` (0-based) to the top of the pane.
     func jumpToFile(_ index: Int) {
-        guard sectionOffsets.indices.contains(index), let manager = textView.layoutManager,
-              let container = textView.textContainer else { return }
-        let glyphs = manager.glyphRange(forCharacterRange: NSRange(location: sectionOffsets[index], length: 1), actualCharacterRange: nil)
-        let rect = manager.boundingRect(forGlyphRange: glyphs, in: container)
-        let y = rect.minY + textView.textContainerOrigin.y - textView.textContainerInset.height
-        scrollView.contentView.scroll(to: NSPoint(x: 0, y: max(0, y)))
-        scrollView.reflectScrolledClipView(scrollView.contentView)
+        guard sectionOffsets.indices.contains(index) else { return }
+        scroll(toCharacter: sectionOffsets[index])
+    }
+
+    /// Scrolls so the line holding `offset` is at the top (offset 0: the very top).
+    private func scroll(toCharacter offset: Int) {
+        guard let manager = textView.layoutManager, let container = textView.textContainer else { return }
+        var y: CGFloat = 0
+        if offset > 0, let length = textView.textStorage?.length, offset < length {
+            let glyphs = manager.glyphRange(forCharacterRange: NSRange(location: offset, length: 1), actualCharacterRange: nil)
+            let rect = manager.boundingRect(forGlyphRange: glyphs, in: container)
+            y = rect.minY + textView.textContainerOrigin.y - textView.textContainerInset.height
+        }
+        scroll(toY: y)
+    }
+
+    private func scroll(toY y: CGFloat) {
+        let clip = scrollView.contentView
+        let maxY = max(0, textView.frame.height - clip.bounds.height)
+        clip.scroll(to: NSPoint(x: clip.bounds.minX, y: min(max(0, y), maxY)))
+        scrollView.reflectScrolledClipView(clip)
+    }
+
+    /// `f` and `b` (gitk `nextfile`/`prevfile`).
+    func jumpFile(forward: Bool) {
+        let top = topCharacterIndex() ?? 0
+        guard let target = DiffDocument.fileJump(from: top, sectionStarts: sectionOffsets, forward: forward) else { return }
+        scroll(toCharacter: target)
+    }
+
+    /// Space, Delete/Backspace, `d` and `u` (gitk binds these on `$ctext`).
+    func scroll(_ step: AppCommand.ScrollStep) {
+        let clip = scrollView.contentView
+        let line = textView.layoutManager?.defaultLineHeight(for: textView.font ?? MainLayoutMetrics.nsFont(settings.textFont)) ?? 14
+        switch step {
+        case .lines(let n): scroll(toY: clip.bounds.minY + CGFloat(n) * line)
+        case .pages(let n): scroll(toY: clip.bounds.minY + CGFloat(n) * max(line, clip.bounds.height - line))
+        case .toStart: scroll(toY: 0)
+        case .toEnd: scroll(toY: .greatestFiniteMagnitude)
+        }
     }
 
     func cancel() { generation &+= 1; task?.cancel(); task = nil; process?.cancel(); process = nil }

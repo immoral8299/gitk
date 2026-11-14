@@ -179,7 +179,8 @@ final class MainWindowController: NSWindowController {
         switch command {
         case .quit, .closeWindow, .about, .update, .reload, .rereadRefs, .focusCommitID,
              .selectPrev, .selectNext, .selectFirst, .selectLast, .selectPageUp, .selectPageDown,
-             .goToParent, .scrollList, .focusFind, .findNext, .findPrev, .toggleDetailsSidebar: return true
+             .goToParent, .scrollList, .focusFind, .findNext, .findPrev, .toggleDetailsSidebar,
+             .scrollPane, .nextFile, .prevFile: return true
         case .goBack: return session.selection.history.canGoBack
         case .goForward: return session.selection.history.canGoForward
         default: return commandValidator?(command) ?? (commandHandler != nil)
@@ -200,6 +201,9 @@ final class MainWindowController: NSWindowController {
             searchBar.step(forward: false, wrap: wrap)
         case .focusCommitID: searchBar.enterGoToCommitMode()
         case .toggleDetailsSidebar: setSidebarHidden(splitController.isSidebarShown)
+        case .scrollPane(let step): diffPane.scroll(step)
+        case .nextFile: diffPane.jumpFile(forward: true)
+        case .prevFile: diffPane.jumpFile(forward: false)
         case .selectPrev, .selectNext, .selectFirst, .selectLast, .selectPageUp, .selectPageDown, .goToParent:
             let parents = session.selection.selectedID.flatMap { session.store.index(of: $0) }
                 .map { session.store.parents(of: $0).map { session.store.id(at: $0) } } ?? []
