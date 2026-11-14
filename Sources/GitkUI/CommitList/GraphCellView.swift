@@ -29,7 +29,7 @@ final class GraphCellView: NSTableCellView {
     }
 
     private func lineColor(_ index: Int) -> NSColor {
-        Self.color(settings.colors.indices.contains(index) ? settings.colors[index] : settings.fgColor)
+        Palette.graphLine(settings, index)
     }
 
     /// Port of gitk procs `drawlineseg`, `drawparentlinks`, `drawcmittext`.

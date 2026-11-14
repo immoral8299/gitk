@@ -380,7 +380,7 @@ Order of work:
 
 ## 11. Commit details and diff pane
 
-- [ ] 11.1 [M] Implement `DetailsSidebar`: the identity header (author monogram, name, date and time, email, full commit ID and refs), the metadata rows (Author, Committer, Tags, Parent lines in merge colours, Child lines, Branch, Follows, Precedes), a collapsible Message section with the message and notes, and the mount point for the Changed Files section. Add the close button and the View → Details Sidebar state — Verify: `swift test --filter DetailsHeaderTests` (Core `DetailsHeaderBuilder` produces the expected rows and attribute runs for a merge on `merge-simple` and for a note on `tags-notes`); a snapshot shows the sidebar beside the list.
+- [x] 11.1 [M] Implement `DetailsSidebar`: the identity header (author monogram, name, date and time, email, full commit ID and refs), the metadata rows (Author, Committer, Tags, Parent lines in merge colours, Child lines, Branch, Follows, Precedes), a collapsible Message section with the message and notes, and the mount point for the Changed Files section. Add the close button and the View → Details Sidebar state — Verify: `swift test --filter DetailsHeaderTests` (Core `DetailsHeaderBuilder` produces the expected rows and attribute runs for a merge on `merge-simple` and for a note on `tags-notes`); a snapshot shows the sidebar beside the list.
   - Files: `Sources/GitkCore/History/DetailsHeaderBuilder.swift`, `Sources/GitkUI/Details/DetailsSidebar.swift` (replaces `DetailsTextController.swift`), tests.
   - Port: 7207–7222, 7590–7668.
   - Needs: 10.4, 9.5.
