@@ -8,13 +8,15 @@ import GitkCore
 /// The right-hand details sidebar (design D16), gitk's commit header and
 /// comment relocated. Top to bottom: the identity header, gitk's header rows,
 /// a collapsible Message section and the Changed Files mount point (13.1).
+///
+/// The content sits on a floating Liquid Glass panel inset from the window
+/// edges, like Finder's sidebar (macOS 26+); earlier systems use the sidebar
+/// material edge to edge (`Chrome.sidebarBackground`).
 @MainActor
 final class DetailsSidebar: NSView, NSTextViewDelegate {
-    static let headerHeight: CGFloat = 30
     private static let padding: CGFloat = 14
 
-    let closeButton: NSButton
-    private let header = NSView()
+    private let panel: SidebarPanel
     private let scrollView = NSScrollView()
     private let stack = NSStackView()
     private let monogram = Monogram()
@@ -31,26 +33,16 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
     private var content: [NSView] = []
 
     var settings = Settings() { didSet { applySettings() } }
-    var onClose: (() -> Void)?
     var onCommitLink: ((ObjectID) -> Void)?
-    /// Height of a unified titlebar drawn over the top of the sidebar.
-    var topInset: CGFloat = 0 { didSet { needsLayout = true } }
     private(set) var shownID: ObjectID?
     private weak var session: ViewSession?
 
     init() {
-        let image = NSImage(systemSymbolName: "xmark", accessibilityDescription: nil)
-        closeButton = image.map { NSButton(image: $0, target: nil, action: nil) }
-            ?? NSButton(title: "×", target: nil, action: nil)
-        closeButton.bezelStyle = .accessoryBarAction
-        closeButton.isBordered = false
+        panel = Chrome.sidebarBackground()
         super.init(frame: NSRect(x: 0, y: 0, width: 320, height: 400))
-        closeButton.target = self
-        closeButton.action = #selector(close)
-        header.addSubview(closeButton)
-        addSubview(header)
         buildContent()
-        addSubview(scrollView)
+        addSubview(panel.view)
+        panel.content.addSubview(scrollView)
         applySettings()
         clear()
     }
@@ -165,17 +157,14 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
 
     override func layout() {
         super.layout()
-        let h = Self.headerHeight
-        header.frame = NSRect(x: 0, y: topInset, width: bounds.width, height: h)
-        let size = closeButton.fittingSize
-        closeButton.frame = NSRect(x: bounds.width - size.width - 8, y: (h - size.height) / 2,
-                                   width: size.width, height: size.height)
-        scrollView.frame = NSRect(x: 0, y: topInset + h, width: bounds.width, height: max(0, bounds.height - topInset - h))
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        NSColor.controlBackgroundColor.setFill()
-        bounds.fill()
+        let inset = panel.inset
+        panel.view.frame = NSRect(x: inset, y: inset, width: max(0, bounds.width - 2 * inset),
+                                  height: max(0, bounds.height - 2 * inset))
+        panel.content.frame = panel.view.bounds
+        // Keep the content clear of the titlebar when the panel runs under it.
+        let top = max(0, safeAreaInsets.top - inset) + 6
+        let content = panel.content.bounds
+        scrollView.frame = NSRect(x: 0, y: top, width: content.width, height: max(0, content.height - top))
     }
 
     // MARK: Content
@@ -296,8 +285,6 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
     }
 
     // MARK: Actions
-
-    @objc private func close() { onClose?() }
 
     /// Clicking the full commit ID copies it (D16).
     @objc private func copyID() {

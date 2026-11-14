@@ -28,6 +28,8 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
     let location = NSPopUpButton()
 
     private(set) var fieldMode: Mode = .search
+    /// The titlebar presentation, when the bar's controls live in the toolbar.
+    weak var toolbar: SearchToolbar?
     private let stack = NSStackView()
     private let popover = NSPopover()
     private let session: ViewSession
@@ -155,10 +157,14 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
 
     func popoverDidClose(_ notification: Notification) { advanced.state = .off }
 
-    @objc private func toggleAdvanced() {
+    @objc func toggleAdvanced() {
         if popover.isShown { popover.performClose(nil); return }
-        popover.show(relativeTo: advanced.bounds, of: advanced, preferredEdge: .maxY)
-        advanced.state = .on
+        if let item = toolbar?.advancedItem, item.toolbar != nil {
+            popover.show(relativeTo: item)
+        } else {
+            popover.show(relativeTo: advanced.bounds, of: advanced, preferredEdge: .maxY)
+            advanced.state = .on
+        }
     }
 
     // MARK: Modes
@@ -214,6 +220,7 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
     func refresh(session: ViewSession) {
         back.isEnabled = session.selection.history.canGoBack
         forward.isEnabled = session.selection.history.canGoForward
+        toolbar?.setNavigation(back: back.isEnabled, forward: forward.isEnabled)
         updateCounter()
     }
 
@@ -228,10 +235,10 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
         counter.stringValue = "\(current ?? 0) / \(rows.count)"
     }
 
-    @objc private func goBack() { onCommand?(.goBack) }
-    @objc private func goForward() { onCommand?(.goForward) }
-    @objc private func findNext() { step(forward: true, wrap: true) }
-    @objc private func findPrevious() { step(forward: false, wrap: true) }
+    @objc func goBack() { onCommand?(.goBack) }
+    @objc func goForward() { onCommand?(.goForward) }
+    @objc func findNext() { step(forward: true, wrap: true) }
+    @objc func findPrevious() { step(forward: false, wrap: true) }
     @objc private func optionsChanged() { refresh() }
 
     // MARK: Find (gitk dofind/findmore, row level; see FindStepper)
@@ -317,4 +324,123 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
         engine.cancel()
         onBusy?(false)
     }
+}
+
+/// The search bar's controls as native toolbar items in a unified titlebar
+/// (design D15/D16). Native items get the system's Liquid Glass buttons on
+/// macOS 26 and newer. Left to right: back/forward, the search field, `Aa`, the
+/// match counter, previous/next match; then, over the details sidebar, the
+/// sidebar toggle.
+@MainActor
+final class SearchToolbar: NSObject, NSToolbarDelegate {
+    static let navigationID = NSToolbarItem.Identifier("gitk.navigation")
+    static let searchID = NSToolbarItem.Identifier("gitk.search")
+    static let advancedID = NSToolbarItem.Identifier("gitk.advanced")
+    static let counterID = NSToolbarItem.Identifier("gitk.counter")
+    static let stepID = NSToolbarItem.Identifier("gitk.step")
+    static let sidebarID = NSToolbarItem.Identifier("gitk.sidebar")
+
+    let toolbar = NSToolbar(identifier: "gitk.main")
+    let bar: SearchBar
+    var onToggleSidebar: (() -> Void)?
+    private(set) var navigationItem: NSToolbarItemGroup?
+    private(set) var searchItem: NSSearchToolbarItem?
+    private(set) var advancedItem: NSToolbarItem?
+
+    init(bar: SearchBar) {
+        self.bar = bar
+        super.init()
+        toolbar.delegate = self
+        toolbar.displayMode = .iconOnly
+        toolbar.allowsUserCustomization = false
+        bar.toolbar = self
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [Self.navigationID, Self.searchID, Self.advancedID, Self.counterID, Self.stepID,
+         .inspectorTrackingSeparator, .flexibleSpace, Self.sidebarID]
+    }
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        toolbarDefaultItemIdentifiers(toolbar)
+    }
+
+    private func image(_ symbol: String) -> NSImage {
+        NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage()
+    }
+
+    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier id: NSToolbarItem.Identifier,
+                 willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        switch id {
+        case Self.navigationID:
+            let group = NSToolbarItemGroup(itemIdentifier: id, images: [image("chevron.left"), image("chevron.right")],
+                                           selectionMode: .momentary, labels: [L("Back"), L("Forward")],
+                                           target: self, action: #selector(navigate(_:)))
+            group.isNavigational = true
+            group.autovalidates = false
+            navigationItem = group
+            setNavigation(back: bar.back.isEnabled, forward: bar.forward.isEnabled)
+            return group
+        case Self.searchID:
+            let item = NSSearchToolbarItem(itemIdentifier: id)
+            item.searchField = bar.field
+            item.resignsFirstResponderWithCancel = false
+            item.preferredWidthForSearchField = 360
+            searchItem = item
+            return item
+        case Self.advancedID:
+            let item = NSToolbarItem(itemIdentifier: id)
+            item.image = image("textformat")
+            item.label = L("Search in")
+            item.toolTip = item.label
+            item.target = bar
+            item.action = #selector(SearchBar.toggleAdvanced)
+            item.autovalidates = false
+            advancedItem = item
+            return item
+        case Self.counterID:
+            let item = NSToolbarItem(itemIdentifier: id)
+            item.view = bar.counter
+            item.isBordered = false
+            return item
+        case Self.stepID:
+            let group = NSToolbarItemGroup(itemIdentifier: id, images: [image("chevron.up"), image("chevron.down")],
+                                           selectionMode: .momentary, labels: [L("Previous match"), L("Next match")],
+                                           target: self, action: #selector(step(_:)))
+            group.autovalidates = false
+            return group
+        case Self.sidebarID:
+            let item = NSToolbarItem(itemIdentifier: id)
+            item.image = image("sidebar.right")
+            item.label = L("Details Sidebar")
+            item.toolTip = item.label
+            item.target = self
+            item.action = #selector(toggleSidebar)
+            item.autovalidates = false
+            return item
+        default:
+            return nil
+        }
+    }
+
+    func setNavigation(back: Bool, forward: Bool) {
+        guard let items = navigationItem?.subitems, items.count == 2 else { return }
+        items[0].isEnabled = back
+        items[1].isEnabled = forward
+    }
+
+    /// Gives the search field the room left in the content section.
+    func fit(contentWidth: CGFloat) {
+        searchItem?.preferredWidthForSearchField = max(160, min(640, contentWidth - 420))
+    }
+
+    @objc private func navigate(_ sender: NSToolbarItemGroup) {
+        sender.selectedIndex == 0 ? bar.goBack() : bar.goForward()
+    }
+
+    @objc private func step(_ sender: NSToolbarItemGroup) {
+        sender.selectedIndex == 0 ? bar.findPrevious() : bar.findNext()
+    }
+
+    @objc private func toggleSidebar() { onToggleSidebar?() }
 }

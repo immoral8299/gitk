@@ -49,63 +49,42 @@ enum Chrome {
         }
     }
 
-    /// Makes the titlebar unified with the content and hosts `bar` in it as a
-    /// single flexible toolbar item, leaving the traffic lights at the left.
-    /// The content view then spans the whole window. Scroll views placed under
-    /// the titlebar get the system's backdrop blur (scroll edge effect on
-    /// macOS 26, titlebar material before), so the titlebar must not be made
-    /// transparent.
-    static func installUnifiedTitlebar(_ window: NSWindow, bar: NSView) {
+    /// Makes the titlebar unified with the content and installs `toolbar`,
+    /// leaving the traffic lights at the left. The content view then spans the
+    /// whole window. Scroll views placed under the titlebar get the system's
+    /// backdrop blur (scroll edge effect on macOS 26, titlebar material before),
+    /// so the titlebar must not be made transparent.
+    static func installUnifiedTitlebar(_ window: NSWindow, toolbar: NSToolbar) {
         window.styleMask.insert(.fullSizeContentView)
         window.titleVisibility = .hidden
-        let host = TitlebarToolbar(bar: bar)
-        window.toolbar = host.toolbar
+        window.toolbar = toolbar
         window.toolbarStyle = .unified
-        objc_setAssociatedObject(window, &TitlebarToolbar.key, host, .OBJC_ASSOCIATION_RETAIN)
-        fitUnifiedTitlebar(window)
     }
 
-    /// Stretches the titlebar search bar across the window; call after a resize.
-    /// Toolbars size custom-view items to their fitting width, so the width is
-    /// set explicitly from the space right of the traffic lights.
-    static func fitUnifiedTitlebar(_ window: NSWindow) {
-        guard let host = objc_getAssociatedObject(window, &TitlebarToolbar.key) as? TitlebarToolbar else { return }
-        let lights = window.standardWindowButton(.zoomButton).map { $0.frame.maxX } ?? 70
-        host.width.constant = max(320, window.frame.width - lights - 32)
-    }
-}
-
-/// An `NSToolbar` with one item: the search bar, stretched across the titlebar.
-@MainActor
-private final class TitlebarToolbar: NSObject, NSToolbarDelegate {
-    nonisolated(unsafe) static var key = 0
-    static let itemID = NSToolbarItem.Identifier("gitk.search")
-    let toolbar = NSToolbar(identifier: "gitk.main")
-    let bar: NSView
-    let width: NSLayoutConstraint
-
-    init(bar: NSView) {
-        self.bar = bar
-        width = bar.widthAnchor.constraint(equalToConstant: 600)
-        super.init()
-        toolbar.delegate = self
-        toolbar.displayMode = .iconOnly
-        toolbar.allowsUserCustomization = false
-    }
-
-    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { [Self.itemID] }
-    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { [Self.itemID] }
-
-    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
-                 willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
-        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-        item.view = bar
-        item.visibilityPriority = .high
-        bar.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([width, bar.heightAnchor.constraint(equalToConstant: 30)])
-        return item
+    /// The details sidebar's backdrop: a floating, inset Liquid Glass panel on
+    /// macOS 26 and newer (as Finder's sidebar), the sidebar material edge to
+    /// edge before that.
+    static func sidebarBackground() -> SidebarPanel {
+        if #available(macOS 26.0, *) {
+            let glass = NSGlassEffectView()
+            glass.style = .regular
+            glass.cornerRadius = 16
+            let content = FlippedContent()
+            glass.contentView = content
+            return SidebarPanel(view: glass, content: content, inset: 8)
+        }
+        let material = NSVisualEffectView()
+        material.material = .sidebar
+        material.blendingMode = .behindWindow
+        material.state = .followsWindowActiveState
+        let content = FlippedContent()
+        content.autoresizingMask = [.width, .height]
+        content.frame = material.bounds
+        material.addSubview(content)
+        return SidebarPanel(view: material, content: content, inset: 0)
     }
 }
+
 
 /// A bar drawn over a translucent backdrop.
 ///
@@ -153,4 +132,18 @@ final class BarChrome: NSView {
         backdrop.frame = box
         content.frame = box
     }
+}
+
+/// A sidebar backdrop and the view that holds its content.
+@MainActor
+struct SidebarPanel {
+    let view: NSView
+    let content: NSView
+    /// Gap between the panel and the sidebar's edges.
+    let inset: CGFloat
+}
+
+/// A flipped container, so content lays out from the top.
+final class FlippedContent: NSView {
+    override var isFlipped: Bool { true }
 }

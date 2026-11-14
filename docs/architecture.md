@@ -51,6 +51,10 @@ User-visible strings with no gitk msgid. These have no translations.
 - `Field`
 - `Details Sidebar`
 - `Message`
+- `Back`
+- `Forward`
+- `Previous match`
+- `Next match`
 
 ## Performance
 

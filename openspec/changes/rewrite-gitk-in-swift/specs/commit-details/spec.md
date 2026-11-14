@@ -7,7 +7,7 @@ Defines the commit details sidebar on the right: identity, the gitk header rows,
 ## ADDED Requirements
 
 ### Requirement: Details sidebar
-Selecting a commit SHALL fill a resizable right-hand sidebar and replace the previous commit's content. The sidebar SHALL have an identity header, a metadata group, a collapsible Message section and a Changed Files section. Its close button SHALL collapse it, and View → Details Sidebar SHALL show it again.
+Selecting a commit SHALL fill a resizable right-hand sidebar and replace the previous commit's content. The sidebar SHALL have an identity header, a metadata group, a collapsible Message section and a Changed Files section. It SHALL have no close button; View → Details Sidebar and the toolbar's sidebar button SHALL hide and show it.
 
 #### Scenario: Sidebar follows selection
 - **WHEN** the user selects another commit

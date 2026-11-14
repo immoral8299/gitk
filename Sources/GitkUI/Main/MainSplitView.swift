@@ -94,44 +94,106 @@ final class PlaceholderPane: NSView {
     override var wantsUpdateLayer: Bool { true }
 }
 
-/// The main window's content (design D16): an optional search row, then the
-/// history list over the diff pane on the left and the details sidebar on the
-/// right, with the status strip along the bottom.
+/// The main window's split (design D16): the content column and, on the
+/// right, the details sidebar as a full-height inspector. With a unified
+/// titlebar the toolbar spans only the content column (an inspector tracking
+/// separator), so the titlebar no longer runs over the sidebar.
+@MainActor
+final class MainSplitController: NSSplitViewController {
+    let content: MainSplitView
+    let sidebar = DetailsSidebar()
+    let contentItem: NSSplitViewItem
+    let sidebarItem: NSSplitViewItem
+    private let metrics: MainLayoutMetrics
+    /// Set by View → Details Sidebar and the toolbar toggle.
+    var sidebarHiddenByUser = false { didSet { updateSidebar(animated: true) } }
+    /// True while the sidebar is shown (not hidden and not collapsed by width).
+    var isSidebarShown: Bool { !sidebarItem.isCollapsed }
+
+    init(metrics: MainLayoutMetrics) {
+        self.metrics = metrics
+        content = MainSplitView(metrics: metrics)
+        let contentController = NSViewController()
+        contentController.view = content
+        contentItem = NSSplitViewItem(viewController: contentController)
+        contentItem.minimumThickness = 300
+        let sidebarController = NSViewController()
+        sidebar.frame.size.width = metrics.sidebarWidth
+        sidebarController.view = sidebar
+        sidebarItem = NSSplitViewItem(inspectorWithViewController: sidebarController)
+        sidebarItem.minimumThickness = metrics.sidebarMinWidth
+        sidebarItem.maximumThickness = 560
+        sidebarItem.canCollapse = true
+        sidebarItem.canCollapseFromWindowResize = true
+        sidebarItem.allowsFullHeightLayout = true
+        sidebarItem.holdingPriority = .init(260)
+        contentItem.holdingPriority = .init(250)
+        super.init(nibName: nil, bundle: nil)
+        addSplitViewItem(contentItem)
+        addSplitViewItem(sidebarItem)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        splitView.dividerStyle = .thin
+        view.frame.size = metrics.windowContentSize
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        updateSidebar(animated: false)
+    }
+
+    /// D16 "Small windows": below `narrowWidth` the sidebar collapses first.
+    private func updateSidebar(animated: Bool) {
+        guard view.bounds.width > 0 else { return }
+        let collapse = sidebarHiddenByUser || view.bounds.width < metrics.narrowWidth
+        guard collapse != sidebarItem.isCollapsed else { return }
+        if animated { sidebarItem.animator().isCollapsed = collapse } else { sidebarItem.isCollapsed = collapse }
+    }
+
+    /// Puts the sidebar at its default width once the window has its size.
+    func applyDefaultSidebarWidth() {
+        guard !sidebarItem.isCollapsed, splitView.subviews.count == 2 else { return }
+        splitView.setPosition(splitView.bounds.width - metrics.sidebarWidth - splitView.dividerThickness, ofDividerAt: 0)
+    }
+
+    // A divider dragged to the edge collapses the sidebar: remember that.
+    override func splitViewDidResizeSubviews(_ notification: Notification) {
+        super.splitViewDidResizeSubviews(notification)
+        if NSApp.currentEvent?.type == .leftMouseDragged, sidebarItem.isCollapsed != sidebarHiddenByUser,
+           view.bounds.width >= metrics.narrowWidth {
+            sidebarHiddenByUser = sidebarItem.isCollapsed
+        }
+    }
+}
+
+/// The content column (design D16): an optional search row, then the history
+/// list over the diff pane, with the status strip along the bottom.
 ///
 /// Replaces the structure of gitk's `makewindow` (gitk/gitk 2374–2913): the
 /// panes are gitk's, relocated. On systems with a unified titlebar the search
 /// bar lives in the toolbar instead: the panes then run up under the titlebar
 /// so the system can blur scrolled content beneath it (the scroll edge effect,
-/// as in Music), and `topInset` keeps the sidebar's own content below it.
+/// as in Music).
 final class MainSplitView: NSView, NSSplitViewDelegate {
     let metrics: MainLayoutMetrics
-    /// Left column | details sidebar.
-    let contentSplit = NSSplitView()
     /// History list over the diff pane.
     let listDiffSplit = NSSplitView()
-    let sidebar = DetailsSidebar()
     let statusBar = StatusBar()
     private(set) var listPane: NSView = PlaceholderPane(name: "History list")
     private(set) var diffPane: NSView = PlaceholderPane(name: "Diff")
     private(set) var searchRow: NSView?
     private var appliedDefaultSizes = false
-    /// Set once the default divider positions are in place; until then
+    /// Set once the default divider position is in place; until then
     /// NSSplitView's own initial distribution must not be remembered.
     private var defaultsInPlace = false
-    private var sidebarWidth: CGFloat
 
-    /// Height of the unified titlebar that overlaps the content. The history
-    /// list insets itself (`automaticallyAdjustsContentInsets`); the sidebar is
-    /// told explicitly.
-    var topInset: CGFloat = 0 {
-        didSet {
-            guard topInset != oldValue else { return }
-            sidebar.topInset = topInset
-            needsLayout = true
-        }
-    }
     /// The diff pane is shown only while a commit is selected; otherwise the
-    /// history list takes the whole left column.
+    /// history list takes the whole column.
     var showsDiffPane = false {
         didSet {
             guard showsDiffPane != oldValue else { return }
@@ -142,33 +204,17 @@ final class MainSplitView: NSView, NSSplitViewDelegate {
     }
     private var diffFraction: CGFloat = 0.5
 
-    /// Set by the close button and View → Details Sidebar.
-    var sidebarHiddenByUser = false { didSet { needsLayout = true } }
-    /// True while the sidebar is shown (not closed and not collapsed by width).
-    private(set) var isSidebarShown = true
-    var onSidebarClose: (() -> Void)?
-
     init(metrics: MainLayoutMetrics) {
         self.metrics = metrics
-        sidebarWidth = metrics.sidebarWidth
         super.init(frame: NSRect(origin: .zero, size: metrics.windowContentSize))
         autoresizingMask = [.width, .height]
-
         listDiffSplit.isVertical = false
         listDiffSplit.dividerStyle = .thin
         listDiffSplit.delegate = self
         listDiffSplit.addArrangedSubview(listPane)
         listDiffSplit.addArrangedSubview(diffPane)
         diffPane.isHidden = true
-
-        contentSplit.isVertical = true
-        contentSplit.dividerStyle = .thin
-        contentSplit.delegate = self
-        contentSplit.addArrangedSubview(listDiffSplit)
-        contentSplit.addArrangedSubview(sidebar)
-
-        sidebar.onClose = { [weak self] in self?.onSidebarClose?() }
-        addSubview(contentSplit)
+        addSubview(listDiffSplit)
         addSubview(statusBar)
     }
 
@@ -212,36 +258,17 @@ final class MainSplitView: NSView, NSSplitViewDelegate {
         }
         let statusHeight = metrics.statusBarHeight
         statusBar.frame = NSRect(x: 0, y: bounds.height - statusHeight, width: bounds.width, height: statusHeight)
-        contentSplit.frame = NSRect(x: 0, y: y, width: bounds.width, height: max(0, bounds.height - statusHeight - y))
-        updateSidebarVisibility()
+        listDiffSplit.frame = NSRect(x: 0, y: y, width: bounds.width, height: max(0, bounds.height - statusHeight - y))
         super.layout()
-        guard !appliedDefaultSizes, contentSplit.bounds.width > 0, contentSplit.bounds.height > 0 else { return }
+        guard !appliedDefaultSizes, listDiffSplit.bounds.height > 0 else { return }
         appliedDefaultSizes = true
         // NSSplitView distributes the initial sizes during this pass; put the
-        // dividers in place right after it.
+        // divider in place right after it.
         DispatchQueue.main.async { [self] in applyDefaultSizes() }
     }
 
-    /// D16 "Small windows": below `narrowWidth` the sidebar collapses first.
-    private func updateSidebarVisibility() {
-        let show = !sidebarHiddenByUser && bounds.width >= metrics.narrowWidth
-        guard show != isSidebarShown else { return }
-        isSidebarShown = show
-        sidebar.isHidden = !show
-        contentSplit.adjustSubviews()
-        if show { placeSidebar() }
-    }
-
-    private func placeSidebar() {
-        let width = min(sidebarWidth, max(metrics.sidebarMinWidth, contentSplit.bounds.width / 2))
-        contentSplit.setPosition(contentSplit.bounds.width - width - contentSplit.dividerThickness, ofDividerAt: 0)
-    }
-
-    /// The list on top, the diff pane below at half the height, the sidebar at
-    /// its default width.
+    /// The list on top, the diff pane below at half the height.
     func applyDefaultSizes() {
-        contentSplit.adjustSubviews()
-        if isSidebarShown { placeSidebar() }
         listDiffSplit.adjustSubviews()
         if showsDiffPane { placeDiffDivider() }
         layoutSubtreeIfNeeded()
@@ -251,16 +278,11 @@ final class MainSplitView: NSView, NSSplitViewDelegate {
     // MARK: NSSplitViewDelegate
 
     func splitView(_ splitView: NSSplitView, constrainMinCoordinate proposedMinimumPosition: CGFloat, ofSubviewAt dividerIndex: Int) -> CGFloat {
-        splitView === listDiffSplit ? max(proposedMinimumPosition, metrics.listMinHeight) : proposedMinimumPosition
+        max(proposedMinimumPosition, metrics.listMinHeight)
     }
 
-    func splitView(_ splitView: NSSplitView, constrainMaxCoordinate proposedMaximumPosition: CGFloat, ofSubviewAt dividerIndex: Int) -> CGFloat {
-        guard splitView === contentSplit else { return proposedMaximumPosition }
-        return min(proposedMaximumPosition, splitView.bounds.width - metrics.sidebarMinWidth - splitView.dividerThickness)
-    }
-
-    /// Window resizes: the sidebar keeps its width; the diff pane gives way
-    /// before the history list when the height shrinks (D16 "Small windows").
+    /// Window resizes: the diff pane gives way before the history list when
+    /// the height shrinks (D16 "Small windows").
     func splitView(_ splitView: NSSplitView, resizeSubviewsWithOldSize oldSize: NSSize) {
         let d = splitView.dividerThickness
         let views = splitView.arrangedSubviews
@@ -270,38 +292,27 @@ final class MainSplitView: NSView, NSSplitViewDelegate {
             first.frame = splitView.bounds
             return
         }
-        if splitView === contentSplit {
-            let height = splitView.bounds.height
-            let total = splitView.bounds.width - d
-            let side = min(second.frame.width > 0 ? second.frame.width : sidebarWidth, max(0, total - metrics.sidebarMinWidth))
-            first.frame = NSRect(x: 0, y: 0, width: total - side, height: height)
-            second.frame = NSRect(x: total - side + d, y: 0, width: side, height: height)
+        let width = splitView.bounds.width
+        let total = max(0, splitView.bounds.height - d)
+        let oldTotal = max(1, oldSize.height - d)
+        var top = first.frame.height
+        if total >= oldTotal {
+            top = (top / oldTotal * total).rounded()
         } else {
-            let width = splitView.bounds.width
-            let total = max(0, splitView.bounds.height - d)
-            let oldTotal = max(1, oldSize.height - d)
-            var top = first.frame.height
-            if total >= oldTotal {
-                top = (top / oldTotal * total).rounded()
-            } else {
-                // The list keeps its height while the diff pane shrinks to two
-                // lines; only then does the list give way.
-                let diffMin = min(metrics.linespc * 2, max(0, total - metrics.listMinHeight))
-                top = min(top, total - diffMin)
-            }
-            top = min(max(0, top), total)
-            first.frame = NSRect(x: 0, y: 0, width: width, height: top)
-            second.frame = NSRect(x: 0, y: top + d, width: width, height: total - top)
+            // The list keeps its height while the diff pane shrinks to two
+            // lines; only then does the list give way.
+            let diffMin = min(metrics.linespc * 2, max(0, total - metrics.listMinHeight))
+            top = min(top, total - diffMin)
         }
+        top = min(max(0, top), total)
+        first.frame = NSRect(x: 0, y: 0, width: width, height: top)
+        second.frame = NSRect(x: 0, y: top + d, width: width, height: total - top)
     }
 
     func splitViewDidResizeSubviews(_ notification: Notification) {
-        if (notification.object as? NSSplitView) === listDiffSplit, defaultsInPlace, !diffPane.isHidden,
-           listDiffSplit.bounds.height > 0, NSApp.currentEvent?.type == .leftMouseDragged {
+        if defaultsInPlace, !diffPane.isHidden, listDiffSplit.bounds.height > 0,
+           NSApp.currentEvent?.type == .leftMouseDragged {
             diffFraction = diffPane.frame.height / listDiffSplit.bounds.height
         }
-        guard (notification.object as? NSSplitView) === contentSplit, isSidebarShown,
-              defaultsInPlace, sidebar.frame.width >= metrics.sidebarMinWidth else { return }
-        sidebarWidth = sidebar.frame.width
     }
 }

@@ -13,12 +13,15 @@ final class MainWindowController: NSWindowController {
     let startup: StartupContext
     let launch: LaunchArguments
     var settings: UISettings
-    let splitView: MainSplitView
+    let splitController: MainSplitController
+    /// The content column: search row (no unified titlebar), list, diff, status.
+    var splitView: MainSplitView { splitController.content }
+    private var searchToolbar: SearchToolbar?
     let session: ViewSession
     let listController: CommitListController
     let searchBar: SearchBar
     let diffPane: DiffPane
-    var sidebar: DetailsSidebar { splitView.sidebar }
+    var sidebar: DetailsSidebar { splitController.sidebar }
     var statusBar: StatusBar { splitView.statusBar }
     /// True when the search bar is in a unified titlebar rather than a content row.
     let unifiedTitlebar: Bool
@@ -52,22 +55,26 @@ final class MainWindowController: NSWindowController {
         searchBar = SearchBar(session: session)
         diffPane = DiffPane(settings: settings, hashLength: startup.repo.hashLength)
         let metrics = MainLayoutMetrics(mainFont: settings.mainFont)
-        splitView = MainSplitView(metrics: metrics)
+        splitController = MainSplitController(metrics: metrics)
         unifiedTitlebar = Chrome.usesUnifiedTitlebar(environment: environment)
         let window = KeyRouter(
             contentRect: NSRect(origin: .zero, size: metrics.windowContentSize),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false)
-        window.contentView = splitView
-        window.contentMinSize = NSSize(width: 200, height: 200)
+        window.contentViewController = splitController
+        window.setContentSize(metrics.windowContentSize)
+        window.contentMinSize = NSSize(width: 360, height: 200)
         window.isReleasedWhenClosed = false
         Chrome.decorate(window)
         if unifiedTitlebar {
-            Chrome.installUnifiedTitlebar(window, bar: searchBar)
+            let toolbar = SearchToolbar(bar: searchBar)
+            searchToolbar = toolbar
+            Chrome.installUnifiedTitlebar(window, toolbar: toolbar.toolbar)
         } else {
-            splitView.installSearchRow(searchBar)
+            splitController.content.installSearchRow(searchBar)
         }
         super.init(window: window)
+        searchToolbar?.onToggleSidebar = { [weak self] in self?.perform(.toggleDetailsSidebar) }
         splitView.installList(listController.scrollView)
         splitView.installDiff(diffPane.scrollView)
         sidebar.settings = settings
@@ -80,7 +87,6 @@ final class MainWindowController: NSWindowController {
             clip.scroll(to: NSPoint(x: 0, y: y))
             self?.diffPane.scrollView.reflectScrolledClipView(clip)
         }
-        splitView.onSidebarClose = { [weak self] in self?.setSidebarHidden(true) }
         listController.onSelection = { [weak self] in self?.select($0) }
         searchBar.onCommand = { [weak self] in self?.perform($0) }
         searchBar.onGo = { [weak self] value in Task { await self?.goToCommit(value) } }
@@ -113,26 +119,23 @@ final class MainWindowController: NSWindowController {
             dispatch: { [weak self] in self?.perform($0) },
             isEnabled: { [weak self] in self?.canPerform($0) ?? false })
         mainMenu?.isChecked = { [weak self] command in
-            command == .toggleDetailsSidebar ? !(self?.splitView.sidebarHiddenByUser ?? false) : nil
+            command == .toggleDetailsSidebar ? (self?.splitController.isSidebarShown ?? true) : nil
         }
-        if unifiedTitlebar {
-            NotificationCenter.default.addObserver(
-                self, selector: #selector(windowDidResize(_:)), name: NSWindow.didResizeNotification, object: window)
-        }
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(windowDidResize(_:)), name: NSWindow.didResizeNotification, object: window)
+        DispatchQueue.main.async { [weak self] in self?.splitController.applyDefaultSidebarWidth() }
     }
 
-    /// Keeps content below the unified titlebar (`contentLayoutRect`).
-    @objc private func windowDidResize(_ notification: Notification) { updateTopInset() }
+    @objc private func windowDidResize(_ notification: Notification) { fitToolbar() }
 
-    func updateTopInset() {
-        guard unifiedTitlebar, let window else { return }
-        Chrome.fitUnifiedTitlebar(window)
-        splitView.topInset = max(0, splitView.bounds.height - window.contentLayoutRect.maxY)
+    /// Gives the titlebar search field the width of the content column.
+    func fitToolbar() {
+        searchToolbar?.fit(contentWidth: splitView.bounds.width)
     }
 
-    /// The close button and View→Details Sidebar.
+    /// View→Details Sidebar and the toolbar toggle.
     func setSidebarHidden(_ hidden: Bool) {
-        splitView.sidebarHiddenByUser = hidden
+        splitController.sidebarHiddenByUser = hidden
     }
 
     @available(*, unavailable)
@@ -185,7 +188,7 @@ final class MainWindowController: NSWindowController {
             window?.makeFirstResponder(listController.tableView)
             searchBar.step(forward: false, wrap: wrap)
         case .focusCommitID: searchBar.enterGoToCommitMode()
-        case .toggleDetailsSidebar: setSidebarHidden(!splitView.sidebarHiddenByUser)
+        case .toggleDetailsSidebar: setSidebarHidden(splitController.isSidebarShown)
         case .selectPrev, .selectNext, .selectFirst, .selectLast, .selectPageUp, .selectPageDown, .goToParent:
             let parents = session.selection.selectedID.flatMap { session.store.index(of: $0) }
                 .map { session.store.parents(of: $0).map { session.store.id(at: $0) } } ?? []
@@ -233,7 +236,7 @@ final class MainWindowController: NSWindowController {
             await searchBar.waitForSearch()
             await diffPane.waitUntilLoaded()
         }
-        updateTopInset()
+        fitToolbar()
         window?.contentView?.layoutSubtreeIfNeeded()
         try? await Task.sleep(for: .milliseconds(100))
     }
