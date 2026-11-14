@@ -6,13 +6,13 @@ import Foundation
 
 /// A view remembered across launches (gitk's `permviews` entry:
 /// `{name files args argscmd}`).
-struct SavedView: Codable, Sendable, Hashable {
-    var name: String
-    var files: [String]
-    var args: [String]
-    var argsCmd: String
+public struct SavedView: Codable, Sendable, Hashable {
+    public var name: String
+    public var files: [String]
+    public var args: [String]
+    public var argsCmd: String
 
-    init(name: String, files: [String] = [], args: [String] = [], argsCmd: String = "") {
+    public init(name: String, files: [String] = [], args: [String] = [], argsCmd: String = "") {
         self.name = name
         self.files = files
         self.args = args
@@ -36,82 +36,82 @@ struct SavedView: Codable, Sendable, Hashable {
 ///
 /// Decoding is tolerant: unknown keys are ignored, and missing or mistyped keys keep
 /// their default, so older or hand-edited settings files still load.
-struct Settings: Codable, Sendable, Equatable {
+public struct Settings: Codable, Sendable, Equatable {
     // MARK: General
-    var autoCopy = false
-    var autoSelect = true
+    public var autoCopy = false
+    public var autoSelect = true
     /// gitk: `autosellen` defaults to `$hashlength` (40 for SHA-1 repositories).
-    var autoSelLen = 40
-    var cmitMode = "patch"
-    var dateTimeFormat = "%Y-%m-%d %H:%M:%S"
-    var diffContext = 3
-    var extDiffTool = "opendiff"
-    var findMergeFiles = false
-    var hideRemotes = false
-    var kscroll = 3
-    var limitDiffs = true
-    var maxGraphPct = 50
-    var maxRefs = 20
-    var maxWidth = 16
-    var perFileAttrs = false
-    var refsToHide = ""
-    var showLocalChanges = true
-    var showNearTags = true
-    var sortRefsByType = true
-    var tabStop = 8
-    var visibleRefs = ["master"]
-    var webBrowser = "open"
-    var wrapComment = "none"
-    var wrapDefault = "none"
+    public var autoSelLen = 40
+    public var cmitMode = "patch"
+    public var dateTimeFormat = "%Y-%m-%d %H:%M:%S"
+    public var diffContext = 3
+    public var extDiffTool = "opendiff"
+    public var findMergeFiles = false
+    public var hideRemotes = false
+    public var kscroll = 3
+    public var limitDiffs = true
+    public var maxGraphPct = 50
+    public var maxRefs = 20
+    public var maxWidth = 16
+    public var perFileAttrs = false
+    public var refsToHide = ""
+    public var showLocalChanges = true
+    public var showNearTags = true
+    public var sortRefsByType = true
+    public var tabStop = 8
+    public var visibleRefs = ["master"]
+    public var webBrowser = "open"
+    public var wrapComment = "none"
+    public var wrapDefault = "none"
 
     // MARK: Fonts
-    var mainFont = FontSpec(family: FontSpec.systemFamily, pointSize: 12)
-    var textFont = FontSpec(family: FontSpec.monospacedSystemFamily, pointSize: 12)
-    var uiFont = FontSpec(family: FontSpec.systemFamily, pointSize: 12, bold: true)
+    public var mainFont = FontSpec(family: FontSpec.systemFamily, pointSize: 12)
+    public var textFont = FontSpec(family: FontSpec.monospacedSystemFamily, pointSize: 12)
+    public var uiFont = FontSpec(family: FontSpec.systemFamily, pointSize: 12, bold: true)
 
     // MARK: Colours (Tk colour strings)
-    var bgColor = "white"
-    var fgColor = "black"
-    var selectBgColor = "gray85"
-    var colors = ["#00ff00", "red", "blue", "magenta", "darkgrey", "brown", "orange"]
-    var diffColors = ["#c30000", "#009800", "blue"]
-    var diffBgColors = ["#fff3f3", "#f0fff0"]
-    var mergeColors = [
+    public var bgColor = "white"
+    public var fgColor = "black"
+    public var selectBgColor = "gray85"
+    public var colors = ["#00ff00", "red", "blue", "magenta", "darkgrey", "brown", "orange"]
+    public var diffColors = ["#c30000", "#009800", "blue"]
+    public var diffBgColors = ["#fff3f3", "#f0fff0"]
+    public var mergeColors = [
         "red", "blue", "#00ff00", "purple", "brown", "#009090", "magenta", "#808000",
         "#009000", "#ff0080", "cyan", "#b07070", "#70b0f0", "#70f0b0", "#f0b070", "#ff70b0",
     ]
-    var markBgColor = "#e0e0ff"
-    var headBgColor = "#00ff00"
-    var headFgColor = "black"
-    var headOutlineColor = "black"
-    var remoteBgColor = "#ffddaa"
-    var tagBgColor = "yellow"
-    var tagFgColor = "black"
-    var tagOutlineColor = "black"
-    var refLineColor = "black"
-    var fileSepBgColor = "#aaaaaa"
-    var fileSepFgColor = "black"
-    var lineHoverBgColor = "#ffff80"
-    var lineHoverFgColor = "black"
-    var lineHoverOutlineColor = "black"
-    var mainHeadCircleColor = "yellow"
-    var workingFilesCircleColor = "red"
-    var indexCircleColor = "#00ff00"
-    var circleColors = ["white", "blue", "gray", "blue", "blue"]
-    var linkFgColor = "blue"
+    public var markBgColor = "#e0e0ff"
+    public var headBgColor = "#00ff00"
+    public var headFgColor = "black"
+    public var headOutlineColor = "black"
+    public var remoteBgColor = "#ffddaa"
+    public var tagBgColor = "yellow"
+    public var tagFgColor = "black"
+    public var tagOutlineColor = "black"
+    public var refLineColor = "black"
+    public var fileSepBgColor = "#aaaaaa"
+    public var fileSepFgColor = "black"
+    public var lineHoverBgColor = "#ffff80"
+    public var lineHoverFgColor = "black"
+    public var lineHoverOutlineColor = "black"
+    public var mainHeadCircleColor = "yellow"
+    public var workingFilesCircleColor = "red"
+    public var indexCircleColor = "#00ff00"
+    public var circleColors = ["white", "blue", "gray", "blue", "blue"]
+    public var linkFgColor = "blue"
     /// gitk: `set circleoutlinecolor $fgcolor`, i.e. black by default.
-    var circleOutlineColor = "black"
-    var foundBgColor = "yellow"
-    var currentSearchHitBgColor = "orange"
+    public var circleOutlineColor = "black"
+    public var foundBgColor = "yellow"
+    public var currentSearchHitBgColor = "orange"
 
     // MARK: Window state and views
     /// gitk's `geometry(<key>)` array: `main`, `state`, `topwidth`, `topheight`,
     /// `pwsash0`, `pwsash1`, `botwidth`, `botheight`, `showrefs`. Values are the
     /// strings gitk writes (for example `"1000x800+10+20"`, `"300 1"`).
-    var geometry: [String: String] = [:]
-    var views: [SavedView] = []
+    public var geometry: [String: String] = [:]
+    public var views: [SavedView] = []
 
-    init() {}
+    public init() {}
 
     enum CodingKeys: String, CodingKey, CaseIterable {
         case autoCopy, autoSelect, autoSelLen, cmitMode, dateTimeFormat, diffContext
@@ -128,7 +128,7 @@ struct Settings: Codable, Sendable, Equatable {
         case geometry, views
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         var s = Settings()
         func v<T: Decodable>(_ key: CodingKeys, _ kp: WritableKeyPath<Settings, T>) {
@@ -169,36 +169,36 @@ struct Settings: Codable, Sendable, Equatable {
     /// Resolves a Tk colour string; `nil` if it is not a valid Tk colour.
     static func rgba(_ spec: String) -> RGBA? { TkColor.parse(spec) }
 
-    var bgRGBA: RGBA? { TkColor.parse(bgColor) }
-    var fgRGBA: RGBA? { TkColor.parse(fgColor) }
-    var selectBgRGBA: RGBA? { TkColor.parse(selectBgColor) }
-    var markBgRGBA: RGBA? { TkColor.parse(markBgColor) }
-    var headBgRGBA: RGBA? { TkColor.parse(headBgColor) }
-    var headFgRGBA: RGBA? { TkColor.parse(headFgColor) }
-    var headOutlineRGBA: RGBA? { TkColor.parse(headOutlineColor) }
-    var remoteBgRGBA: RGBA? { TkColor.parse(remoteBgColor) }
-    var tagBgRGBA: RGBA? { TkColor.parse(tagBgColor) }
-    var tagFgRGBA: RGBA? { TkColor.parse(tagFgColor) }
-    var tagOutlineRGBA: RGBA? { TkColor.parse(tagOutlineColor) }
-    var refLineRGBA: RGBA? { TkColor.parse(refLineColor) }
-    var fileSepBgRGBA: RGBA? { TkColor.parse(fileSepBgColor) }
-    var fileSepFgRGBA: RGBA? { TkColor.parse(fileSepFgColor) }
-    var lineHoverBgRGBA: RGBA? { TkColor.parse(lineHoverBgColor) }
-    var lineHoverFgRGBA: RGBA? { TkColor.parse(lineHoverFgColor) }
-    var lineHoverOutlineRGBA: RGBA? { TkColor.parse(lineHoverOutlineColor) }
-    var mainHeadCircleRGBA: RGBA? { TkColor.parse(mainHeadCircleColor) }
-    var workingFilesCircleRGBA: RGBA? { TkColor.parse(workingFilesCircleColor) }
-    var indexCircleRGBA: RGBA? { TkColor.parse(indexCircleColor) }
-    var linkFgRGBA: RGBA? { TkColor.parse(linkFgColor) }
-    var circleOutlineRGBA: RGBA? { TkColor.parse(circleOutlineColor) }
-    var foundBgRGBA: RGBA? { TkColor.parse(foundBgColor) }
-    var currentSearchHitBgRGBA: RGBA? { TkColor.parse(currentSearchHitBgColor) }
+    public var bgRGBA: RGBA? { TkColor.parse(bgColor) }
+    public var fgRGBA: RGBA? { TkColor.parse(fgColor) }
+    public var selectBgRGBA: RGBA? { TkColor.parse(selectBgColor) }
+    public var markBgRGBA: RGBA? { TkColor.parse(markBgColor) }
+    public var headBgRGBA: RGBA? { TkColor.parse(headBgColor) }
+    public var headFgRGBA: RGBA? { TkColor.parse(headFgColor) }
+    public var headOutlineRGBA: RGBA? { TkColor.parse(headOutlineColor) }
+    public var remoteBgRGBA: RGBA? { TkColor.parse(remoteBgColor) }
+    public var tagBgRGBA: RGBA? { TkColor.parse(tagBgColor) }
+    public var tagFgRGBA: RGBA? { TkColor.parse(tagFgColor) }
+    public var tagOutlineRGBA: RGBA? { TkColor.parse(tagOutlineColor) }
+    public var refLineRGBA: RGBA? { TkColor.parse(refLineColor) }
+    public var fileSepBgRGBA: RGBA? { TkColor.parse(fileSepBgColor) }
+    public var fileSepFgRGBA: RGBA? { TkColor.parse(fileSepFgColor) }
+    public var lineHoverBgRGBA: RGBA? { TkColor.parse(lineHoverBgColor) }
+    public var lineHoverFgRGBA: RGBA? { TkColor.parse(lineHoverFgColor) }
+    public var lineHoverOutlineRGBA: RGBA? { TkColor.parse(lineHoverOutlineColor) }
+    public var mainHeadCircleRGBA: RGBA? { TkColor.parse(mainHeadCircleColor) }
+    public var workingFilesCircleRGBA: RGBA? { TkColor.parse(workingFilesCircleColor) }
+    public var indexCircleRGBA: RGBA? { TkColor.parse(indexCircleColor) }
+    public var linkFgRGBA: RGBA? { TkColor.parse(linkFgColor) }
+    public var circleOutlineRGBA: RGBA? { TkColor.parse(circleOutlineColor) }
+    public var foundBgRGBA: RGBA? { TkColor.parse(foundBgColor) }
+    public var currentSearchHitBgRGBA: RGBA? { TkColor.parse(currentSearchHitBgColor) }
 
     /// List-valued colour settings, resolved element by element (index preserved;
     /// an invalid entry is `nil`).
-    var colorsRGBA: [RGBA?] { colors.map(TkColor.parse) }
-    var diffColorsRGBA: [RGBA?] { diffColors.map(TkColor.parse) }
-    var diffBgColorsRGBA: [RGBA?] { diffBgColors.map(TkColor.parse) }
-    var mergeColorsRGBA: [RGBA?] { mergeColors.map(TkColor.parse) }
-    var circleColorsRGBA: [RGBA?] { circleColors.map(TkColor.parse) }
+    public var colorsRGBA: [RGBA?] { colors.map(TkColor.parse) }
+    public var diffColorsRGBA: [RGBA?] { diffColors.map(TkColor.parse) }
+    public var diffBgColorsRGBA: [RGBA?] { diffBgColors.map(TkColor.parse) }
+    public var mergeColorsRGBA: [RGBA?] { mergeColors.map(TkColor.parse) }
+    public var circleColorsRGBA: [RGBA?] { circleColors.map(TkColor.parse) }
 }

@@ -27,6 +27,49 @@ make test      # swift test
 make release   # swift build -c release
 ```
 
+## Run against any repository
+
+Like gitk, the app takes the repository from the working directory: it runs
+`git rev-parse --git-dir` where it was started. There is no `--repo` flag, so
+`cd` into the repository you want to look at. That also works from a
+subdirectory of the repository and from a linked worktree.
+
+```bash
+bin="$(swift build --show-bin-path)/gitk-swift"
+
+cd ~/code/any-repo && "$bin"                     # that repository's history
+cd ~/code/any-repo && "$bin" --all               # every branch and tag
+cd ~/code/any-repo/src && "$bin"                 # repository found from a subdirectory
+cd ~/code/any-repo && "$bin" v1.0..v2.0 -- src/  # a range, limited to paths
+```
+
+Without knowing the build path, `swift run` works the same way: it keeps the
+caller's working directory, so the repository is still the one you `cd` into,
+not the gitk-swift checkout.
+
+```bash
+cd /path/to/repo
+swift run --package-path /path/to/gitk-swift gitk-swift
+```
+
+After `make release`, the binary is at
+`"$(swift build -c release --show-bin-path)/gitk-swift"`.
+
+Notes:
+
+- The executable is a plain binary, not an `.app` bundle, so launch it from a
+  terminal; it activates itself and shows its own window. For a PNG of the
+  window instead, see `Tools/snapshot.sh` in
+  [docs/agent-guide.md](docs/agent-guide.md).
+- Starting it from a terminal blocks that terminal until the window closes. Add
+  `&` to keep the terminal, for example `cd /path/to/repo && "$bin" &`.
+- Everything after the binary is gitk's command line: revisions, `--` followed
+  by paths, `--select-commit=<rev>`, `--argscmd=<command>`. Unknown flags such
+  as `--all` are passed to `git rev-list`, as in gitk.
+- Settings live in `~/Library/Application Support/gitk-swift/settings.json`.
+  Set `GITK_SWIFT_CONFIG_DIR` to use another directory, which is also how to
+  run the app without touching your real preferences.
+
 ## Repository layout
 
 | Path | Contents |

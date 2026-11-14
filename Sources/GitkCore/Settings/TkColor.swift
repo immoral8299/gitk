@@ -3,13 +3,13 @@
 // Derived from gitk, Copyright © 2005-2016 Paul Mackerras and contributors.
 
 /// An 8-bit-per-channel colour. Tk colours have no alpha, so parsed colours use `a = 255`.
-struct RGBA: Sendable, Hashable {
-    var r: UInt8
-    var g: UInt8
-    var b: UInt8
-    var a: UInt8
+public struct RGBA: Sendable, Hashable {
+    public var r: UInt8
+    public var g: UInt8
+    public var b: UInt8
+    public var a: UInt8
 
-    init(r: UInt8, g: UInt8, b: UInt8, a: UInt8 = 255) {
+    public init(r: UInt8, g: UInt8, b: UInt8, a: UInt8 = 255) {
         self.r = r
         self.g = g
         self.b = b
@@ -19,13 +19,13 @@ struct RGBA: Sendable, Hashable {
 
 /// Parses colour specifications from gitk settings: `#rgb`, `#rrggbb`, `#rrrgggbbb`,
 /// `#rrrrggggbbbb`, or a Tk colour name (see `TkColorTable`).
-enum TkColor {
+public enum TkColor {
     /// Parses a Tk colour spec. Returns `nil` for malformed hex and unknown names.
     ///
     /// Hex components are scaled the way Tk scales them (`winfo rgb` reports 16-bit
     /// values: a 1-digit component is replicated, so `#f00` is pure red, and 3-digit
     /// components keep their top bits). The result is truncated to 8 bits.
-    static func parse(_ spec: String) -> RGBA? {
+    public static func parse(_ spec: String) -> RGBA? {
         guard spec.hasPrefix("#") else {
             guard let named = TkColorTable.rgb(named: spec) else { return nil }
             return RGBA(r: named.r, g: named.g, b: named.b)
@@ -42,7 +42,7 @@ enum TkColor {
     }
 
     /// Formats a colour as lowercase `#rrggbb`. Alpha is not included.
-    static func hexString(_ color: RGBA) -> String {
+    public static func hexString(_ color: RGBA) -> String {
         "#" + [color.r, color.g, color.b].map(hexByte).joined()
     }
 

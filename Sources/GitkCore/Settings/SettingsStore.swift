@@ -12,19 +12,19 @@ import Foundation
 /// left alone until `markChanged()` is called (spec "Corrupt settings").
 ///
 /// The environment, home directory and warning sink are injectable for tests.
-final class SettingsStore: @unchecked Sendable {
+public final class SettingsStore: @unchecked Sendable {
     // @unchecked Sendable: the only mutable state is `badFileProtected`, guarded by `lock`.
     static let configDirVariable = "GITK_SWIFT_CONFIG_DIR"
     static let fileName = "settings.json"
 
-    let directory: URL
-    var fileURL: URL { directory.appendingPathComponent(Self.fileName) }
+    public let directory: URL
+    public var fileURL: URL { directory.appendingPathComponent(Self.fileName) }
 
     private let warn: @Sendable (String) -> Void
     private let lock = NSLock()
     private var badFileProtected = false
 
-    init(
+    public init(
         environment: [String: String] = ProcessInfo.processInfo.environment,
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
         warn: @escaping @Sendable (String) -> Void = { message in
@@ -41,10 +41,10 @@ final class SettingsStore: @unchecked Sendable {
     }
 
     /// True if the settings file exists (so legacy gitk import should not run).
-    var fileExists: Bool { FileManager.default.fileExists(atPath: fileURL.path) }
+    public var fileExists: Bool { FileManager.default.fileExists(atPath: fileURL.path) }
 
     /// True while an unparseable file is being kept: `save` does nothing until `markChanged()`.
-    var isProtectingBadFile: Bool {
+    public var isProtectingBadFile: Bool {
         lock.lock()
         defer { lock.unlock() }
         return badFileProtected
@@ -53,7 +53,7 @@ final class SettingsStore: @unchecked Sendable {
     /// Loads the settings. A missing file gives defaults silently. An unreadable or
     /// corrupt file gives defaults, calls the warning sink, and protects the file
     /// from being overwritten until `markChanged()`.
-    func load() -> Settings {
+    public func load() -> Settings {
         let data: Data
         do {
             data = try Data(contentsOf: fileURL)
@@ -75,12 +75,12 @@ final class SettingsStore: @unchecked Sendable {
 
     /// Records that the user changed something, allowing the next `save` to replace a
     /// corrupt file.
-    func markChanged() { setProtected(false) }
+    public func markChanged() { setProtected(false) }
 
     /// Writes the settings atomically, creating the directory if needed. Returns
     /// `false` (writing nothing) while a corrupt file is protected.
     @discardableResult
-    func save(_ settings: Settings) throws -> Bool {
+    public func save(_ settings: Settings) throws -> Bool {
         if isProtectingBadFile { return false }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let encoder = JSONEncoder()

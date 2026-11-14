@@ -9,14 +9,14 @@ import Foundation
 /// The family names `systemFamily` and `monospacedSystemFamily` are sentinels meaning
 /// "the macOS system font" and "the monospaced system font" (design D9); the UI layer
 /// maps them to `NSFont.systemFont` / `NSFont.monospacedSystemFont`.
-struct FontSpec: Codable, Sendable, Hashable {
-    static let systemFamily = ".AppleSystemUIFont"
-    static let monospacedSystemFamily = ".AppleSystemUIFontMonospaced"
+public struct FontSpec: Codable, Sendable, Hashable {
+    public static let systemFamily = ".AppleSystemUIFont"
+    public static let monospacedSystemFamily = ".AppleSystemUIFontMonospaced"
 
-    var family: String
-    var pointSize: Double
-    var bold: Bool
-    var italic: Bool
+    public var family: String
+    public var pointSize: Double
+    public var bold: Bool
+    public var italic: Bool
 
     init(family: String, pointSize: Double, bold: Bool = false, italic: Bool = false) {
         self.family = family
