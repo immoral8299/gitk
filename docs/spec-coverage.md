@@ -91,7 +91,7 @@ Total scenarios: 168
 | diff-viewer | Patch display | Ordinary commit |  | pending |
 | diff-viewer | Patch display | Rename |  | pending |
 | diff-viewer | Patch display | Large diff |  | pending |
-| diff-viewer | Merge diffs | Octopus merge |  | pending |
+| diff-viewer | Merge diffs | Octopus merge | DiffModeTests/octopusMarkersUseConfiguredParentColors; `Tools/snapshot.sh evil-octopus /tmp/octopus.png` (three colored marker columns, visually verified) | covered |
 | diff-viewer | Local-changes and two-commit diffs | Unstaged row |  | pending |
 | diff-viewer | Local-changes and two-commit diffs | Index row |  | pending |
 | diff-viewer | Diff controls | Old version |  | pending |

@@ -28,6 +28,31 @@ import Testing
         #expect(render(hunk, mode: .diff) == " same\n-old\n+new\n")
     }
 
+    @Test func octopusMarkersUseConfiguredParentColors() async throws {
+        let repo = try await ActionTestRepo.make("evil-octopus")
+        #expect(try await repo.resolve().hex == "df3f0db1158d8be5a70c0574da8bc43f143e6d26")
+        let output = try await repo.runner.run(["diff-tree", "-p", "--cc", "--no-commit-id", "HEAD"])
+        await repo.cleanup()
+        let (lines, _) = DiffParser.parse(output: output.stdout)
+        let combined = lines.filter { if case .combined = $0 { true } else { false } }
+        #expect(!combined.isEmpty)
+        var settings = Settings()
+        settings.mergeColors = ["#123456", "#654321", "#abcdef"]
+        var renderer = DiffRenderer(settings: settings)
+        for line in combined {
+            guard case .combined(let markers, let data) = line else { continue }
+            #expect(markers.count == 3)
+            let text = renderer.render(line)
+            #expect(text.string == String(markers) + String(decoding: data, as: UTF8.self) + "\n")
+            for index in markers.indices {
+                let color = try #require(text.attribute(.foregroundColor, at: index, effectiveRange: nil) as? NSColor)
+                #expect(color == Palette.merge(settings, index))
+            }
+            let bodyColor = try #require(text.attribute(.foregroundColor, at: markers.count, effectiveRange: nil) as? NSColor)
+            #expect(bodyColor == Palette.foreground(settings))
+        }
+    }
+
     /// diff-viewer "Context lines": the bar's options reach the diff command.
     @Test func controlsChangeOptions() {
         let pane = DiffPane(settings: Settings(), hashLength: 40)

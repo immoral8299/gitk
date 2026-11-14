@@ -404,7 +404,7 @@ Order of work:
   - Port: 8231–8328, 8603–8638.
   - Needs: 11.4, 11.1.
   - Spec: diff-viewer "Selection shows the diff", "Ordinary commit", "Rename", "Large diff".
-- [ ] 11.6 [S] Colour combined-diff markers by parent — Verify: a snapshot of a merge with a non-trivial combined diff shows 3 coloured marker columns. The fixture merges are clean, so `--cc` prints nothing for them; first add an `evil-octopus` fixture to `make-fixture.sh` (the `octopus` merge amended with an extra edit, as `DiffParserTests` does) and its row in `Tests/Fixtures/README.md`.
+- [x] 11.6 [S] Colour combined-diff markers by parent — Verify: a snapshot of a merge with a non-trivial combined diff shows 3 coloured marker columns. The fixture merges are clean, so `--cc` prints nothing for them; first add an `evil-octopus` fixture to `make-fixture.sh` (the `octopus` merge amended with an extra edit, as `DiffParserTests` does) and its row in `Tests/Fixtures/README.md`.
   - Files: `DiffRenderer.swift`.
   - Needs: 11.5.
   - Spec: diff-viewer "Octopus merge".

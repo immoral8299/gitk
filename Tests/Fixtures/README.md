@@ -19,6 +19,7 @@ every run.
 | `linear` | 10 commits on `main` | `b7729902a3f81cc7da12ad56b4af698ee6ad444c` | 10 |
 | `merge-simple` | `feature` (2 commits off m1) merged into `main` | `f27c29fa5ea3afbdb540a7475337378f2957d577` | 7 |
 | `octopus` | 3-parent merge of `b1` and `b2` (HEAD~1) | `c945a83731862f6bd5090c6e792479c5fcd13232` | 6 |
+| `evil-octopus` | 3-parent merge amended with an extra edit to `base.txt`, producing a non-empty combined diff at HEAD | `df3f0db1158d8be5a70c0574da8bc43f143e6d26` | 5 |
 | `criss-cross` | `x`/`y` merge each other, then both merge into `main` | `5e26926cc99a659f0fe8eaa623105773d3b97605` | 10 |
 | `many-branches` | 40 branches `b01`–`b40`, merged one by one into `main` | `2d613f11ab5679b193386d332b9456c30907bb47` | 121 |
 | `long-lines` | early `side` commit merged after 300 main commits | `e6ce0a438bcbaa4971271964e6487646af316dea` | 303 |

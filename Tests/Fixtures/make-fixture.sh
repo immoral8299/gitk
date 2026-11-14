@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-FIXTURES="linear merge-simple octopus criss-cross many-branches long-lines renames encodings tags-notes sha256 local-changes conflict random-dag huge"
+FIXTURES="linear merge-simple octopus evil-octopus criss-cross many-branches long-lines renames encodings tags-notes sha256 local-changes conflict random-dag huge"
 
 usage() {
     echo "usage: $0 <name> <outdir> | --list" >&2
@@ -114,7 +114,7 @@ merge-simple)
     commit "m4: after merge" main.txt
     ;;
 
-octopus)
+octopus|evil-octopus)
     # A three-parent (octopus) merge of b1 and b2 into main.
     init
     commit "base" base.txt
@@ -126,7 +126,14 @@ octopus)
     git checkout -q main
     commit "main work" main.txt
     merge "Octopus merge of b1 and b2" b1 b2
-    commit "after octopus" main.txt
+    if [[ $NAME == evil-octopus ]]; then
+        printf 'evil line\n' >>base.txt
+        git add base.txt
+        tick
+        git commit -q --amend --no-edit
+    else
+        commit "after octopus" main.txt
+    fi
     ;;
 
 criss-cross)
