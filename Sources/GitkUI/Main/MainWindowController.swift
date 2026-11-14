@@ -5,7 +5,7 @@
 import AppKit
 import GitkCore
 
-/// Owns the main window (gitk's `.`) and its `MainSplitView`.
+/// Owns the main window (gitk's `.`) and its `MainSplitView` (design D16).
 @MainActor
 final class MainWindowController: NSWindowController {
     nonisolated static let appName = "gitk"
@@ -16,8 +16,10 @@ final class MainWindowController: NSWindowController {
     let splitView: MainSplitView
     let session: ViewSession
     let listController: CommitListController
-    let commitIDBar: CommitIDBar
-    let findBar: FindBar
+    let searchBar: SearchBar
+    var statusBar: StatusBar { splitView.statusBar }
+    /// True when the search bar is in a unified titlebar rather than a content row.
+    let unifiedTitlebar: Bool
     var onFindQueryChanged: ((FindQuery) -> Void)?
     let environment: [String: String]
     var onSelection: ((ObjectID) -> Void)?
@@ -44,11 +46,10 @@ final class MainWindowController: NSWindowController {
         session.refsToHide = settings.refsToHide
         listController = CommitListController(session: session, font: MainLayoutMetrics.nsFont(settings.mainFont))
         listController.dateFormat = settings.dateTimeFormat
-        findBar = FindBar(session: session)
-        commitIDBar = CommitIDBar(font: MainLayoutMetrics.nsFont(settings.textFont))
+        searchBar = SearchBar(session: session)
         let metrics = MainLayoutMetrics(mainFont: settings.mainFont)
-        splitView = MainSplitView(
-            metrics: metrics, uiFont: MainLayoutMetrics.nsFont(settings.uiFont))
+        splitView = MainSplitView(metrics: metrics)
+        unifiedTitlebar = Chrome.usesUnifiedTitlebar(environment: environment)
         let window = KeyRouter(
             contentRect: NSRect(origin: .zero, size: metrics.windowContentSize),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -57,23 +58,33 @@ final class MainWindowController: NSWindowController {
         window.contentMinSize = NSSize(width: 200, height: 200)
         window.isReleasedWhenClosed = false
         Chrome.decorate(window)
+        if unifiedTitlebar {
+            Chrome.installUnifiedTitlebar(window, bar: searchBar)
+        } else {
+            splitView.installSearchRow(searchBar)
+        }
         super.init(window: window)
-        splitView.installHistory(listController.scrollView, commitBar: commitIDBar, findBar: findBar)
+        splitView.installList(listController.scrollView)
+        splitView.onSidebarClose = { [weak self] in self?.setSidebarHidden(true) }
         listController.onSelection = { [weak self] in self?.select($0) }
-        commitIDBar.onCommand = { [weak self] in self?.perform($0) }
-        commitIDBar.onGo = { [weak self] value in Task { await self?.goToCommit(value) } }
-        findBar.onSelect = { [weak self] in self?.select($0) }
-        findBar.onMatches = { [weak self] ids, query in
+        searchBar.onCommand = { [weak self] in self?.perform($0) }
+        searchBar.onGo = { [weak self] value in Task { await self?.goToCommit(value) } }
+        searchBar.onDismiss = { [weak self] in
+            guard let self else { return }
+            self.window?.makeFirstResponder(self.listController.tableView)
+        }
+        searchBar.onSelect = { [weak self] in self?.select($0) }
+        searchBar.onMatches = { [weak self] ids, query in
             guard let self else { return }
             self.listController.highlightedIDs = ids
             self.listController.findQuery = query
             self.listController.refresh()
             self.onFindQueryChanged?(query)
         }
-        findBar.onBusy = { [weak self] searching in
+        searchBar.onBusy = { [weak self] searching in
             guard let self else { return }
-            if searching { self.commitIDBar.status.setSearching() }
-            else { self.commitIDBar.status.setReading(self.session.isLoading) }
+            if searching { self.statusBar.setSearching() }
+            else { self.statusBar.setReading(self.session.isLoading) }
         }
         session.onEvent = { [weak self] in self?.handle($0) }
         window.center()
@@ -86,6 +97,27 @@ final class MainWindowController: NSWindowController {
         mainMenu = MainMenu(
             dispatch: { [weak self] in self?.perform($0) },
             isEnabled: { [weak self] in self?.canPerform($0) ?? false })
+        mainMenu?.isChecked = { [weak self] command in
+            command == .toggleDetailsSidebar ? !(self?.splitView.sidebarHiddenByUser ?? false) : nil
+        }
+        if unifiedTitlebar {
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(windowDidResize(_:)), name: NSWindow.didResizeNotification, object: window)
+        }
+    }
+
+    /// Keeps content below the unified titlebar (`contentLayoutRect`).
+    @objc private func windowDidResize(_ notification: Notification) { updateTopInset() }
+
+    func updateTopInset() {
+        guard unifiedTitlebar, let window else { return }
+        Chrome.fitUnifiedTitlebar(window)
+        splitView.topInset = max(0, splitView.bounds.height - window.contentLayoutRect.maxY)
+    }
+
+    /// The close button and View→Details Sidebar.
+    func setSidebarHidden(_ hidden: Bool) {
+        splitView.sidebarHiddenByUser = hidden
     }
 
     @available(*, unavailable)
@@ -118,7 +150,7 @@ final class MainWindowController: NSWindowController {
         switch command {
         case .quit, .closeWindow, .about, .update, .reload, .rereadRefs, .focusCommitID,
              .selectPrev, .selectNext, .selectFirst, .selectLast, .selectPageUp, .selectPageDown,
-             .goToParent, .scrollList, .focusFind, .findNext, .findPrev: return true
+             .goToParent, .scrollList, .focusFind, .findNext, .findPrev, .toggleDetailsSidebar: return true
         case .goBack: return session.selection.history.canGoBack
         case .goForward: return session.selection.history.canGoForward
         default: return commandValidator?(command) ?? (commandHandler != nil)
@@ -130,16 +162,15 @@ final class MainWindowController: NSWindowController {
         case .update: loadTask = Task { await session.update() }
         case .reload: loadTask = Task { await session.reload() }
         case .rereadRefs: Task { await session.readReferences() }
-        case .focusFind: window?.makeFirstResponder(findBar.field)
+        case .focusFind: searchBar.enterSearchMode(focus: true)
         case .findNext(let wrap):
             window?.makeFirstResponder(listController.tableView)
-            findBar.step(forward: true, wrap: wrap)
+            searchBar.step(forward: true, wrap: wrap)
         case .findPrev(let wrap):
             window?.makeFirstResponder(listController.tableView)
-            findBar.step(forward: false, wrap: wrap)
-        case .focusCommitID:
-            commitIDBar.field.stringValue = ""
-            window?.makeFirstResponder(commitIDBar.field)
+            searchBar.step(forward: false, wrap: wrap)
+        case .focusCommitID: searchBar.enterGoToCommitMode()
+        case .toggleDetailsSidebar: setSidebarHidden(!splitView.sidebarHiddenByUser)
         case .selectPrev, .selectNext, .selectFirst, .selectLast, .selectPageUp, .selectPageDown, .goToParent:
             let parents = session.selection.selectedID.flatMap { session.store.index(of: $0) }
                 .map { session.store.parents(of: $0).map { session.store.id(at: $0) } } ?? []
@@ -165,13 +196,13 @@ final class MainWindowController: NSWindowController {
             await session.load()
             initialLoadFinished = true
             if let snapshotQuery = environment["GITK_SWIFT_FIND"] {
-                findBar.applySnapshotQuery(snapshotQuery)
-            } else { findBar.refresh() }
+                searchBar.applySnapshotQuery(snapshotQuery)
+            } else { searchBar.refresh() }
         }
     }
 
     func stop() async {
-        findBar.cancel()
+        searchBar.cancel()
         loadTask?.cancel()
         await session.cancel()
     }
@@ -182,7 +213,8 @@ final class MainWindowController: NSWindowController {
                 if loadTask?.isCancelled == true { break }
                 try? await Task.sleep(for: .milliseconds(10))
             }
-        } else { await loadTask?.value; await findBar.waitForSearch() }
+        } else { await loadTask?.value; await searchBar.waitForSearch() }
+        updateTopInset()
         window?.contentView?.layoutSubtreeIfNeeded()
         try? await Task.sleep(for: .milliseconds(100))
     }
@@ -191,12 +223,12 @@ final class MainWindowController: NSWindowController {
 
     private func handle(_ event: ViewSession.Event) {
         switch event {
-        case .loadStarted: commitIDBar.status.setReading(true)
-        case .loadProgress(let count): commitIDBar.status.setReading(true, count: count)
+        case .loadStarted: statusBar.setReading(true)
+        case .loadProgress(let count): statusBar.setReading(true, count: count)
         case .rowsChanged:
             listController.refresh()
             if let selected = session.selection.selectedID, session.row(of: selected) != nil {
-                commitIDBar.refresh(session: session)
+                refreshBars()
             } else if let first = session.id(at: 0) {
                 let preferred = requestedID ?? session.refs.mainHeadID
                 select(preferred.flatMap { session.row(of: $0) != nil ? $0 : nil } ?? first, record: false)
@@ -205,10 +237,10 @@ final class MainWindowController: NSWindowController {
             listController.refresh()
             if let requestedID, session.row(of: requestedID) != nil { select(requestedID, record: false) }
             else if session.selection.selectedID == nil, let first = session.id(at: 0) { select(first, record: false) }
-            commitIDBar.refresh(session: session)
-            commitIDBar.status.setReading(false)
+            refreshBars()
+            statusBar.setReading(false)
         case .loadFailed(let message):
-            commitIDBar.status.setReading(false)
+            statusBar.setReading(false)
             Alerts(environment: environment).errorPopup(message, parent: window)
         case .refsChanged: listController.refresh()
         }
@@ -218,12 +250,17 @@ final class MainWindowController: NSWindowController {
         guard session.row(of: id) != nil else { return }
         session.selection = session.selection.selecting(id, scrollPosition: currentDiffScrollPosition(), record: record || session.selection.history.entries.isEmpty)
         listController.restoreSelection(scroll: true)
-        commitIDBar.refresh(session: session)
+        refreshBars()
         if settings.autoCopy {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(id.abbreviated(settings.autoSelLen), forType: .string)
         }
         onSelection?(id)
+    }
+
+    private func refreshBars() {
+        statusBar.refresh(session: session)
+        searchBar.refresh(session: session)
     }
 
     private func stepHistory(forward: Bool) {

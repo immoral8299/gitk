@@ -32,9 +32,8 @@ import Testing
         session.selection = session.selection.selecting(commit.id)
         controller.refresh()
         #expect(controller.tableView.selectedRow == 0)
-        let bar = CommitIDBar(font: .monospacedSystemFont(ofSize: 12, weight: .regular))
-        bar.refresh(session: session)
-        #expect(bar.field.stringValue == commit.id.hex)
-        #expect(bar.counter.stringValue == "1 / 1")
+        let status = StatusBar()
+        status.refresh(session: session)
+        #expect(status.rowLabel.stringValue == "\(L("Row")) 1 / 1")
     }
 }

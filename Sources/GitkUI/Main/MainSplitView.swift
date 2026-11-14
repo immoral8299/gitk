@@ -9,12 +9,18 @@ import GitkCore
 ///
 /// Port of gitk/gitk 2451–2458 (`geometry(topheight)` and friends, in terms of
 /// `linespc` and `charspc`) and of `setcoords` (8803–8804): `linespc` is the
-/// main font's line height and `charspc` the width of "m".
+/// main font's line height and `charspc` the width of "m". The D16 layout adds
+/// the search strip, the details sidebar and the status strip around them.
 struct MainLayoutMetrics: Equatable {
     var linespc: CGFloat
     var charspc: CGFloat
-    /// Height of a placeholder bar (the real bars arrive with tasks 10.x and 12.x).
-    var barHeight: CGFloat = 28
+    /// Height of the search strip when it is a content row (no unified titlebar).
+    var searchBarHeight: CGFloat = 36
+    var statusBarHeight: CGFloat = 22
+    var sidebarWidth: CGFloat = 320
+    var sidebarMinWidth: CGFloat = 220
+    /// Below this content width the sidebar collapses (D16 "Small windows").
+    var narrowWidth: CGFloat = 700
 
     var topHeight: CGFloat { 15 * linespc }
     var topWidth: CGFloat { 80 * charspc }
@@ -23,16 +29,15 @@ struct MainLayoutMetrics: Equatable {
     /// `pwsash0` and `pwsash1`: x positions of the two history column dividers.
     var sash0: CGFloat { 40 * charspc }
     var sash1: CGFloat { 60 * charspc }
-
-    /// Height of the top half: the history area plus the Commit ID bar and find bar.
-    var topPaneHeight: CGFloat { topHeight + 2 * barHeight }
-    /// Height of the bottom half: two control rows plus the details text.
-    var bottomPaneHeight: CGFloat { botHeight + 2 * barHeight }
     var dividerThickness: CGFloat { 1 }
+    /// The history list keeps at least a few rows when the diff pane grows.
+    var listMinHeight: CGFloat { 4 * linespc }
 
-    /// Content size of a window that shows the defaults without resizing.
+    /// Content size of a window that shows the defaults without resizing: the
+    /// list over an equally tall diff pane, the sidebar beside them.
     var windowContentSize: NSSize {
-        NSSize(width: topWidth, height: topPaneHeight + dividerThickness + bottomPaneHeight)
+        NSSize(width: topWidth + dividerThickness + sidebarWidth,
+               height: searchBarHeight + topHeight + dividerThickness + botHeight + statusBarHeight)
     }
 
     init(linespc: CGFloat, charspc: CGFloat) {
@@ -67,242 +72,201 @@ struct MainLayoutMetrics: Equatable {
     }
 }
 
-/// A labelled box standing in for a pane whose real view comes in a later task.
+/// An empty content pane, used until a pane's real view is installed (the diff
+/// pane stays empty until a commit is selected).
 final class PlaceholderPane: NSView {
     let name: String
-    private let label: NSTextField
 
-    init(name: String, font: NSFont) {
+    init(name: String) {
         self.name = name
-        label = NSTextField(labelWithString: name)
         super.init(frame: .zero)
-        label.font = font
-        label.textColor = .secondaryLabelColor
-        label.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(label)
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor),
-        ])
         wantsLayer = true
-        layer?.borderWidth = 1
+        setAccessibilityLabel(name)
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
     override func updateLayer() {
-        layer?.borderColor = NSColor.separatorColor.cgColor
         layer?.backgroundColor = NSColor.textBackgroundColor.cgColor
     }
 
     override var wantsUpdateLayer: Bool { true }
 }
 
-/// Lays out `rows` top to bottom by frame: fixed-height rows keep their height
-/// and the rest share what remains. Frame layout keeps the split views' default
-/// divider positions exact at the first layout pass.
-final class ColumnView: NSView {
-    struct Row {
-        var view: NSView
-        var height: CGFloat?
+/// The main window's content (design D16): an optional search row, then the
+/// history list over the diff pane on the left and the details sidebar on the
+/// right, with the status strip along the bottom.
+///
+/// Replaces the structure of gitk's `makewindow` (gitk/gitk 2374–2913): the
+/// panes are gitk's, relocated. On systems with a unified titlebar the search
+/// bar lives in the toolbar instead and `topInset` keeps content below it.
+final class MainSplitView: NSView, NSSplitViewDelegate {
+    let metrics: MainLayoutMetrics
+    /// Left column | details sidebar.
+    let contentSplit = NSSplitView()
+    /// History list over the diff pane.
+    let listDiffSplit = NSSplitView()
+    let sidebar = DetailsSidebar()
+    let statusBar = StatusBar()
+    private(set) var listPane: NSView = PlaceholderPane(name: "History list")
+    private(set) var diffPane: NSView = PlaceholderPane(name: "Diff")
+    private(set) var searchRow: NSView?
+    private var appliedDefaultSizes = false
+    /// Set once the default divider positions are in place; until then
+    /// NSSplitView's own initial distribution must not be remembered.
+    private var defaultsInPlace = false
+    private var sidebarWidth: CGFloat
+
+    /// Space taken by a transparent unified titlebar above the content.
+    var topInset: CGFloat = 0 { didSet { if topInset != oldValue { needsLayout = true } } }
+    /// Set by the close button and View → Details Sidebar.
+    var sidebarHiddenByUser = false { didSet { needsLayout = true } }
+    /// True while the sidebar is shown (not closed and not collapsed by width).
+    private(set) var isSidebarShown = true
+    var onSidebarClose: (() -> Void)?
+
+    init(metrics: MainLayoutMetrics) {
+        self.metrics = metrics
+        sidebarWidth = metrics.sidebarWidth
+        super.init(frame: NSRect(origin: .zero, size: metrics.windowContentSize))
+        autoresizingMask = [.width, .height]
+
+        listDiffSplit.isVertical = false
+        listDiffSplit.dividerStyle = .thin
+        listDiffSplit.delegate = self
+        listDiffSplit.addArrangedSubview(listPane)
+        listDiffSplit.addArrangedSubview(diffPane)
+
+        contentSplit.isVertical = true
+        contentSplit.dividerStyle = .thin
+        contentSplit.delegate = self
+        contentSplit.addArrangedSubview(listDiffSplit)
+        contentSplit.addArrangedSubview(sidebar)
+
+        sidebar.onClose = { [weak self] in self?.onSidebarClose?() }
+        addSubview(contentSplit)
+        addSubview(statusBar)
     }
 
-    var rows: [Row] = [] {
-        didSet {
-            oldValue.forEach { $0.view.removeFromSuperview() }
-            rows.forEach { addSubview($0.view) }
-            needsLayout = true
-        }
-    }
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
     override var isFlipped: Bool { true }
 
-    override func layout() {
-        super.layout()
-        let fixed = rows.reduce(CGFloat(0)) { $0 + ($1.height ?? 0) }
-        let flexCount = rows.filter { $0.height == nil }.count
-        let flex = flexCount > 0 ? max(0, bounds.height - fixed) / CGFloat(flexCount) : 0
-        var y: CGFloat = 0
-        for row in rows {
-            let h = row.height ?? flex
-            row.view.frame = NSRect(x: 0, y: y, width: bounds.width, height: h)
-            y += h
-        }
-    }
-}
-
-/// The Patch/Tree switch row (gitk `.bright.mode`).
-final class ModeBar: NSView {
-    private let buttons: [NSButton]
-
-    init(_ buttons: NSButton...) {
-        self.buttons = buttons
-        super.init(frame: .zero)
-        buttons.forEach { addSubview($0) }
+    /// Puts the search bar in the first content row (no unified titlebar).
+    func installSearchRow(_ view: NSView) {
+        searchRow?.removeFromSuperview()
+        let row = Chrome.bar(view)
+        searchRow = row
+        addSubview(row)
+        needsLayout = true
     }
 
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    func installList(_ view: NSView) {
+        listDiffSplit.replaceSubview(listPane, with: view)
+        listPane = view
+    }
+
+    func installDiff(_ view: NSView) {
+        listDiffSplit.replaceSubview(diffPane, with: view)
+        diffPane = view
+    }
 
     override func layout() {
-        super.layout()
-        var x: CGFloat = 8
-        for b in buttons {
-            let size = b.fittingSize
-            b.frame = NSRect(
-                x: x, y: (bounds.height - size.height) / 2, width: size.width, height: size.height)
-            x += size.width + 12
+        var y = topInset
+        if let searchRow {
+            searchRow.frame = NSRect(x: 0, y: y, width: bounds.width, height: metrics.searchBarHeight)
+            y += metrics.searchBarHeight
         }
-    }
-}
-
-/// The main window's content: gitk's `.ctop` vertical paned window.
-///
-/// Mirrors the structure of `makewindow` (gitk/gitk 2374–2913, structure only):
-/// - top: the history area (three columns in a horizontal split, `pwclist`),
-///   the Commit ID bar and the find bar;
-/// - bottom: a horizontal split (`pwbottom`) of the details pane (diff controls
-///   on top) and the file list (Patch/Tree switch on top).
-///
-/// Every pane except the Patch/Tree switch is a placeholder for now.
-final class MainSplitView: NSSplitView {
-    let metrics: MainLayoutMetrics
-    let historySplit = NSSplitView()
-    let bottomSplit = NSSplitView()
-    let patchButton: NSButton
-    let treeButton: NSButton
-    private let topArea = ColumnView()
-    private let bottomLeft = ColumnView()
-    private let bottomRight = ColumnView()
-    private var appliedDefaultSizes = false
-
-    init(metrics: MainLayoutMetrics, uiFont: NSFont) {
-        self.metrics = metrics
-        patchButton = NSButton(radioButtonWithTitle: L("Patch"), target: nil, action: nil)
-        treeButton = NSButton(radioButtonWithTitle: L("Tree"), target: nil, action: nil)
-        super.init(frame: NSRect(origin: .zero, size: metrics.windowContentSize))
-        isVertical = false
-        dividerStyle = .thin
-        autoresizingMask = [.width, .height]
-        buildTop(uiFont: uiFont)
-        buildBottom(uiFont: uiFont)
-        topArea.frame = NSRect(x: 0, y: 0, width: metrics.topWidth, height: metrics.topPaneHeight)
-        bottomSplit.frame = NSRect(x: 0, y: metrics.topPaneHeight + 1, width: metrics.topWidth, height: metrics.bottomPaneHeight)
-        addArrangedSubview(topArea)
-        addArrangedSubview(bottomSplit)
-        setHoldingPriority(.defaultLow, forSubviewAt: 0)
-        setHoldingPriority(.defaultHigh, forSubviewAt: 1)
-        patchButton.state = .on
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
-
-    private func placeholder(_ name: String, _ font: NSFont) -> PlaceholderPane {
-        PlaceholderPane(name: name, font: font)
-    }
-
-    /// Stacks `views` top to bottom inside `container`; a view with a height gets
-    /// that height, the others share the rest.
-    private func stack(_ views: [(NSView, CGFloat?)], in container: ColumnView) {
-        container.rows = views.map { ColumnView.Row(view: $0.0, height: $0.1) }
-    }
-
-    private func buildTop(uiFont: NSFont) {
-        historySplit.isVertical = true
-        historySplit.dividerStyle = .thin
-        historySplit.frame = NSRect(x: 0, y: 0, width: metrics.topWidth, height: metrics.topHeight)
-        for (index, name) in ["History: graph and subject", "History: author", "History: date"].enumerated() {
-            let pane = placeholder(name, uiFont)
-            pane.frame = NSRect(x: CGFloat(index) * metrics.topWidth / 3, y: 0, width: metrics.topWidth / 3, height: metrics.topHeight)
-            historySplit.addArrangedSubview(pane)
-        }
-        stack(
-            [
-                (historySplit, nil),
-                (placeholder("Commit ID bar", uiFont), metrics.barHeight),
-                (placeholder("Find bar", uiFont), metrics.barHeight),
-            ], in: topArea)
-    }
-
-    private func buildBottom(uiFont: NSFont) {
-        bottomSplit.isVertical = true
-        bottomSplit.dividerStyle = .thin
-        stack(
-            [
-                (placeholder("Search bar", uiFont), metrics.barHeight),
-                (placeholder("Diff controls bar", uiFont), metrics.barHeight),
-                (placeholder("Details text", uiFont), nil),
-            ], in: bottomLeft)
-
-        let modeBar = ModeBar(patchButton, treeButton)
-        patchButton.target = self
-        treeButton.target = self
-        patchButton.action = #selector(modeChanged(_:))
-        treeButton.action = #selector(modeChanged(_:))
-        stack(
-            [
-                (modeBar, metrics.barHeight),
-                (placeholder("File list", uiFont), nil),
-            ], in: bottomRight)
-
-        bottomLeft.frame = NSRect(x: 0, y: 0, width: metrics.botWidth, height: metrics.bottomPaneHeight)
-        bottomRight.frame = NSRect(x: metrics.botWidth + 1, y: 0, width: metrics.topWidth - metrics.botWidth - 1, height: metrics.bottomPaneHeight)
-        bottomSplit.addArrangedSubview(bottomLeft)
-        bottomSplit.addArrangedSubview(bottomRight)
-        bottomSplit.setHoldingPriority(.defaultLow, forSubviewAt: 0)
-        bottomSplit.setHoldingPriority(.defaultHigh, forSubviewAt: 1)
-    }
-
-    /// Radio buttons in one superview group automatically only when they share a
-    /// parent and action; this keeps them exclusive.
-    @objc private func modeChanged(_ sender: NSButton) {
-        patchButton.state = sender === patchButton ? .on : .off
-        treeButton.state = sender === treeButton ? .on : .off
-    }
-
-    /// Applies gitk's default divider positions once there is room for them.
-    /// Port of the `<Map>` bindings at gitk/gitk 2486–2489 and 2748–2755
-    /// (`sashpos` from `topheight`, `botwidth`, `pwsash0`, `pwsash1`).
-    override func layout() {
+        let statusHeight = metrics.statusBarHeight
+        statusBar.frame = NSRect(x: 0, y: bounds.height - statusHeight, width: bounds.width, height: statusHeight)
+        contentSplit.frame = NSRect(x: 0, y: y, width: bounds.width, height: max(0, bounds.height - statusHeight - y))
+        updateSidebarVisibility()
         super.layout()
-        guard !appliedDefaultSizes, bounds.width > 0, bounds.height > 0 else { return }
+        guard !appliedDefaultSizes, contentSplit.bounds.width > 0, contentSplit.bounds.height > 0 else { return }
         appliedDefaultSizes = true
-        // NSSplitView distributes the initial sizes itself during this pass; set
-        // gitk's positions right after it, on the next run-loop turn.
+        // NSSplitView distributes the initial sizes during this pass; put the
+        // dividers in place right after it.
         DispatchQueue.main.async { [self] in applyDefaultSizes() }
     }
 
-    /// Puts the dividers at absolute positions using NSSplitView's native sizing.
-    static func place(_ split: NSSplitView, leading: [CGFloat]) {
-        split.adjustSubviews()
-        for (index, position) in leading.enumerated() {
-            split.setPosition(position, ofDividerAt: index)
+    /// D16 "Small windows": below `narrowWidth` the sidebar collapses first.
+    private func updateSidebarVisibility() {
+        let show = !sidebarHiddenByUser && bounds.width >= metrics.narrowWidth
+        guard show != isSidebarShown else { return }
+        isSidebarShown = show
+        sidebar.isHidden = !show
+        contentSplit.adjustSubviews()
+        if show { placeSidebar() }
+    }
+
+    private func placeSidebar() {
+        let width = min(sidebarWidth, max(metrics.sidebarMinWidth, contentSplit.bounds.width / 2))
+        contentSplit.setPosition(contentSplit.bounds.width - width - contentSplit.dividerThickness, ofDividerAt: 0)
+    }
+
+    /// The list on top, the diff pane below at half the height, the sidebar at
+    /// its default width.
+    func applyDefaultSizes() {
+        contentSplit.adjustSubviews()
+        if isSidebarShown { placeSidebar() }
+        listDiffSplit.adjustSubviews()
+        listDiffSplit.setPosition(floor((listDiffSplit.bounds.height - listDiffSplit.dividerThickness) / 2), ofDividerAt: 0)
+        layoutSubtreeIfNeeded()
+        defaultsInPlace = true
+    }
+
+    // MARK: NSSplitViewDelegate
+
+    func splitView(_ splitView: NSSplitView, constrainMinCoordinate proposedMinimumPosition: CGFloat, ofSubviewAt dividerIndex: Int) -> CGFloat {
+        splitView === listDiffSplit ? max(proposedMinimumPosition, metrics.listMinHeight) : proposedMinimumPosition
+    }
+
+    func splitView(_ splitView: NSSplitView, constrainMaxCoordinate proposedMaximumPosition: CGFloat, ofSubviewAt dividerIndex: Int) -> CGFloat {
+        guard splitView === contentSplit else { return proposedMaximumPosition }
+        return min(proposedMaximumPosition, splitView.bounds.width - metrics.sidebarMinWidth - splitView.dividerThickness)
+    }
+
+    /// Window resizes: the sidebar keeps its width; the diff pane gives way
+    /// before the history list when the height shrinks (D16 "Small windows").
+    func splitView(_ splitView: NSSplitView, resizeSubviewsWithOldSize oldSize: NSSize) {
+        let d = splitView.dividerThickness
+        let views = splitView.arrangedSubviews
+        guard views.count == 2 else { splitView.adjustSubviews(); return }
+        let (first, second) = (views[0], views[1])
+        if splitView === contentSplit {
+            let height = splitView.bounds.height
+            guard !second.isHidden else {
+                first.frame = NSRect(x: 0, y: 0, width: splitView.bounds.width, height: height)
+                return
+            }
+            let total = splitView.bounds.width - d
+            let side = min(second.frame.width > 0 ? second.frame.width : sidebarWidth, max(0, total - metrics.sidebarMinWidth))
+            first.frame = NSRect(x: 0, y: 0, width: total - side, height: height)
+            second.frame = NSRect(x: total - side + d, y: 0, width: side, height: height)
+        } else {
+            let width = splitView.bounds.width
+            let total = max(0, splitView.bounds.height - d)
+            let oldTotal = max(1, oldSize.height - d)
+            var top = first.frame.height
+            if total >= oldTotal {
+                top = (top / oldTotal * total).rounded()
+            } else {
+                // The list keeps its height while the diff pane shrinks to two
+                // lines; only then does the list give way.
+                let diffMin = min(metrics.linespc * 2, max(0, total - metrics.listMinHeight))
+                top = min(top, total - diffMin)
+            }
+            top = min(max(0, top), total)
+            first.frame = NSRect(x: 0, y: 0, width: width, height: top)
+            second.frame = NSRect(x: 0, y: top + d, width: width, height: total - top)
         }
     }
 
-    func installHistory(_ view: NSView, commitBar: NSView, findBar: NSView? = nil) {
-        // Only the top control strip gets the native backdrop (design D15); the
-        // content panes and the remaining bars stay opaque.
-        topArea.rows = [ColumnView.Row(view: view, height: nil),
-                        ColumnView.Row(view: Chrome.bar(commitBar), height: metrics.barHeight),
-                        ColumnView.Row(view: Chrome.bar(findBar ?? topArea.rows[2].view), height: metrics.barHeight)]
-    }
-
-    func installDetails(_ details: NSView, controls: NSView? = nil, search: NSView? = nil, files: NSView? = nil) {
-        bottomLeft.rows = [ColumnView.Row(view: search ?? bottomLeft.rows[0].view, height: metrics.barHeight),
-                           ColumnView.Row(view: controls ?? bottomLeft.rows[1].view, height: metrics.barHeight),
-                           ColumnView.Row(view: details, height: nil)]
-        if let files { bottomRight.rows = [bottomRight.rows[0], ColumnView.Row(view: files, height: nil)] }
-    }
-
-    func applyDefaultSizes() {
-        Self.place(self, leading: [metrics.topPaneHeight])
-        topArea.layoutSubtreeIfNeeded()
-        bottomSplit.layoutSubtreeIfNeeded()
-        Self.place(bottomSplit, leading: [metrics.botWidth])
-        Self.place(historySplit, leading: [metrics.sash0, metrics.sash1])
-        layoutSubtreeIfNeeded()
+    func splitViewDidResizeSubviews(_ notification: Notification) {
+        guard (notification.object as? NSSplitView) === contentSplit, isSidebarShown,
+              defaultsInPlace, sidebar.frame.width >= metrics.sidebarMinWidth else { return }
+        sidebarWidth = sidebar.frame.width
     }
 }

@@ -80,7 +80,10 @@ final class Snapshot {
     func run(window: NSWindow) async -> Never {
         applySize(to: window)
         await ready(window)
-        guard let view = window.contentView, let data = Snapshot.pngData(of: view) else {
+        // With a unified titlebar the toolbar sits in the window frame view, which
+        // then has the content view's size; render it so the titlebar is included.
+        let frameView = window.styleMask.contains(.fullSizeContentView) ? window.contentView?.superview : nil
+        guard let view = frameView ?? window.contentView, let data = Snapshot.pngData(of: view) else {
             FileHandle.standardError.write(Data("gitk: snapshot failed: cannot render window\n".utf8))
             exit(1)
         }

@@ -22,7 +22,7 @@ enum Chrome {
     /// Wraps a control strip in the platform's translucent background.
     ///
     /// Use it only for the window's own controls, not for panes that show
-    /// content. The returned view is still frame-sized by `ColumnView`; the bar
+    /// content. The returned view is frame-sized by its container; the bar
     /// content fills it and stays the view callers hold on to.
     static func bar(_ content: NSView, cornerRadius: CGFloat = 8) -> NSView {
         if content is BarChrome { return content }
@@ -37,14 +37,81 @@ enum Chrome {
         window.titlebarSeparatorStyle = .none
         window.tabbingMode = .disallowed
     }
+
+    /// Whether the search bar goes into a unified titlebar (D15/D16): only with
+    /// Liquid Glass. `GITK_SWIFT_CHROME=legacy` or `=unified` overrides this, so
+    /// both layouts can be checked with snapshots on one machine.
+    static func usesUnifiedTitlebar(environment: [String: String]) -> Bool {
+        switch environment["GITK_SWIFT_CHROME"] {
+        case "legacy": return false
+        case "unified": return true
+        default: return hasLiquidGlass
+        }
+    }
+
+    /// Makes the titlebar unified with the content and hosts `bar` in it as a
+    /// single flexible toolbar item, leaving the traffic lights at the left.
+    /// The content view then spans the whole window; lay content out below
+    /// `window.contentLayoutRect`.
+    static func installUnifiedTitlebar(_ window: NSWindow, bar: NSView) {
+        window.styleMask.insert(.fullSizeContentView)
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        let host = TitlebarToolbar(bar: bar)
+        window.toolbar = host.toolbar
+        window.toolbarStyle = .unified
+        objc_setAssociatedObject(window, &TitlebarToolbar.key, host, .OBJC_ASSOCIATION_RETAIN)
+        fitUnifiedTitlebar(window)
+    }
+
+    /// Stretches the titlebar search bar across the window; call after a resize.
+    /// Toolbars size custom-view items to their fitting width, so the width is
+    /// set explicitly from the space right of the traffic lights.
+    static func fitUnifiedTitlebar(_ window: NSWindow) {
+        guard let host = objc_getAssociatedObject(window, &TitlebarToolbar.key) as? TitlebarToolbar else { return }
+        let lights = window.standardWindowButton(.zoomButton).map { $0.frame.maxX } ?? 70
+        host.width.constant = max(320, window.frame.width - lights - 32)
+    }
+}
+
+/// An `NSToolbar` with one item: the search bar, stretched across the titlebar.
+@MainActor
+private final class TitlebarToolbar: NSObject, NSToolbarDelegate {
+    nonisolated(unsafe) static var key = 0
+    static let itemID = NSToolbarItem.Identifier("gitk.search")
+    let toolbar = NSToolbar(identifier: "gitk.main")
+    let bar: NSView
+    let width: NSLayoutConstraint
+
+    init(bar: NSView) {
+        self.bar = bar
+        width = bar.widthAnchor.constraint(equalToConstant: 600)
+        super.init()
+        toolbar.delegate = self
+        toolbar.displayMode = .iconOnly
+        toolbar.allowsUserCustomization = false
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { [Self.itemID] }
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { [Self.itemID] }
+
+    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
+                 willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+        item.view = bar
+        item.visibilityPriority = .high
+        bar.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([width, bar.heightAnchor.constraint(equalToConstant: 30)])
+        return item
+    }
 }
 
 /// A bar drawn over a translucent backdrop.
 ///
 /// `NSGlassEffectView` is used on macOS 26 and newer; older systems use
 /// `NSVisualEffectView` with the header material. The content is a sibling of
-/// the backdrop rather than a `contentView`, because `ColumnView` sizes rows by
-/// frame and needs the bar to occupy the full row.
+/// the backdrop rather than a `contentView`, because containers size rows by
+/// frame and need the bar to occupy the full row.
 @MainActor
 final class BarChrome: NSView {
     let content: NSView
