@@ -15,7 +15,10 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
     var font: NSFont
     var highlightedIDs = Set<ObjectID>()
     var findQuery = FindQuery()
+    /// Colours, circle colours and graph limits for the graph column.
+    var settings = UISettings()
     private var updatingSelection = false
+    private var colors: GraphColors?
 
     init(session: ViewSession, font: NSFont) {
         self.session = session
@@ -51,26 +54,67 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
                     tzOffsetSeconds: store.authorTZOffset(of: index), format: dateFormat)]
     }
 
+    /// The colour assigner for the current layout; a reload replaces the layout.
+    private func graphColors() -> GraphColors {
+        if let colors, colors.layout === session.layout { return colors }
+        let made = GraphColors(layout: session.layout, palette: settings.colors)
+        colors = made
+        return made
+    }
+
+    /// Text of one cell, bold for find matches, with matched ranges highlighted.
+    private func cellText(_ value: String, position: Int, row: Int) -> NSAttributedString {
+        let cellFont = session.id(at: row).map { highlightedIDs.contains($0) } == true
+            ? NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask) : font
+        let text = NSMutableAttributedString(string: value, attributes: [.font: cellFont, .foregroundColor: NSColor.labelColor])
+        let eligible = (position < 2 && findQuery.field == .allFields) || (position == 0 && findQuery.field == .headline)
+            || (position == 1 && findQuery.field == .author)
+        if eligible {
+            for range in findQuery.matches(in: value) {
+                text.addAttribute(.backgroundColor, value: NSColor.yellow, range: NSRange(range, in: value))
+            }
+        }
+        return text
+    }
+
+    /// Column 0: the graph, ref labels and headline (gitk's `canv`), drawn from
+    /// `GraphRowGeometry`. Rows are laid out for the visible range first, as
+    /// gitk's `drawvisible` does, so colours follow gitk's drawing order.
+    private func graphCell(row: Int, column: NSTableColumn, headline: String) -> GraphCellView {
+        let cell = (tableView.makeView(withIdentifier: column.identifier, owner: self) as? GraphCellView) ?? GraphCellView()
+        cell.identifier = column.identifier
+        let visible = tableView.rows(in: scrollView.contentView.documentVisibleRect)
+        let first = min(row, visible.location)
+        session.layout.ensureLaid(visibleRows: first..<max(row + 1, visible.location + visible.length))
+        let lineSpacing = Double(tableView.rowHeight)
+        let width = Double(column.width)
+        let labelFont = font
+        let geometry = GraphRowGeometry.make(
+            row: row, layout: session.layout, colors: graphColors(), refs: session.refs,
+            columnWidth: width, maxWidth: settings.maxWidth, maxGraphPct: settings.maxGraphPct,
+            lineSpacing: lineSpacing)?
+            .addingRefLabels(refs: session.refs, store: session.store, columnWidth: width, lineSpacing: lineSpacing) { text, bold in
+                let measured = bold ? NSFontManager.shared.convert(labelFont, toHaveTrait: .boldFontMask) : labelFont
+                return Double((text as NSString).size(withAttributes: [.font: measured]).width)
+            }
+        cell.font = font
+        cell.settings = settings
+        cell.geometry = geometry
+        cell.attributedHeadline = cellText(headline, position: 0, row: row)
+        return cell
+    }
+
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         guard let column = tableColumn,
               let position = tableView.tableColumns.firstIndex(of: column),
               let values = values(at: row) else { return nil }
+        if position == 0 { return graphCell(row: row, column: column, headline: values[0]) }
         let identifier = column.identifier
         let field = (tableView.makeView(withIdentifier: identifier, owner: self) as? NSTextField)
             ?? NSTextField(labelWithString: "")
         field.identifier = identifier
         field.stringValue = values[position]
-        field.font = session.id(at: row).map { highlightedIDs.contains($0) } == true
-            ? NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask) : font
-        let text = NSMutableAttributedString(string: values[position], attributes: [.font: field.font ?? font])
-        let eligible = (position < 2 && findQuery.field == .allFields) || (position == 0 && findQuery.field == .headline)
-            || (position == 1 && findQuery.field == .author)
-        if eligible {
-            for range in findQuery.matches(in: values[position]) {
-                text.addAttribute(.backgroundColor, value: NSColor.yellow, range: NSRange(range, in: values[position]))
-            }
-        }
-        field.attributedStringValue = text
+        field.attributedStringValue = cellText(values[position], position: position, row: row)
         field.lineBreakMode = .byTruncatingTail
         field.setAccessibilityLabel(values[position])
         return field

@@ -46,6 +46,7 @@ final class MainWindowController: NSWindowController {
         session.refsToHide = settings.refsToHide
         listController = CommitListController(session: session, font: MainLayoutMetrics.nsFont(settings.mainFont))
         listController.dateFormat = settings.dateTimeFormat
+        listController.settings = settings
         searchBar = SearchBar(session: session)
         let metrics = MainLayoutMetrics(mainFont: settings.mainFont)
         splitView = MainSplitView(metrics: metrics)

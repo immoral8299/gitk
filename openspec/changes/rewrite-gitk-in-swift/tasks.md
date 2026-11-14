@@ -326,11 +326,11 @@ Order of work:
 
 ## 10. Commit list UI
 
-- [ ] 10.1 [M] Implement `CommitListController`: an `NSTableView` with 3 resizable columns bound to `ViewSession` (subject, author, date via `TclDateFormat`), a fixed row height from the main font, and incremental row insertion — Verify: a snapshot of `linear` shows subjects, authors and dates; `swift test --filter CommitListDataSourceTests` checks row values.
+- [x] 10.1 [M] Implement `CommitListController`: an `NSTableView` with 3 resizable columns bound to `ViewSession` (subject, author, date via `TclDateFormat`), a fixed row height from the main font, and incremental row insertion — Verify: a snapshot of `linear` shows subjects, authors and dates; `swift test --filter CommitListDataSourceTests` checks row values.
   - Files: `Sources/GitkUI/CommitList/CommitListController.swift`, tests.
   - Needs: 9.5, 8.5, 3.9.
   - Spec: commit-list "Synchronized scrolling", "Date format with timezone".
-- [ ] 10.2 [M] Implement `GraphCellView`, which draws `GraphRowGeometry` (segments, dots, arrows, colours, line thickness) and the subject text at `textX` — Verify: snapshots of `merge-simple`, `octopus`, `long-lines` and `local-changes` show the lines, arrows and coloured dots as the spec describes; attach the PNGs to the task report.
+- [x] 10.2 [M] Implement `GraphCellView`, which draws `GraphRowGeometry` (segments, dots, arrows, colours, line thickness) and the subject text at `textX` — Verify: snapshots of `merge-simple`, `octopus`, `long-lines` and `local-changes` show the lines, arrows and coloured dots as the spec describes; attach the PNGs to the task report.
   - Files: `Sources/GitkUI/CommitList/GraphCellView.swift`.
   - Needs: 10.1, 7.6.
 - [ ] 10.3 [M] Implement `RefLabelDrawing`: draw the labels from the geometry with the head, remote, tag and other colours and a bold current branch; clicking a tag label shows the tag (calls into 11.12); secondary-clicking a head label opens the head menu (filled in by 16.13) — Verify: a snapshot of `tags-notes` shows the labels; `swift test --filter RefLabelHitTests` checks hit-testing.
