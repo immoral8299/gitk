@@ -4,7 +4,7 @@ Every scenario in `openspec/changes/rewrite-gitk-in-swift/specs/**/spec.md`, and
 When you implement a scenario, fill in **Covered by** with a test (`SuiteName/testName`), a snapshot check, or a smoke step (`smoke-test.md #N`), and set **Status** to `covered`.
 Task 20.2 checks that no row is still `pending`.
 
-Total scenarios: 166
+Total scenarios: 168
 
 | Capability | Requirement | Scenario | Covered by | Status |
 |---|---|---|---|---|
@@ -17,6 +17,8 @@ Total scenarios: 166
 | cli-launch | Paths without a `--` separator | Bad revision |  | pending |
 | cli-launch | Repository discovery | Not a repository |  | pending |
 | cli-launch | Repository discovery | Started from a subdirectory |  | pending |
+| cli-launch | Repository argument | Open a repository by path | RepositoryArgumentTests/repositoryRootFromOutsideARepository | covered |
+| cli-launch | Repository argument | Subdirectory stays a path | RepositoryArgumentTests/subdirectoryOfCurrentRepositoryStaysAPath | covered |
 | cli-launch | Environment and version checks | Git too old |  | pending |
 | cli-launch | Environment and version checks | SHA-256 repository |  | pending |
 | cli-launch | Environment and version checks | Unknown hash algorithm |  | pending |

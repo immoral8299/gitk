@@ -51,6 +51,17 @@ The app SHALL find the repository the way git does from the current working dire
 - **WHEN** the app is started in a subdirectory of a work tree
 - **THEN** the whole repository's history is shown, and repository-relative paths are handled correctly in path filters and external tools
 
+### Requirement: Repository argument
+As an addition to gitk's command line, the first argument SHALL open another repository when it comes before any `--`, does not start with `-`, names a directory where git finds a repository, and either that directory is the top level of its work tree (or a git directory) or the working directory is not inside a repository. The app SHALL then run in that directory and treat the remaining arguments as gitk arguments. A subdirectory of the current repository SHALL remain a path limit.
+
+#### Scenario: Open a repository by path
+- **WHEN** the user runs `gitk-swift ~/code/other-repo --all` from any directory
+- **THEN** the window shows `other-repo` with all branches, as if started inside it
+
+#### Scenario: Subdirectory stays a path
+- **WHEN** the user runs `gitk-swift src` inside a repository whose `src` is an ordinary directory
+- **THEN** `src` limits the history to that path, as in gitk
+
 ### Requirement: Environment and version checks
 At startup the app SHALL check that `git` is version 2.20 or later. It SHALL detect the repository's object format (SHA-1 → 40 hex characters, SHA-256 → 64) and remove `GIT_TRACE` from the environment of the git processes it starts.
 

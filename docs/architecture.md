@@ -33,6 +33,7 @@ Recorded during implementation:
 - 2026-11-13, 14.1: Find's Regexp mode uses ICU (`NSRegularExpression`), not Tcl ARE. Differences such as `\m \M \y`, `***=` and embedded options are listed in `FindQuery.doesMatch`'s doc comment.
 - 2026-11-13, 16.1: Cherry-pick and revert also recognise current git's "files would be overwritten by merge:" list format for local-changes failures. gitk's `Entry '…'` pattern no longer matches git 2.54 output.
 - 2026-11-13, 2.5: `gui.encoding` defaults to UTF-8, standing in for Tcl's `[encoding system]`.
+- 2026-11-14, cli-launch: `gitk-swift <path-to-repo> [args]` opens that repository when the path is a repository's top level, or when the working directory is not in a repository (`RepositoryArgument`). gitk always uses the working directory; a subdirectory of the current repository is still a path limit.
 - 2026-11-14, 11.1/11.5: A colour setting that still has gitk's default value (window, text, diff, link, find, graph line, merge, commit dot and ref label colours) is drawn with the app's pastel theme (Catppuccin Latte in light mode, Mocha in dark mode), so the app reads well in both appearances. A colour set in Preferences or `settings.json` is used exactly (`Palette`, `Theme`).
 - 2026-11-14, 11.1: The details sidebar always wraps the message; `wrapcomment` only chooses word or character wrapping until 11.3.
 

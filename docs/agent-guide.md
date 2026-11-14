@@ -127,11 +127,10 @@ which must stay first.
 
 ## UI verification
 
-- Real repository: the app takes its repository from the working directory it
-  was started in (`git rev-parse --git-dir`); there is no `--repo` flag. So
-  `cd <repo> && "$(swift build --show-bin-path)/gitk-swift" [gitk args]`, or
-  `swift run --package-path <this checkout> gitk-swift` from inside the target
-  repository, which keeps the caller's working directory too. Set
+- Real repository: `swift run gitk-swift <repo> [gitk args]` opens `<repo>`
+  when it is a repository's top level (`RepositoryArgument`); otherwise the app
+  uses the working directory, like gitk
+  (`cd <repo> && "$(swift build --show-bin-path)/gitk-swift" [gitk args]`). Set
   `GITK_SWIFT_CONFIG_DIR` to a temp dir on every manual launch so the real
   settings are left alone.
 - Snapshot: `Tools/snapshot.sh <fixture> /tmp/out.png [gitk-swift args]` runs

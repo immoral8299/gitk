@@ -29,28 +29,25 @@ make release   # swift build -c release
 
 ## Run against any repository
 
-Like gitk, the app takes the repository from the working directory: it runs
-`git rev-parse --git-dir` where it was started. There is no `--repo` flag, so
-`cd` into the repository you want to look at. That also works from a
-subdirectory of the repository and from a linked worktree.
+Pass the repository as the first argument, or start the app inside it as with
+gitk (it runs `git rev-parse --git-dir` in the working directory). Starting in
+a subdirectory or a linked worktree works too.
 
 ```bash
+swift run gitk-swift ~/code/any-repo                  # that repository's history
+swift run gitk-swift ~/code/any-repo --all            # every branch and tag
+swift run gitk-swift ~/code/any-repo v1.0..v2.0 -- src/
+
 bin="$(swift build --show-bin-path)/gitk-swift"
-
-cd ~/code/any-repo && "$bin"                     # that repository's history
-cd ~/code/any-repo && "$bin" --all               # every branch and tag
-cd ~/code/any-repo/src && "$bin"                 # repository found from a subdirectory
-cd ~/code/any-repo && "$bin" v1.0..v2.0 -- src/  # a range, limited to paths
+cd ~/code/any-repo && "$bin"                          # gitk style: the working directory
+cd ~/code/any-repo && "$bin" src/                     # a subdirectory is a path limit
 ```
 
-Without knowing the build path, `swift run` works the same way: it keeps the
-caller's working directory, so the repository is still the one you `cd` into,
-not the gitk-swift checkout.
-
-```bash
-cd /path/to/repo
-swift run --package-path /path/to/gitk-swift gitk-swift
-```
+The first argument is taken as the repository only when it is the top level
+of a repository (or the working directory is not in one). A subdirectory of
+the current repository stays a path limit, as in `gitk src/`. `swift run`
+needs the gitk-swift checkout as its working directory, or
+`--package-path /path/to/gitk-swift`.
 
 After `make release`, the binary is at
 `"$(swift build -c release --show-bin-path)/gitk-swift"`.

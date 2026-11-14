@@ -40,7 +40,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `GITK_SWIFT_HEADLESS_ERRORS=1`, else to an alert; the exit status is 1.
     private func start() async {
         LanguageOverride.apply(environment: environment)
-        let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
+        // `gitk-swift <path-to-repo> [args]` opens that repository (RepositoryArgument).
+        let launchDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
+        let repository = await RepositoryArgument.extract(arguments, cwd: launchDirectory)
+        let cwd = repository.cwd
+        let arguments = repository.arguments
+        if cwd != launchDirectory { FileManager.default.changeCurrentDirectoryPath(cwd.path) }
         let alerts = Alerts(environment: environment)
 
         do {
