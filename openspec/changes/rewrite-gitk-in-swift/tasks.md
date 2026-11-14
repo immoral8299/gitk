@@ -399,7 +399,7 @@ Order of work:
   - Port: 8059–8103, 8203–8231.
   - Needs: 3.4.
   - Spec: diff-viewer "Unstaged row", "Index row", "Limited view".
-- [ ] 11.5 [M] Implement `DiffDocument` (Core model with file-section offsets) and `DiffRenderer` (UI attributes: diff colours and backgrounds, full-width file separators), with streaming append into a TextKit 1 `NSTextView` in the bottom pane below the history list — Verify: a snapshot of `merge-simple` (a non-merge commit selected) shows the sidebar, the coloured +/- lines and the file separators in the bottom pane; `swift test --filter DiffDocumentTests`.
+- [x] 11.5 [M] Implement `DiffDocument` (Core model with file-section offsets) and `DiffRenderer` (UI attributes: diff colours and backgrounds, full-width file separators), with streaming append into a TextKit 1 `NSTextView` in the bottom pane below the history list — Verify: a snapshot of `merge-simple` (a non-merge commit selected) shows the sidebar, the coloured +/- lines and the file separators in the bottom pane; `swift test --filter DiffDocumentTests`.
   - Files: `Sources/GitkCore/History/DiffDocument.swift`, `Sources/GitkUI/Details/DiffRenderer.swift`, tests.
   - Port: 8231–8328, 8603–8638.
   - Needs: 11.4, 11.1.

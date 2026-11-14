@@ -15,14 +15,8 @@ public struct DiffDocument: Sendable {
     public var sections: [DiffFileSection] { parser.sections }
     public var hiddenLineCount: Int { max(0, lines.count - lineLimit) }
 
-    /// Port of gitk proc `parseblobdiffline` (gitk/gitk 8231–8542).
-    public func appending(_ raw: Data) -> DiffDocument {
-        var result = self
-        result.lines.append(result.parser.parse(line: raw))
-        result.rawLines.append(raw)
-        return result
-    }
-
+    /// Port of gitk proc `parseblobdiffline` (gitk/gitk 8231–8542): classify one
+    /// streamed line and record file sections.
     public mutating func append(_ raw: Data) {
         lines.append(parser.parse(line: raw))
         rawLines.append(raw)
