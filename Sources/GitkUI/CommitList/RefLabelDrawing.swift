@@ -7,12 +7,20 @@ import GitkCore
 
 @MainActor
 enum RefLabelDrawing {
+    /// Branch and tag names are set in the monospaced system font, a point
+    /// smaller than the list font so they sit inside the row. Label widths
+    /// must be measured with this font too.
+    static func font(for listFont: NSFont, bold: Bool = false) -> NSFont {
+        NSFont.monospacedSystemFont(ofSize: max(9, listFont.pointSize - 1), weight: bold ? .bold : .regular)
+    }
+
     static func hitTest(_ x: CGFloat, labels: [GraphRowGeometry.RefLabel]) -> GraphRowGeometry.RefLabel? {
         labels.first { x >= $0.x && x < $0.x + $0.width }
     }
 
     /// Port of gitk proc `drawtags` (gitk/gitk 6753–6869).
-    static func draw(_ labels: [GraphRowGeometry.RefLabel], height: CGFloat, font: NSFont, settings: UISettings) {
+    static func draw(_ labels: [GraphRowGeometry.RefLabel], height: CGFloat, font listFont: NSFont, settings: UISettings) {
+        let font = Self.font(for: listFont)
         let delta = floor((height - 1) / 2)
         for label in labels {
             let isTag = label.kind == .tag || label.kind == .collapsedTags
@@ -39,7 +47,7 @@ enum RefLabelDrawing {
                 Palette.refBackground(settings, .remote).setFill()
                 NSRect(x: x + 1, y: 1, width: min(width, max(0, right - x - 1)), height: max(0, height - 2)).fill()
             }
-            let labelFont = label.isBold ? NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask) : font
+            let labelFont = Self.font(for: listFont, bold: label.isBold)
             let text: String
             if label.kind == .collapsedTags {
                 // gitk draws these untranslated (gitk/gitk 6776–6781).

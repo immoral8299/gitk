@@ -94,7 +94,8 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
             columnWidth: width, maxWidth: settings.maxWidth, maxGraphPct: settings.maxGraphPct,
             lineSpacing: lineSpacing)?
             .addingRefLabels(refs: session.refs, store: session.store, columnWidth: width, lineSpacing: lineSpacing) { text, bold in
-                let measured = bold ? NSFontManager.shared.convert(labelFont, toHaveTrait: .boldFontMask) : labelFont
+                // Measure with the font the labels are drawn in (monospaced).
+                let measured = RefLabelDrawing.font(for: labelFont, bold: bold)
                 return Double((text as NSString).size(withAttributes: [.font: measured]).width)
             }
         cell.font = font
