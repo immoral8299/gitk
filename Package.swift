@@ -23,7 +23,13 @@ let package = Package(
             resources: [.process("Resources")]
         ),
         // The app executable.
-        .executableTarget(name: "gitk-swift", dependencies: ["GitkCore", "GitkUI"]),
+        // The linker otherwise records SDK 14.0 (the deployment target), and AppKit
+        // then keeps the pre-macOS 26 look: no Liquid Glass toolbar or controls.
+        .executableTarget(
+            name: "gitk-swift", dependencies: ["GitkCore", "GitkUI"],
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-platform_version", "-Xlinker", "macos",
+                                           "-Xlinker", "14.0", "-Xlinker", "27.0"])]
+        ),
         // Dev tool: prints ordering + layout JSON for differential tests.
         .executableTarget(name: "gitk-core-dump", dependencies: ["GitkCore"]),
         // Dev tool: converts po/*.po into localized resources.

@@ -58,20 +58,19 @@ enum Chrome {
         window.styleMask.insert(.fullSizeContentView)
         window.titleVisibility = .hidden
         window.toolbar = toolbar
-        window.toolbarStyle = .unified
+        window.toolbarStyle = .unifiedCompact
     }
 
-    /// The details sidebar's backdrop: a floating, inset Liquid Glass panel on
-    /// macOS 26 and newer (as Finder's sidebar), the sidebar material edge to
-    /// edge before that.
+    /// The details sidebar's backdrop: docked edge to edge (not a floating
+    /// panel). Liquid Glass on macOS 26 and newer, the sidebar material before.
     static func sidebarBackground() -> SidebarPanel {
         if #available(macOS 26.0, *) {
             let glass = NSGlassEffectView()
             glass.style = .regular
-            glass.cornerRadius = 16
+            glass.cornerRadius = 0
             let content = FlippedContent()
             glass.contentView = content
-            return SidebarPanel(view: glass, content: content, inset: 8)
+            return SidebarPanel(view: glass, content: content, inset: 0)
         }
         let material = NSVisualEffectView()
         material.material = .sidebar
