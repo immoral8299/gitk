@@ -17,6 +17,13 @@ final class GraphCellView: NSTableCellView {
     var onHeadMenu: ((GraphRowGeometry.RefLabel, NSEvent) -> NSMenu?)?
 
     override var isFlipped: Bool { true }
+
+    // Views do not clip to their bounds by default since macOS 14; long ref
+    // labels must not spill into the Author and Date columns.
+    override var clipsToBounds: Bool {
+        get { true }
+        set {}
+    }
     private var originX: CGFloat { floor(3 + 0.5 * bounds.height) }
 
     private func point(_ value: GraphRowGeometry.Point) -> NSPoint {
