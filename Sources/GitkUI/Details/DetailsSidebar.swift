@@ -219,8 +219,8 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
             let isTag = tags.contains(ref)
             result.append(NSAttributedString(string: " \(ref) ", attributes: [
                 .font: font,
-                .foregroundColor: Palette.tk(isTag ? settings.tagFgColor : settings.headFgColor),
-                .backgroundColor: Palette.tk(isTag ? settings.tagBgColor : settings.headBgColor),
+                .foregroundColor: Palette.refForeground(settings, isTag ? .tag : .head),
+                .backgroundColor: Palette.refBackground(settings, isTag ? .tag : .head),
             ]))
         }
         return result

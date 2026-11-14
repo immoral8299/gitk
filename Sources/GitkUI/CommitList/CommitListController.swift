@@ -71,7 +71,7 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
             || (position == 1 && findQuery.field == .author)
         if eligible {
             for range in findQuery.matches(in: value) {
-                text.addAttribute(.backgroundColor, value: NSColor.yellow, range: NSRange(range, in: value))
+                text.addAttribute(.backgroundColor, value: Palette.found(settings), range: NSRange(range, in: value))
             }
         }
         return text

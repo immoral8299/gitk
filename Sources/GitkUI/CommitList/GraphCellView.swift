@@ -23,11 +23,6 @@ final class GraphCellView: NSTableCellView {
         NSPoint(x: originX + CGFloat(value.column) * bounds.height, y: CGFloat(value.y) * bounds.height)
     }
 
-    static func color(_ value: String) -> NSColor {
-        guard let rgba = TkColor.parse(value) else { return .textColor }
-        return NSColor(srgbRed: CGFloat(rgba.r) / 255, green: CGFloat(rgba.g) / 255, blue: CGFloat(rgba.b) / 255, alpha: CGFloat(rgba.a) / 255)
-    }
-
     private func lineColor(_ index: Int) -> NSColor {
         Palette.graphLine(settings, index)
     }
@@ -68,27 +63,27 @@ final class GraphCellView: NSTableCellView {
             path.line(to: NSPoint(x: left ? dotRect.maxX : dotRect.minX, y: dotRect.maxY))
             path.close()
         } else { path = NSBezierPath(ovalIn: dotRect) }
-        let fill: String
+        let fill: Palette.Dot
         switch geometry.dotStyle {
-        case .mainHead: fill = settings.mainHeadCircleColor
-        case .unstaged: fill = settings.workingFilesCircleColor
-        case .staged: fill = settings.indexCircleColor
-        case .boundary: fill = settings.circleColors.first ?? "white"
-        case .negative: fill = settings.circleColors.count > 2 ? settings.circleColors[2] : "gray"
-        default: fill = settings.circleColors.count > 1 ? settings.circleColors[1] : "blue"
+        case .mainHead: fill = .mainHead
+        case .unstaged: fill = .unstaged
+        case .staged: fill = .staged
+        case .boundary: fill = .boundary
+        case .negative: fill = .negative
+        default: fill = .normal
         }
-        Self.color(fill).setFill()
+        Palette.dot(settings, fill).setFill()
         path.fill()
-        Self.color(settings.circleOutlineColor).setStroke()
+        Palette.dotOutline(settings).setStroke()
         path.lineWidth = 1
         path.stroke()
         RefLabelDrawing.draw(geometry.labels, height: bounds.height, font: font, settings: settings)
         if geometry.hasNotes {
             let side = max(3, radius * 2 - 1)
             let rect = NSRect(x: CGFloat(geometry.textX) - bounds.height, y: bounds.midY - radius, width: side, height: side)
-            NSColor.yellow.setFill()
+            Palette.notesMarker(settings).setFill()
             rect.fill()
-            Self.color(settings.fgColor).setStroke()
+            Palette.dotOutline(settings).setStroke()
             NSBezierPath(rect: rect).stroke()
         }
         let text = NSMutableAttributedString(attributedString: attributedHeadline)

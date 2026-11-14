@@ -28,14 +28,15 @@ enum RefLabelDrawing {
                 path.line(to: NSPoint(x: x, y: height - delta - 1))
                 path.close()
             } else { path.appendRect(NSRect(x: x, y: 0, width: max(1, right - x), height: height - 1)) }
-            GraphCellView.color(isTag ? settings.tagBgColor : (label.kind == .other ? "#ddddff" : settings.headBgColor)).setFill()
+            let kind: Palette.Ref = isTag ? .tag : (label.kind == .other ? .other : .head)
+            Palette.refBackground(settings, kind).setFill()
             path.fill()
-            GraphCellView.color(isTag ? settings.tagOutlineColor : settings.headOutlineColor).setStroke()
+            Palette.refOutline(settings, kind).setStroke()
             path.lineWidth = 1
             path.stroke()
             if let prefix = label.remotePrefix {
                 let width = (prefix as NSString).size(withAttributes: [.font: font]).width
-                GraphCellView.color(settings.remoteBgColor).setFill()
+                Palette.refBackground(settings, .remote).setFill()
                 NSRect(x: x + 1, y: 1, width: min(width, max(0, right - x - 1)), height: max(0, height - 2)).fill()
             }
             let labelFont = label.isBold ? NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask) : font
@@ -45,7 +46,7 @@ enum RefLabelDrawing {
                 text = label.tagCount == 1 ? "tag..." : "\(label.tagCount) tags..."
             } else { text = label.text }
             (text as NSString).draw(at: NSPoint(x: x + (isTag ? delta : floor(delta / 2)), y: (height - labelFont.ascender + labelFont.descender) / 2 - 1),
-                withAttributes: [.font: labelFont, .foregroundColor: GraphCellView.color(isTag ? settings.tagFgColor : settings.headFgColor)])
+                withAttributes: [.font: labelFont, .foregroundColor: Palette.refForeground(settings, kind)])
         }
     }
 }
