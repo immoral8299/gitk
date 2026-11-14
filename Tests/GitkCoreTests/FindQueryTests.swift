@@ -12,10 +12,10 @@ import Testing
         return ObjectID(hex: String(repeating: "0", count: 40 - text.count) + text)!
     }
 
-    private func store() -> (CommitStore, CommitIndex) {
+    private func store(id: ObjectID? = nil) -> (CommitStore, CommitIndex) {
         let store = CommitStore()
         let c = ParsedCommit(
-            id: oid(1), parents: [], isBoundary: false, isUninteresting: false,
+            id: id ?? oid(1), parents: [], isBoundary: false, isUninteresting: false,
             side: nil, tree: oid(0xFFFF), authorName: Data("Alice Smith".utf8),
             authorEmail: Data("alice@example.com".utf8), authorEpoch: 1_577_836_800,
             authorTZ: "+0000", committerName: Data("Carol".utf8),
@@ -33,6 +33,21 @@ import Testing
         #expect(!exact.matches(commit: i, in: s))
         let wrongField = FindQuery(matchMode: .ignoreCase, field: .committer, pattern: "ALICE")
         #expect(!wrongField.matches(commit: i, in: s))
+    }
+
+    @Test(arguments: [40, 64])
+    func allFieldsIncludesFullAndShortCommitIDs(length: Int) throws {
+        let hex = "abcdef1234567" + String(repeating: "0", count: length - 13)
+        let id = try #require(ObjectID(hex: hex))
+        let (s, i) = store(id: id)
+        for pattern in [hex, String(hex.prefix(7))] {
+            #expect(FindQuery(pattern: pattern).matches(commit: i, in: s))
+        }
+        #expect(FindQuery(matchMode: .ignoreCase, pattern: "ABCDEF1").matches(commit: i, in: s))
+        #expect(FindQuery(matchMode: .regexp, pattern: "^abcdef[0-9]+").matches(commit: i, in: s))
+        #expect(!FindQuery(pattern: "fedcba").matches(commit: i, in: s))
+        #expect(!FindQuery(field: .headline, pattern: hex).matches(commit: i, in: s))
+        #expect(!FindQuery(type: .touchingPaths, pattern: hex).matches(commit: i, in: s))
     }
 
     @Test func invalidRegexpMatchesNothing() {

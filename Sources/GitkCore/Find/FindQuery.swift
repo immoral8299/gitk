@@ -22,7 +22,7 @@ public struct FindQuery: Sendable, Equatable {
 
     /// The "All fields / Headline / ..." drop-list (gitk `findloc`).
     public enum Field: Sendable, Equatable {
-        case allFields, headline, comments, author, committer
+        case allFields, headline, comments, author, committer, commitID
     }
 
     public var type: SearchType { didSet { recompile() } }
@@ -124,7 +124,7 @@ public struct FindQuery: Sendable, Equatable {
     /// authordate committer commitdate comments}`; the two dates have an
     /// empty field type and are never searched. "All fields" therefore covers
     /// headline, author (`Name <email>`), committer and comments (the full
-    /// message).
+    /// message). The Swift search also includes the commit ID.
     public func matches(commit index: CommitIndex, in store: CommitStore) -> Bool {
         !matchedFields(commit: index, in: store).isEmpty
     }
@@ -137,6 +137,7 @@ public struct FindQuery: Sendable, Equatable {
         func check(_ f: Field, _ text: () -> String) {
             if field == .allFields || field == f, doesMatch(text()) { out.append(f) }
         }
+        check(.commitID) { store.id(at: index).hex }
         check(.headline) { store.headline(at: index) }
         check(.author) { store.author(at: index) }
         check(.committer) { store.committer(at: index) }
