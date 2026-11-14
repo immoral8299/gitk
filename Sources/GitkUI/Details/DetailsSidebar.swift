@@ -118,7 +118,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
 
         let commitBody = Self.column([identity, idButton, refsLabel, rowsView], spacing: 8)
         commitBody.setCustomSpacing(2, after: idButton)
-        commitSection = SidebarSection(title: L("Commit"), body: commitBody)
+        commitSection = SidebarSection(title: L("Commit"), body: commitBody, showsDivider: false)
         messageSection = SidebarSection(title: L("Message"), body: Self.column([messageView, moreButton], spacing: 4))
         filesSection = SidebarSection(title: "", body: fileList.view, padded: false)
         filesSection.titleLabel.attributedStringValue = NSAttributedString()
@@ -177,10 +177,13 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         panel.view.frame = NSRect(x: inset, y: inset, width: max(0, bounds.width - 2 * inset),
                                   height: max(0, bounds.height - 2 * inset))
         panel.content.frame = panel.view.bounds
-        // Keep the content clear of the titlebar when the panel runs under it.
-        let top = max(0, safeAreaInsets.top - inset) + 6
+        // Inset the content, not the viewport, so scrolling runs under the titlebar.
+        let top = max(0, safeAreaInsets.top - inset)
         let content = panel.content.bounds
-        scrollView.frame = NSRect(x: 0, y: top, width: content.width, height: max(0, content.height - top))
+        scrollView.frame = content
+        if scrollView.contentInsets.top != top {
+            scrollView.contentInsets = NSEdgeInsets(top: top, left: 0, bottom: 0, right: 0)
+        }
     }
 
     // MARK: Content
@@ -220,7 +223,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         fullMessage = body
         messageExpanded = false
         showMessage()
-        scrollView.contentView.scroll(to: .zero)
+        scrollView.contentView.scroll(to: NSPoint(x: 0, y: -scrollView.contentInsets.top))
     }
 
     private func setText(_ view: AutoHeightTextView, _ text: NSAttributedString) {
@@ -465,7 +468,7 @@ final class SidebarSection: NSView {
     }
     var isExpanded = true { didSet { update() } }
 
-    init(title: String, body: NSView, padded: Bool = true) {
+    init(title: String, body: NSView, padded: Bool = true, showsDivider: Bool = true) {
         self.body = body
         super.init(frame: NSRect(x: 0, y: 0, width: 300, height: 40))
         translatesAutoresizingMaskIntoConstraints = false
@@ -499,6 +502,7 @@ final class SidebarSection: NSView {
         body.translatesAutoresizingMaskIntoConstraints = false
         let divider = NSBox()
         divider.boxType = .separator
+        divider.isHidden = !showsDivider
         divider.translatesAutoresizingMaskIntoConstraints = false
         addSubview(divider)
         addSubview(header)
@@ -516,7 +520,7 @@ final class SidebarSection: NSView {
             header.topAnchor.constraint(equalTo: topAnchor, constant: 1),
             header.leadingAnchor.constraint(equalTo: leadingAnchor),
             header.trailingAnchor.constraint(equalTo: trailingAnchor),
-            header.heightAnchor.constraint(equalToConstant: 30),
+            header.heightAnchor.constraint(equalToConstant: 27), // Important: exactly at 27 for it to aligned with commit table
             titleButton.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
             titleButton.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
             titleButton.topAnchor.constraint(equalTo: header.topAnchor),
