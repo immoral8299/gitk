@@ -261,7 +261,7 @@ Order of work:
   - Port: 363–587.
   - Needs: 2.2, 1.6.
   - Spec: cli-launch "Args command"; views "Merge in progress".
-- [ ] 8.4 [M] Implement `HistoryLoader`: build the `git log` command and stdin exactly as `start_rev_list` does, stream it, parse it off the main actor, and send batches (2,000 commits or 50ms) tagged with a generation number. `cancel()` kills the process — Verify: `swift test --filter HistoryLoaderTests` (`merge-simple` yields every commit; cancelling halfway on `huge` leaves no running child and no further batches).
+- [x] 8.4 [M] Implement `HistoryLoader`: build the `git log` command and stdin exactly as `start_rev_list` does, stream it, parse it off the main actor, and send batches (2,000 commits or 50ms) tagged with a generation number. `cancel()` kills the process — Verify: `swift test --filter HistoryLoaderTests` (`merge-simple` yields every commit; cancelling halfway on `huge` leaves no running child and no further batches).
   - Files: `Sources/GitkCore/History/HistoryLoader.swift`, tests.
   - Port: 587–720.
   - Needs: 8.3, 3.1, 2.3.
