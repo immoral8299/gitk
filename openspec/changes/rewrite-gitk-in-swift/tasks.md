@@ -484,7 +484,7 @@ Order of work:
   - Port: 3293–3504, 7900–7975.
   - Needs: 13.1, 3.6, 11.11.
   - Spec: file-list "Expand a directory"; diff-viewer "View a file at a revision".
-- [ ] 13.4 [M] Implement `TempFiles` (Core: per-run directory under `GITK_TMPDIR` or `$TMPDIR`, deleted on quit) and External diff (write the old and new blobs, handling renames, then launch the configured tool) — Verify: `swift test --filter ExternalDiffTests` (with a fake tool script that records its arguments, the right files are passed for a rename on `renames`; the directory is removed by `cleanup()`).
+- [x] 13.4 [M] Implement `TempFiles` (Core: per-run directory under `GITK_TMPDIR` or `$TMPDIR`, deleted on quit) and External diff (write the old and new blobs, handling renames, then launch the configured tool) — Verify: `swift test --filter ExternalDiffTests` (with a fake tool script that records its arguments, the right files are passed for a rename on `renames`; the directory is removed by `cleanup()`).
   - Files: `Sources/GitkCore/Util/TempFiles.swift`, `Sources/GitkCore/Actions/ExternalDiff.swift`, tests.
   - Port: 3729–3874.
   - Needs: 13.1.
