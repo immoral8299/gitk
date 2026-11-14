@@ -352,7 +352,7 @@ Order of work:
   - Port: 7726–7824.
   - Needs: 10.4.
   - Spec: commit-list "Back after following a link".
-- [ ] 10.7 [M] Implement `CommitResolver` (Core) and the titlebar field's go-to-commit mode (`g`): full or short ID, `git rev-parse --verify <rev>^{commit}`, the placeholder change, Escape back to search mode, and the four error messages — Verify: `swift test --filter CommitResolverTests` (ambiguous prefix, unknown revision, not in view) and a manual check that `g` then a prefix selects the commit and returns the field to search mode.
+- [x] 10.7 [M] Implement `CommitResolver` (Core) and the titlebar field's go-to-commit mode (`g`): full or short ID, `git rev-parse --verify <rev>^{commit}`, the placeholder change, Escape back to search mode, and the four error messages — Verify: `swift test --filter CommitResolverTests` (ambiguous prefix, unknown revision, not in view) and a manual check that `g` then a prefix selects the commit and returns the field to search mode.
   - Files: `Sources/GitkCore/History/CommitResolver.swift`, `Sources/GitkUI/Bars/SearchBar.swift`, tests.
   - Port: 8901–8967, 1989–2014 (`longid`).
   - Needs: 10.4, 14.4.
@@ -527,7 +527,7 @@ Order of work:
   - Port: 6943–7187.
   - Needs: 14.4.
   - Spec: commit-find "Wraparound", "No wrap with Shift", "Matches in visible text", "Current match box".
-- [ ] 14.6 [S] Wire the focus keys: `/` and keypad-divide focus the titlebar search field; `g` clears it and switches it to go-to-commit mode — Verify: `swift test --filter FocusKeyTests`.
+- [x] 14.6 [S] Wire the focus keys: `/` and keypad-divide focus the titlebar search field; `g` clears it and switches it to go-to-commit mode — Verify: `swift test --filter FocusKeyTests`.
   - Files: `MainWindowController.swift`, `SearchBar.swift`, tests.
   - Needs: 14.4, 9.7.
   - Spec: commit-find "Slash to search".
