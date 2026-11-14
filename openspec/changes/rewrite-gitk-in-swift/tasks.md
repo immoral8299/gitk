@@ -461,7 +461,7 @@ Order of work:
   - Port: 11098–11454, 7358–7472.
   - Needs: 12.3.
   - Spec: commit-details "Too many branches".
-- [ ] 12.5 [S] Fill in the Branch/Follows/Precedes rows asynchronously in the details sidebar when "Display nearby tags/heads" is on — Verify: a snapshot of `tags-notes` with a middle commit selected shows all three rows filled.
+- [x] 12.5 [S] Fill in the Branch/Follows/Precedes rows asynchronously in the details sidebar when "Display nearby tags/heads" is on — Verify: a snapshot of `tags-notes` with a middle commit selected shows all three rows filled.
   - Files: `DetailsSidebar.swift`.
   - Port: 7633–7668.
   - Needs: 12.4, 11.1.

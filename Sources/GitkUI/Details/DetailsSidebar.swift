@@ -38,6 +38,14 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
 
     var settings = Settings() { didSet { applySettings() } }
     var onCommitLink: ((ObjectID) -> Void)?
+
+    /// gitk's Branch/Follows/Precedes rows (12.5), filled in once the ancestry
+    /// index is ready.
+    enum Nearby: Equatable { case hidden, pending, ready(NearbyRefs) }
+    var nearby: Nearby = .hidden {
+        didSet { if nearby != oldValue, let shownHeader { setText(rowsView, rowsText(shownHeader)) } }
+    }
+    private var shownHeader: DetailsHeader?
     private(set) var shownID: ObjectID?
     private weak var session: ViewSession?
 
@@ -199,6 +207,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         idButton.toolTip = header.id.hex
         refsLabel.attributedStringValue = refsText(header.refs, id: header.id, session: session)
         refsLabel.isHidden = header.refs.isEmpty
+        shownHeader = header
         setText(rowsView, rowsText(header))
         var message = header.message.trimmingCharacters(in: .newlines)
         if let notes = header.notes, !notes.isEmpty {
@@ -264,8 +273,44 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
             }
             result.append(NSAttributedString(string: row.value + "\n", attributes: attrs))
         }
+        appendNearby(to: result, labelFont: labelFont, valueFont: valueFont, paragraph: paragraph)
         if result.length > 0 { result.deleteCharacters(in: NSRange(location: result.length - 1, length: 1)) }
         return result
+    }
+
+    /// Port of gitk procs `dispneartags` and `appendrefs` (gitk/gitk 7358–7472):
+    /// ref names link to their commits; too many refs read "many" or
+    /// "and many more".
+    private func appendNearby(to result: NSMutableAttributedString, labelFont: NSFont, valueFont: NSFont,
+                              paragraph: NSParagraphStyle) {
+        let lines: [(String, NearbyRefLine?)]
+        switch nearby {
+        case .hidden: return
+        case .pending: lines = [("Branch", nil), ("Follows", nil), ("Precedes", nil)]
+        case .ready(let refs): lines = [("Branch", refs.branches), ("Follows", refs.follows), ("Precedes", refs.precedes)]
+        }
+        let valueAttrs: [NSAttributedString.Key: Any] = [.font: valueFont, .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph]
+        let refFont = NSFont.monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
+        for (label, line) in lines {
+            result.append(NSAttributedString(string: L(label) + "\t", attributes: [
+                .font: labelFont, .foregroundColor: NSColor.secondaryLabelColor, .paragraphStyle: paragraph,
+            ]))
+            guard let line else {
+                result.append(NSAttributedString(string: "…\n", attributes: valueAttrs))
+                continue
+            }
+            for (n, entry) in line.entries.enumerated() {
+                if n > 0 { result.append(NSAttributedString(string: ", ", attributes: valueAttrs)) }
+                result.append(NSAttributedString(string: entry.name, attributes: [
+                    .font: refFont, .link: LinkHandling.commitScheme + entry.id.hex,
+                    .foregroundColor: Palette.link(settings), .paragraphStyle: paragraph,
+                ]))
+            }
+            if let key = line.overflowKey {
+                result.append(NSAttributedString(string: (line.entries.isEmpty ? "" : " ") + L(key), attributes: valueAttrs))
+            }
+            result.append(NSAttributedString(string: "\n", attributes: valueAttrs))
+        }
     }
 
     func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
@@ -396,8 +441,8 @@ final class SidebarSection: NSView {
         super.init(frame: NSRect(x: 0, y: 0, width: 300, height: 40))
         translatesAutoresizingMaskIntoConstraints = false
         titleLabel.stringValue = title
-        titleLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold)
-        titleLabel.textColor = .secondaryLabelColor
+        titleLabel.font = .systemFont(ofSize: NSFont.systemFontSize - 1, weight: .bold)
+        titleLabel.textColor = .labelColor
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.setContentCompressionResistancePriority(.init(740), for: .horizontal)
         // The title area is a borderless button so the whole label toggles.

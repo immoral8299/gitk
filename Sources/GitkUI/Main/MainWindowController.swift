@@ -17,6 +17,10 @@ final class MainWindowController: NSWindowController {
     /// The content column: search row (no unified titlebar), list, diff, status.
     var splitView: MainSplitView { splitController.content }
     private var searchToolbar: SearchToolbar?
+    /// The ancestry index for nearby tags and heads (12.x), once loaded.
+    private var ancestry: AncestryIndex?
+    private var ancestryTask: Task<Void, Never>?
+    private let cwd: URL
     let session: ViewSession
     let listController: CommitListController
     let searchBar: SearchBar
@@ -42,6 +46,7 @@ final class MainWindowController: NSWindowController {
         self.launch = launch
         self.settings = settings
         self.environment = environment
+        self.cwd = cwd
         let runner = GitRunner(cwd: cwd, baseEnvironment: environment)
         session = ViewSession(repo: startup.repo, runner: runner,
             view: ViewSpec(name: launch.revisionArgs.isEmpty && launch.paths.isEmpty ? "All files" : "Command line",
@@ -218,6 +223,7 @@ final class MainWindowController: NSWindowController {
                 }
             }
             await session.load()
+            loadAncestry()
             initialLoadFinished = true
             if let snapshotQuery = environment["GITK_SWIFT_FIND"] {
                 searchBar.applySnapshotQuery(snapshotQuery)
@@ -227,6 +233,7 @@ final class MainWindowController: NSWindowController {
 
     func stop() async {
         searchBar.cancel()
+        ancestryTask?.cancel()
         loadTask?.cancel()
         await session.cancel()
     }
@@ -293,7 +300,31 @@ final class MainWindowController: NSWindowController {
     private func showDetails(_ id: ObjectID) {
         guard sidebar.shownID != id || diffPane.ids != [id], let index = session.store.index(of: id) else { return }
         sidebar.show(DetailsHeaderBuilder.build(commit: index, session: session, dateFormat: settings.dateTimeFormat), session: session)
+        sidebar.nearby = nearby(for: id)
         diffPane.show(id, session: session)
+    }
+
+    private func nearby(for id: ObjectID) -> DetailsSidebar.Nearby {
+        guard settings.showNearTags else { return .hidden }
+        guard let ancestry, ancestry.isComplete else { return .pending }
+        return .ready(NearbyRefs(id: id, index: ancestry, maxRefs: settings.maxRefs, visibleRefs: settings.visibleRefs))
+    }
+
+    /// Port of gitk proc `getallcommits` as used by `dispneartags`: build (or
+    /// read from `<gitdir>/gitk-swift.cache`) the ancestry index in the
+    /// background, then fill the selected commit's nearby refs (12.5).
+    private func loadAncestry() {
+        guard settings.showNearTags, ancestryTask == nil else { return }
+        let gitDir = URL(fileURLWithPath: startup.repo.gitDir, relativeTo: cwd).standardizedFileURL
+        let runner = GitRunner(cwd: cwd, baseEnvironment: environment)
+        ancestryTask = Task { [weak self] in
+            let refs = await RefParser.load(runner: runner)
+            let index = AncestryIndex(refs: refs, gitDir: gitDir)
+            _ = try? await index.load(runner: runner)
+            guard let self, !Task.isCancelled else { return }
+            ancestry = index
+            if let id = sidebar.shownID { sidebar.nearby = nearby(for: id) }
+        }
     }
 
     /// A commit link in the sidebar (commit-details "Revert message link").
