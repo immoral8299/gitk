@@ -57,6 +57,10 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
     private func buildContent() {
         nameLabel.font = .systemFont(ofSize: NSFont.systemFontSize + 1, weight: .semibold)
         nameLabel.lineBreakMode = .byTruncatingTail
+        for label in [nameLabel, dateLabel, emailLabel] {
+            label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            label.cell?.truncatesLastVisibleLine = true
+        }
         for label in [dateLabel, emailLabel] {
             label.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
             label.textColor = .secondaryLabelColor
@@ -68,6 +72,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         names.alignment = .leading
         names.spacing = 1
         let identity = NSStackView(views: [monogram, names])
+        for stack in [names, identity] { stack.setClippingResistancePriority(.defaultLow, for: .horizontal) }
         identity.alignment = .top
         identity.spacing = 10
         monogram.translatesAutoresizingMaskIntoConstraints = false
@@ -116,7 +121,9 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         stack.spacing = 8
         stack.edgeInsets = NSEdgeInsets(top: 4, left: Self.padding, bottom: Self.padding, right: Self.padding)
         for view in content { stack.addArrangedSubview(view) }
-        for view in [idButton, refsLabel, rowsView, messageView, changedFilesSlot] + lines {
+        // Every block spans the content width, so a long name or email truncates
+        // instead of widening the sidebar and eating its padding.
+        for view in [identity, idButton, refsLabel, rowsView, messageView, changedFilesSlot] + lines {
             view.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -2 * Self.padding).isActive = true
         }
         stack.setCustomSpacing(4, after: messageHeader)
