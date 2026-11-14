@@ -47,4 +47,4 @@ the `huge` fixture (task 8.9).
 
 | Date | Machine | First 100 rows | Full load | Peak RSS |
 |---|---|---|---|---|
-| | | | | |
+| 2026-11-14 | MacBookPro18,3 (M1 Pro, 16 GB) | 0.08 s | 1.43 s | 439 MB (RSS after load) |
