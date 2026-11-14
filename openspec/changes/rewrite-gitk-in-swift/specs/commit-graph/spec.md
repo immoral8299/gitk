@@ -66,15 +66,15 @@ Branch heads, remote-tracking branches, tags and other refs SHALL be drawn as la
 
 #### Scenario: Many tags on one commit
 - **WHEN** a commit has more than 3 tags and they do not fit in the available width
-- **THEN** a single "<n> tags..." label is drawn instead, and clicking it shows all the tags in the details pane
+- **THEN** a single "<n> tags..." label is drawn instead, and clicking it shows all the tags in the details sidebar
 
 #### Scenario: Context menu on a head label
 - **WHEN** the user secondary-clicks a local branch label
 - **THEN** the branch context menu (check out, rename, remove, copy branch name) opens for that branch
 
 ### Requirement: Line interaction
-Hovering over a line SHALL show the subject of the line's parent commit in a tooltip. Clicking a line SHALL draw it thicker and show the parent and its children (with authors and dates) as links in the details pane. This line view SHALL be added to the back/forward history.
+Hovering over a line SHALL show the subject of the line's parent commit in a tooltip. Clicking a line SHALL draw it thicker and show the parent and its children (with authors and dates) as links in the details sidebar. This line view SHALL be added to the back/forward history.
 
 #### Scenario: Click a line
 - **WHEN** the user clicks the line leading down from commit X to its parent P
-- **THEN** the details pane lists P as "Parent" and each of P's children, each as a clickable link, and the line is drawn thicker until something else is selected
+- **THEN** the details sidebar lists P as "Parent" and each of P's children, each as a clickable link, and the line is drawn thicker until something else is selected

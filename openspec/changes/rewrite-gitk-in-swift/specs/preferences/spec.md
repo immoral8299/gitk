@@ -25,11 +25,15 @@ The General page SHALL edit: maximum graph width (lines and %), show local chang
 - **THEN** the local-changes rows disappear from the current view
 
 ### Requirement: Colour and font settings pages
-The Colors page SHALL edit the background, main text, selected text background, link text, old/new line text and background, hunk header text and marked line background colours, each with a colour picker. The Fonts page SHALL edit the main, text and UI fonts with the system font picker.
+The Colors page SHALL edit the background, main text, selected text background, link text, old/new line text and background, hunk header text, marked line background, found text background and current search hit background colours, each with a colour picker. The Fonts page SHALL edit the main, text and UI fonts with the system font picker.
 
 #### Scenario: Change the text font
 - **WHEN** the user picks Menlo 12 as the text font and clicks OK
 - **THEN** the diff pane is redrawn in Menlo 12
+
+#### Scenario: Change a search colour
+- **WHEN** the user changes "Found text background" and clicks OK
+- **THEN** every non-current match box in the list, sidebar and diff uses the new colour
 
 ### Requirement: Defaults match gitk on macOS
 With no saved or imported settings, every setting SHALL have the value gitk uses on macOS: the same colours, graph limits, diff context of 3, tab stop 8, date format `%Y-%m-%d %H:%M:%S`, external diff tool `opendiff`, web browser `open`, and copy length equal to the hash length. The default fonts SHALL be the closest current macOS equivalents of gitk's aqua fonts.
@@ -39,11 +43,15 @@ With no saved or imported settings, every setting SHALL have the value gitk uses
 - **THEN** the head label is green, the tag label is yellow, the diff context is 3, and "Show local changes" is on
 
 ### Requirement: Persistence
-Settings, remembered views and window geometry (window frame, pane split positions, reference-list frame) SHALL be saved in the app's own settings store when they change and when the app quits, and restored on the next launch. Saving SHALL be atomic, so a crash never leaves a corrupt settings file.
+Settings, remembered views and window geometry (window frame, the history/diff split position, the history/details-sidebar split position, the sidebar width and whether it is collapsed, the column widths, and the reference-list frame) SHALL be saved in the app's own settings store when they change and when the app quits, and restored on the next launch. Saving SHALL be atomic, so a crash never leaves a corrupt settings file.
 
 #### Scenario: Geometry restored
-- **WHEN** the user resizes the window and moves the pane dividers, then quits and relaunches
-- **THEN** the window and dividers come back at the same sizes
+- **WHEN** the user resizes the window, moves the history/diff divider and the sidebar divider, then quits and relaunches
+- **THEN** the window, the bottom diff height and the sidebar width come back at the same sizes
+
+#### Scenario: Sidebar state restored
+- **WHEN** the user closes the details sidebar and relaunches
+- **THEN** the sidebar stays closed and the history list fills the width
 
 #### Scenario: Corrupt settings
 - **WHEN** the settings file cannot be parsed at launch

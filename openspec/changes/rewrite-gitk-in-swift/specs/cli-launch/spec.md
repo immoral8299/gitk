@@ -60,7 +60,7 @@ At startup the app SHALL check that `git` is version 2.20 or later. It SHALL det
 
 #### Scenario: SHA-256 repository
 - **WHEN** the repository uses `sha256`
-- **THEN** commit IDs are handled and shown as 64-character hashes everywhere, including the Commit ID field and its default copy length
+- **THEN** commit IDs are handled and shown as 64-character hashes everywhere, including the details sidebar and the default copy length
 
 #### Scenario: Unknown hash algorithm
 - **WHEN** `git rev-parse --show-object-format` reports anything other than `sha1` or `sha256`

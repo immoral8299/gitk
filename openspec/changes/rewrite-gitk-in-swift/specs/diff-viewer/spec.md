@@ -2,12 +2,19 @@
 
 ## Purpose
 
-Defines the lower-left text pane that shows a selected commit's patch, or a file's contents in tree mode, and the controls that change how it is rendered or searched.
+Defines the diff pane below the history list, which shows a selected commit's patch, or a file's contents in tree mode, and the controls that change how it is rendered or searched.
 
 ## ADDED Requirements
 
+### Requirement: Diff pane placement
+The diff pane SHALL sit below the history list and above the status strip, spanning the list's width. It SHALL default to about half the window content height and SHALL be resizable. It SHALL keep its height when the selection changes. When the details sidebar is closed, the pane SHALL widen with the list.
+
+#### Scenario: Selection shows the diff
+- **WHEN** the user clicks a commit in the history list
+- **THEN** its patch appears in the bottom pane and the details sidebar shows that commit
+
 ### Requirement: Patch display
-In Patch mode, selecting a commit SHALL stream its diff into the pane below the commit details, using the same diff options as gitk (`-p --textconv --submodule -C --cc --no-commit-id -U<context>`, plus `--root` when `log.showRoot` is true). Each file SHALL start with a full-width file separator header. Removed, added and hunk-header lines SHALL use the configured diff colours and backgrounds.
+In Patch mode, selecting a commit SHALL stream its diff into the bottom pane, using the same diff options as gitk (`-p --textconv --submodule -C --cc --no-commit-id -U<context>`, plus `--root` when `log.showRoot` is true). Each file SHALL start with a full-width file separator header. Removed, added and hunk-header lines SHALL use the configured diff colours and backgrounds.
 
 #### Scenario: Ordinary commit
 - **WHEN** a commit changing two files is selected
@@ -59,7 +66,7 @@ When "Limit diffs to listed paths" is on and the view has path limits, the patch
 
 #### Scenario: Limited view
 - **WHEN** the view is limited to `src/` and the commit also touches `docs/`
-- **THEN** only the `src/` files appear in the patch and the file list
+- **THEN** only the `src/` files appear in the patch and the Changed Files section
 
 ### Requirement: Text search in the pane
 The pane SHALL have a search field. Typing in it SHALL highlight all matches incrementally. "Search" / ⌘-S SHALL go to the next match, ⌘-R SHALL go to the previous match, and the current match SHALL use the current-search-hit colour.
@@ -73,7 +80,7 @@ Space SHALL scroll the pane down a page and Delete/Backspace up a page. d/u SHAL
 
 #### Scenario: Next file
 - **WHEN** the user presses `f`
-- **THEN** the pane scrolls so the next file separator is at the top, and the file list highlights that file
+- **THEN** the pane scrolls so the next file separator is at the top, and the Changed Files section highlights that file
 
 ### Requirement: Tree mode
 In Tree mode, selecting a file in the tree SHALL show that file's contents at the selected commit, decoded with the file's encoding.

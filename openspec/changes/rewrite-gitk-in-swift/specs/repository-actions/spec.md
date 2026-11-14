@@ -22,7 +22,7 @@ Items that need a mark SHALL be disabled when no commit is marked.
 - **THEN** "Return to mark", "Compare with marked commit" and both "marked commit" diff items are disabled
 
 ### Requirement: Diff between two commits
-"Diff this -> selected" and the other diff items SHALL show the diff from the first commit to the second in the diff pane and file list. The header SHALL name both commits as links.
+"Diff this -> selected" and the other diff items SHALL show the diff from the first commit to the second in the diff pane and the Changed Files section. The details sidebar SHALL name both commits as links.
 
 #### Scenario: Diff against selection
 - **WHEN** commit A is selected and the user chooses "Diff this -> selected" on commit B

@@ -119,7 +119,7 @@ Order of work:
   - Files: `Sources/GitkCore/Parsing/WordDiffParser.swift`, tests.
   - Port: the word-diff branches inside 8328–8542.
   - Needs: 3.4.
-- [x] 3.6 [S] Implement `TreeParser` for `git ls-tree -r -z --full-name` and `git diff-tree -r -z --name-status -C` (the file list) — Verify: `swift test --filter TreeParserTests` on `renames` and `linear`.
+- [x] 3.6 [S] Implement `TreeParser` for `git ls-tree -r -z --full-name` and `git diff-tree -r -z --name-status -C` (the Changed Files list) — Verify: `swift test --filter TreeParserTests` on `renames` and `linear`.
   - Files: `Sources/GitkCore/Parsing/TreeParser.swift`, tests.
   - Port: 7832–7900 (`gettree`, `gettreeline`), 8103–8169 (`gettreediffs`, `gettreediffline`).
   - Needs: 1.6.
@@ -306,11 +306,12 @@ Order of work:
 - [ ] 9.4 [M] Implement `Snapshot` (D12): when `GITK_SWIFT_SNAPSHOT` is set, wait for `loadFinished` and the selection to be displayed, render the window with `cacheDisplay`, write the PNG and exit 0; also write `Tools/snapshot.sh` — Verify: `Tools/snapshot.sh linear /tmp/s.png` creates a non-empty PNG of the requested size.
   - Files: `Sources/GitkUI/App/Snapshot.swift`, `Tools/snapshot.sh`.
   - Needs: 9.2.
-- [ ] 9.5 [M] Implement `MainWindowController` and `MainSplitView`, mirroring gitk's layout: a vertical split; the top holds the list area, the Commit ID bar and the find bar; the bottom is a horizontal split of the details pane (diff controls bar on top) and the file list (Patch/Tree switch on top). Default sizes are from gitk 2453–2462 — Verify: a snapshot of `linear` shows the two halves and the empty placeholder panes.
-  - Files: `Sources/GitkUI/Main/MainWindowController.swift`, `MainSplitView.swift`.
-  - Port: 2374–2913 (structure only).
+- [ ] 9.5 [M] Implement `MainWindowController` and `MainSplitView` with the Zed-inspired layout (D16): a search-strip slot in the unified titlebar on systems that support it (otherwise the same slot as the first content row; task 14.4 fills it), a vertical split with the history list on top and the diff pane below at half height, a full-height details sidebar on the right, and a slim status strip at the bottom. Remove the Commit ID bar, the "Find"/"Show" labels and the text arrow buttons beside the traffic lights. Add View → Details Sidebar and the sidebar's close button. Default sizes follow gitk 2453–2462 where they still apply — Verify: snapshots of `linear` at 1400×900 and 700×900 show the list, the sidebar and the empty diff pane, with the sidebar collapsed at the narrow size.
+  - Files: `Sources/GitkUI/Main/MainWindowController.swift`, `MainSplitView.swift`, `Sources/GitkUI/Style/Chrome.swift`.
+  - Port: 2374–2913 (structure only, relocated).
   - Needs: 9.4.
-- [ ] 9.6 [M] Implement `MainMenu` with the app menu (About, Settings…, Quit), File, Edit, View and Help menus with every item and shortcut from gitk 2398–2442, all sending `AppCommand` through `perform(_:)` — Verify: `swift test --filter MainMenuTests` compares the menu tree with an expected table (titles, key equivalents, enabled state).
+  - Spec: commit-list "Window layout", "Narrow window".
+- [ ] 9.6 [M] Implement `MainMenu` with the app menu (About, Settings…, Quit), File, Edit, View and Help menus with every item and shortcut from gitk 2398–2442, plus View → Details Sidebar (a checkable item that shows or hides the sidebar), all sending `AppCommand` through `perform(_:)` — Verify: `swift test --filter MainMenuTests` compares the menu tree with an expected table (titles, key equivalents, enabled and checked state).
   - Files: `Sources/GitkUI/App/MainMenu.swift`, tests.
   - Needs: 9.1, 9.5.
 - [ ] 9.7 [M] Implement `KeyRouter`: an `NSWindow.sendEvent` hook that maps unmodified keys through `KeyBindings` only when the first responder is not an editable text view or field — Verify: `swift test --filter KeyRouterTests` (an offscreen window with a field: `j` with focus in the field is not routed; `j` with focus on the table is routed to `.selectNext`).
@@ -336,7 +337,7 @@ Order of work:
   - Files: `Sources/GitkUI/CommitList/RefLabelDrawing.swift`, tests.
   - Needs: 10.2, 7.7.
   - Spec: commit-graph "Context menu on a head label".
-- [ ] 10.4 [M] Implement `SelectionModel` (Core) and its wiring: select a row and update the details request, the Commit ID field, "Row N / M" and clipboard auto-copy; default selection is HEAD or the first row; honour `--select-commit` — Verify: `swift test --filter SelectionModelTests`; `Tools/snapshot.sh merge-simple /tmp/s.png --select-commit=<id>` shows that row selected.
+- [ ] 10.4 [M] Implement `SelectionModel` (Core) and its wiring: select a row, fill the details sidebar, stream the diff into the bottom pane, put the full ID in the sidebar and "Row N / M" in the status strip, and copy to the clipboard when enabled; default selection is HEAD or the first row; honour `--select-commit` — Verify: `swift test --filter SelectionModelTests`; `Tools/snapshot.sh merge-simple /tmp/s.png --select-commit=<id>` shows that row selected, the sidebar filled and the diff below the list.
   - Files: `Sources/GitkCore/History/SelectionModel.swift`, `CommitListController.swift`, `Sources/GitkUI/Bars/StatusBar.swift`, tests.
   - Port: 7500–7560, 708–720.
   - Needs: 10.1.
@@ -346,22 +347,22 @@ Order of work:
   - Port: 7668–7726, 7824–7832.
   - Needs: 10.4, 9.7.
   - Spec: commit-list "j/k navigation", "Go to parent".
-- [ ] 10.6 [M] Implement `NavigationHistory` (Core): entries for a commit selection, a line click and a link, each with a saved diff scroll position; back/forward with button enablement — Verify: `swift test --filter NavigationHistoryTests`.
-  - Files: `Sources/GitkCore/History/NavigationHistory.swift`, `Sources/GitkUI/Bars/CommitIDBar.swift` (← → buttons), tests.
+- [ ] 10.6 [M] Implement `NavigationHistory` (Core): entries for a commit selection, a line click and a link, each with a saved diff scroll position; back/forward with button enablement — Verify: `swift test --filter NavigationHistoryTests`; the titlebar ← → buttons enable and disable as the history changes.
+  - Files: `Sources/GitkCore/History/NavigationHistory.swift`, `Sources/GitkUI/Bars/SearchBar.swift` (← → buttons), tests.
   - Port: 7726–7824.
   - Needs: 10.4.
   - Spec: commit-list "Back after following a link".
-- [ ] 10.7 [M] Implement `CommitResolver` (Core) and the go-to-commit field: full or short ID, `git rev-parse --verify <rev>^{commit}`, and the four error messages — Verify: `swift test --filter CommitResolverTests` (ambiguous prefix, unknown revision, not in view).
-  - Files: `Sources/GitkCore/History/CommitResolver.swift`, `CommitIDBar.swift`, tests.
+- [ ] 10.7 [M] Implement `CommitResolver` (Core) and the titlebar field's go-to-commit mode (`g`): full or short ID, `git rev-parse --verify <rev>^{commit}`, the placeholder change, Escape back to search mode, and the four error messages — Verify: `swift test --filter CommitResolverTests` (ambiguous prefix, unknown revision, not in view) and a manual check that `g` then a prefix selects the commit and returns the field to search mode.
+  - Files: `Sources/GitkCore/History/CommitResolver.swift`, `Sources/GitkUI/Bars/SearchBar.swift`, tests.
   - Port: 8901–8967, 1989–2014 (`longid`).
-  - Needs: 10.4.
+  - Needs: 10.4, 14.4.
   - Spec: commit-list "Abbreviated ID", "Not in view".
-- [ ] 10.8 [S] Implement the busy status and progress bar in `StatusBar` (Reading, Searching, …) and the busy cursor — Verify: a snapshot of `huge` taken right after the first batch (`GITK_SWIFT_SNAPSHOT_EARLY=1`) shows "Reading" and a partial progress bar.
+- [ ] 10.8 [S] Implement the slim bottom status strip in `StatusBar` (Row N / M, Reading, Searching, …), its progress bar and the busy cursor — Verify: a snapshot of `huge` taken right after the first batch (`GITK_SWIFT_SNAPSHOT_EARLY=1`) shows "Reading", the row counter and a partial progress bar along the bottom.
   - Files: `StatusBar.swift`, `Snapshot.swift`.
   - Port: 2973–2990, 6893–6943.
   - Needs: 10.1.
   - Spec: commit-list "Status during load".
-- [ ] 10.9 [M] Implement line interaction: a hover tooltip with the parent subject; clicking a line draws it thicker and puts the parent and children text in the details pane (a provider interface filled in by 11.1); clicking an arrow scrolls to the other end — Verify: `swift test --filter LineHitTests` (Core hit-testing on the geometry) and a manual check in `docs/smoke-test.md`.
+- [ ] 10.9 [M] Implement line interaction: a hover tooltip with the parent subject; clicking a line draws it thicker and puts the parent and children text in the details sidebar (a provider interface filled in by 11.1); clicking an arrow scrolls to the other end — Verify: `swift test --filter LineHitTests` (Core hit-testing on the geometry) and a manual check in `docs/smoke-test.md`.
   - Files: `GraphCellView.swift`, `Sources/GitkCore/Graph/LineHitTest.swift`, tests.
   - Port: 8967–9136.
   - Needs: 10.2, 10.6.
@@ -379,18 +380,18 @@ Order of work:
 
 ## 11. Commit details and diff pane
 
-- [ ] 11.1 [M] Implement the `DetailsTextController` header: Author and Committer lines, Tags, Parent lines in merge colours, Child lines, then the message and notes — Verify: `swift test --filter DetailsHeaderTests` (Core `DetailsHeaderBuilder` produces the expected text and attribute runs for a merge on `merge-simple` and for a note on `tags-notes`).
-  - Files: `Sources/GitkCore/History/DetailsHeaderBuilder.swift`, `Sources/GitkUI/Details/DetailsTextController.swift`, tests.
+- [ ] 11.1 [M] Implement `DetailsSidebar`: the identity header (author monogram, name, date and time, email, full commit ID and refs), the metadata rows (Author, Committer, Tags, Parent lines in merge colours, Child lines, Branch, Follows, Precedes), a collapsible Message section with the message and notes, and the mount point for the Changed Files section. Add the close button and the View → Details Sidebar state — Verify: `swift test --filter DetailsHeaderTests` (Core `DetailsHeaderBuilder` produces the expected rows and attribute runs for a merge on `merge-simple` and for a note on `tags-notes`); a snapshot shows the sidebar beside the list.
+  - Files: `Sources/GitkCore/History/DetailsHeaderBuilder.swift`, `Sources/GitkUI/Details/DetailsSidebar.swift` (replaces `DetailsTextController.swift`), tests.
   - Port: 7207–7222, 7590–7668.
-  - Needs: 10.4.
-  - Spec: commit-details "Merge commit", "Commit with notes".
+  - Needs: 10.4, 9.5.
+  - Spec: commit-details "Merge commit", "Commit with notes", "Message section collapses", "Sidebar follows selection".
 - [ ] 11.2 [M] Implement `LinkScanner` (Core) for hex IDs of 6 to hashLength characters and `-g<hex>`, and for http(s) URLs, plus click handling: commit links select the commit (and record history); URLs run the `web_browser` command — Verify: `swift test --filter LinkScannerTests` (a revert message, an unknown hash that is not a link, URLs).
   - Files: `Sources/GitkCore/History/LinkScanner.swift`, `Sources/GitkUI/Details/LinkHandling.swift`, tests.
   - Port: 7222–7340.
   - Needs: 11.1, 10.6.
   - Spec: commit-details "Revert message link", "Unknown hash", "Open a URL".
-- [ ] 11.3 [S] Implement comment wrapping (none, char, word) for the message and other text — Verify: `swift test --filter WrapModeTests` (mapping to text container settings).
-  - Files: `DetailsTextController.swift`, tests.
+- [ ] 11.3 [S] Implement comment wrapping (none, char, word) for the sidebar message and other text — Verify: `swift test --filter WrapModeTests` (mapping to text container settings).
+  - Files: `DetailsSidebar.swift`, tests.
   - Needs: 11.1.
   - Spec: commit-details "Word wrap".
 - [x] 11.4 [M] Implement `DiffCommandBuilder` (Core) as a port of `diffcmd`, with the `getblobdiffs` flags (context, `-w`, `--word-diff=porcelain`, `--root` when showRoot is set, limitdiffs path filter) for every combination of IDs, including the local-changes rows — Verify: `swift test --filter DiffCommandBuilderTests` (a table of the 8 combinations).
@@ -398,11 +399,11 @@ Order of work:
   - Port: 8059–8103, 8203–8231.
   - Needs: 3.4.
   - Spec: diff-viewer "Unstaged row", "Index row", "Limited view".
-- [ ] 11.5 [M] Implement `DiffDocument` (Core model with file-section offsets) and `DiffRenderer` (UI attributes: diff colours and backgrounds, full-width file separators), with streaming append into a TextKit 1 `NSTextView` — Verify: a snapshot of `merge-simple` (a non-merge commit selected) shows coloured +/- lines and file separators; `swift test --filter DiffDocumentTests`.
+- [ ] 11.5 [M] Implement `DiffDocument` (Core model with file-section offsets) and `DiffRenderer` (UI attributes: diff colours and backgrounds, full-width file separators), with streaming append into a TextKit 1 `NSTextView` in the bottom pane below the history list — Verify: a snapshot of `merge-simple` (a non-merge commit selected) shows the sidebar, the coloured +/- lines and the file separators in the bottom pane; `swift test --filter DiffDocumentTests`.
   - Files: `Sources/GitkCore/History/DiffDocument.swift`, `Sources/GitkUI/Details/DiffRenderer.swift`, tests.
   - Port: 8231–8328, 8603–8638.
   - Needs: 11.4, 11.1.
-  - Spec: diff-viewer "Ordinary commit", "Rename", "Large diff".
+  - Spec: diff-viewer "Selection shows the diff", "Ordinary commit", "Rename", "Large diff".
 - [ ] 11.6 [S] Colour combined-diff markers by parent — Verify: a snapshot of a merge with a non-trivial combined diff shows 3 coloured marker columns. The fixture merges are clean, so `--cc` prints nothing for them; first add an `evil-octopus` fixture to `make-fixture.sh` (the `octopus` merge amended with an extra edit, as `DiffParserTests` does) and its row in `Tests/Fixtures/README.md`.
   - Files: `DiffRenderer.swift`.
   - Needs: 11.5.
@@ -422,7 +423,7 @@ Order of work:
   - Needs: 11.5.
   - Spec: diff-viewer "Incremental search".
 - [ ] 11.10 [S] Add the pane scroll keys (Space, Delete, Backspace, d, u) and next/previous file (f, b) using the `DiffDocument` section offsets — Verify: `swift test --filter FileJumpTests`.
-  - Files: `DetailsTextController.swift`, tests.
+  - Files: `DiffRenderer.swift`, tests.
   - Port: 8574–8603.
   - Needs: 11.5, 9.7.
   - Spec: diff-viewer "Next file".
@@ -431,8 +432,8 @@ Order of work:
   - Port: 12460–12518.
   - Needs: 11.5, 2.6.
   - Spec: diff-viewer "Shift-JIS file".
-- [ ] 11.12 [S] Implement tag display: `git cat-file tag <tag>` shows the tag name, tagger and message with a link to the tagged commit, and clears the file list; also the "n tags..." list — Verify: `swift test --filter TagDisplayTests` on `tags-notes`.
-  - Files: `DetailsTextController.swift`, `Sources/GitkCore/History/TagInfo.swift`, tests.
+- [ ] 11.12 [S] Implement tag display: `git cat-file tag <tag>` shows the tag name, tagger and message with a link to the tagged commit in the sidebar, and clears the Changed Files section; also the "n tags..." list — Verify: `swift test --filter TagDisplayTests` on `tags-notes`.
+  - Files: `DetailsSidebar.swift`, `Sources/GitkCore/History/TagInfo.swift`, tests.
   - Port: 11556–11610.
   - Needs: 11.1.
   - Spec: commit-details "Click a tag".
@@ -460,26 +461,26 @@ Order of work:
   - Port: 11098–11454, 7358–7472.
   - Needs: 12.3.
   - Spec: commit-details "Too many branches".
-- [ ] 12.5 [S] Fill in the Branch/Follows/Precedes lines asynchronously in the details header when "Display nearby tags/heads" is on — Verify: a snapshot of `tags-notes` with a middle commit selected shows all three lines filled.
-  - Files: `DetailsTextController.swift`.
+- [ ] 12.5 [S] Fill in the Branch/Follows/Precedes rows asynchronously in the details sidebar when "Display nearby tags/heads" is on — Verify: a snapshot of `tags-notes` with a middle commit selected shows all three rows filled.
+  - Files: `DetailsSidebar.swift`.
   - Port: 7633–7668.
   - Needs: 12.4, 11.1.
   - Spec: commit-details "Nearby tags computed in the background".
 
 ## 13. File list
 
-- [ ] 13.1 [M] Implement `FileListController` in Patch mode ("Comments" plus the files in diff order) with click-to-jump in the diff pane — Verify: `swift test --filter FileListPatchTests` (entries for `renames`); a snapshot shows the list.
-  - Files: `Sources/GitkUI/FileList/FileListController.swift`, tests.
+- [ ] 13.1 [M] Implement `FileListController` in Patch mode inside the sidebar's Changed Files section: the "N Changed Files" and +/− header, the Patch/Tree switch, and the files in diff order with click-to-jump in the bottom diff pane — Verify: `swift test --filter FileListPatchTests` (entries for `renames`, the header counts); a snapshot shows the list below the message.
+  - Files: `Sources/GitkUI/FileList/FileListController.swift`, `Sources/GitkUI/Details/DetailsSidebar.swift`, tests.
   - Port: 3504–3662. Note: gitk builds this list from `git diff-tree -r --no-commit-id [--root] <id>` raw output (no `-z`, no `-C`), while `TreeParser.parseNameStatus` parses `-z --name-status -C`. Use the parser, keep the diff pane's rename detection consistent, and record the choice in `docs/architecture.md`.
-  - Needs: 11.5.
-  - Spec: file-list "Jump to file".
-- [ ] 13.2 [S] Keep the file list highlight in sync with the diff scroll position — Verify: `swift test --filter FileHighlightSyncTests` (scroll offset → file index).
+  - Needs: 11.5, 11.1.
+  - Spec: file-list "Changed Files section", "Jump to file", "Change totals".
+- [ ] 13.2 [S] Keep the Changed Files highlight in sync with the bottom diff's scroll position — Verify: `swift test --filter FileHighlightSyncTests` (scroll offset → file index).
   - Files: `FileListController.swift`, tests.
   - Port: 8549–8574, 8775–8800.
   - Needs: 13.1.
   - Spec: file-list "Scroll the diff".
-- [ ] 13.3 [M] Implement Tree mode: an outline of `ls-tree` (directories collapsed), clicking a file shows the blob decoded with its encoding, and the Patch/Tree switch re-selects — Verify: `swift test --filter TreeModeTests` (outline structure); a snapshot in Tree mode shows the file content.
-  - Files: `FileListController.swift`, `DetailsTextController.swift`, tests.
+- [ ] 13.3 [M] Implement Tree mode in the sidebar section: an outline of `ls-tree` (directories collapsed), clicking a file shows the blob decoded with its encoding in the bottom pane, and the Patch/Tree switch re-selects — Verify: `swift test --filter TreeModeTests` (outline structure); a snapshot in Tree mode shows the file content in the bottom pane.
+  - Files: `FileListController.swift`, `DiffRenderer.swift`, tests.
   - Port: 3293–3504, 7900–7975.
   - Needs: 13.1, 3.6, 11.11.
   - Spec: file-list "Expand a directory"; diff-viewer "View a file at a revision".
@@ -488,13 +489,13 @@ Order of work:
   - Port: 3729–3874.
   - Needs: 13.1.
   - Spec: file-list "External diff", "External diff with a renamed file", "Quit after external diff".
-- [ ] 13.5 [S] Implement the file context menu: Highlight this too/only (sets the find bar), Copy path, and Blame parent commit (`git gui blame`) — Verify: `swift test --filter FileMenuTests` (the commands produced).
+- [ ] 13.5 [S] Implement the file context menu: Highlight this too/only (sets the search bar), Copy path, and Blame parent commit (`git gui blame`) — Verify: `swift test --filter FileMenuTests` (the commands produced).
   - Files: `FileListController.swift`, tests.
   - Port: 3662–3729, 4003–4033.
   - Needs: 13.1, 14.4.
   - Spec: file-list "Highlight this only", "Copy path".
 - [ ] 13.6 [M] Implement Show origin of this line and Run git gui blame on this line in the diff context menu — Verify: `swift test --filter LineOriginTests` (`find_hunk_blamespec` port on sample hunks; the blame output parser).
-  - Files: `Sources/GitkCore/Actions/LineOrigin.swift`, `DetailsTextController.swift`, tests.
+  - Files: `Sources/GitkCore/Actions/LineOrigin.swift`, `DiffRenderer.swift`, tests.
   - Port: 3874–4003, 4033–4179.
   - Needs: 11.5.
   - Spec: diff-viewer "Origin of an added line".
@@ -516,20 +517,24 @@ Order of work:
   - Port: 4989–5079.
   - Needs: 14.1, 14.2, 2.3.
   - Spec: commit-find "Pickaxe search".
-- [ ] 14.4 [M] Build the `FindBar` UI (labels, ↓ ↑ buttons, type, match mode and field dropdowns, text field) with live bold highlighting in the list — Verify: a snapshot with `GITK_SWIFT_FIND="containing:Exact:All fields:merge"` shows the bold rows.
-  - Files: `Sources/GitkUI/Bars/FindBar.swift`, `CommitListController.swift`, `Snapshot.swift`.
+- [ ] 14.4 [M] Build `SearchBar` in the titlebar: the search field ("Search commits…"), the Advanced ("Aa") popover with kind, match mode and field (Exact and All fields hidden by default), the "N / M" counter, ‹ › stepping, and the ← → history buttons. Draw matches as rounded background boxes in the found colour, with the current match in the current-search-hit colour, instead of bolding rows. No "Find" label, no text ↑/↓ buttons and no controls beside the traffic lights — Verify: a snapshot with `GITK_SWIFT_FIND="containing:Exact:All fields:merge"` shows a box around every visible match and no bold rows; a snapshot with the popover open shows the three option groups.
+  - Files: `Sources/GitkUI/Bars/SearchBar.swift`, `CommitListController.swift`, `GraphCellView.swift`, `Snapshot.swift`.
   - Port: 2560–2580, 4892–4936, 5024–5042.
-  - Needs: 14.3, 10.1.
-  - Spec: commit-find "Highlight while typing".
-- [ ] 14.5 [M] Port `dofind`, `findmore`, `findselectline`, `markmatches` and `stopfinding`: next and previous match with wrap or no wrap, progress, and highlighted match text in the row and the details — Verify: `swift test --filter FindSteppingTests` (wraps around; Shift-Down/⌘-G do not wrap).
-  - Files: `Sources/GitkCore/Find/FindStepper.swift`, `FindBar.swift`, tests.
+  - Needs: 14.3, 10.1, 9.5.
+  - Spec: commit-find "Highlight while typing", "Match boxes", "Current match box", "Advanced filters", "Defaults".
+- [ ] 14.5 [M] Port `dofind`, `findmore`, `findselectline`, `markmatches` and `stopfinding`: next and previous match with wrap or no wrap, progress, the current-match box, and the same boxes in the sidebar message — Verify: `swift test --filter FindSteppingTests` (wraps around; Shift-Down/⌘-G do not wrap); a snapshot shows one orange current box and yellow other boxes.
+  - Files: `Sources/GitkCore/Find/FindStepper.swift`, `SearchBar.swift`, `DetailsSidebar.swift`, tests.
   - Port: 6943–7187.
   - Needs: 14.4.
-  - Spec: commit-find "Wraparound", "No wrap with Shift", "Matches in visible text".
-- [ ] 14.6 [S] Wire the focus keys: `/` and keypad-divide focus the find field; `g` clears and focuses the Commit ID field — Verify: `swift test --filter FocusKeyTests`.
-  - Files: `MainWindowController.swift`, tests.
+  - Spec: commit-find "Wraparound", "No wrap with Shift", "Matches in visible text", "Current match box".
+- [ ] 14.6 [S] Wire the focus keys: `/` and keypad-divide focus the titlebar search field; `g` clears it and switches it to go-to-commit mode — Verify: `swift test --filter FocusKeyTests`.
+  - Files: `MainWindowController.swift`, `SearchBar.swift`, tests.
   - Needs: 14.4, 9.7.
   - Spec: commit-find "Slash to search".
+- [ ] 14.7 [M] Make search fast: `SearchIndex` with immutable chunks of searchable fields, scanning off the main actor, a 100 ms debounce, prefix narrowing (when the pattern extends, scan only the previous matches), field pruning, and generation cancellation. Add `FindPerfTests` behind `GITK_PERF=1` on `huge` for a common pattern and a no-match pattern — Verify: first visible boxes appear in ≤ 120 ms, the full result arrives in ≤ 1 s, a superseded search stops in ≤ 50 ms, and the main thread is never blocked for more than 16 ms; record the numbers in `docs/architecture.md`.
+  - Files: `Sources/GitkCore/Find/SearchIndex.swift`, `Sources/GitkCore/Find/SearchScanner.swift`, `SearchBar.swift`, tests, `docs/architecture.md`.
+  - Needs: 14.3, 14.4, 3.2.
+  - Spec: commit-find "Responsive search on a large repo", "Stale results never appear", "Prefix refinement reuses results", "Cancellation".
 
 ## 15. Views
 
@@ -563,8 +568,8 @@ Order of work:
 - [x] 16.1 [M] Implement `RepoActions` (Core) wrappers for branch create, rename and delete, tag create, checkout, reset, cherry-pick, revert and patch-id, each returning typed results or errors that carry git's stderr — Verify: `swift test --filter RepoActionsTests` on temp copies of fixtures (one test per operation, including the failure paths).
   - Files: `Sources/GitkCore/Actions/RepoActions.swift`, tests.
   - Needs: 2.2, 1.6.
-- [ ] 16.2 [M] Implement diff this ↔ selected and diff this ↔ marked: a two-commit diff in the pane with both IDs as links in the header — Verify: `swift test --filter TwoCommitDiffTests` (command and header text).
-  - Files: `DetailsTextController.swift`, tests.
+- [ ] 16.2 [M] Implement diff this ↔ selected and diff this ↔ marked: a two-commit diff in the bottom pane with both IDs as links in the details sidebar — Verify: `swift test --filter TwoCommitDiffTests` (command and header text).
+  - Files: `DetailsSidebar.swift`, `DiffRenderer.swift`, tests.
   - Port: 9345–9424.
   - Needs: 11.5, 10.11.
   - Spec: repository-actions "Diff against selection".
@@ -572,7 +577,7 @@ Order of work:
   - Files: `SelectionModel.swift`, `CommitListController.swift`, tests.
   - Port: 9188–9241.
   - Needs: 10.11, 12.3.
-- [ ] 16.4 [M] Implement compare with marked commit (`PatchIDCompare`: `git patch-id` for each side, then report the unmatched commits in the details pane) — Verify: `swift test --filter PatchIDCompareTests` (on a cherry-picked series built in a temp repo).
+- [ ] 16.4 [M] Implement compare with marked commit (`PatchIDCompare`: `git patch-id` for each side, then report the unmatched commits in the diff pane) — Verify: `swift test --filter PatchIDCompareTests` (on a cherry-picked series built in a temp repo).
   - Files: `Sources/GitkCore/Actions/PatchIDCompare.swift`, tests.
   - Port: 9241–9345.
   - Needs: 16.1, 16.3.
@@ -645,20 +650,20 @@ Order of work:
   - Port: 11700–11803, 11914–11972, 12078–12152.
   - Needs: 4.5, 9.6.
   - Spec: preferences "Cancel", "Toggle local changes".
-- [ ] 18.2 [M] Build the Colors page (colour wells for each colour setting; changes apply on OK) — Verify: `swift test --filter PrefsColorsTests` (a changed colour reaches `DiffRenderer` attributes).
+- [ ] 18.2 [M] Build the Colors page (colour wells for each colour setting, including "Found text background" and "Current search hit background"; changes apply on OK) — Verify: `swift test --filter PrefsColorsTests` (a changed colour reaches `DiffRenderer` attributes and the search match boxes).
   - Files: `PreferencesController.swift`, tests.
   - Port: 11803–11903, 12017–12078.
   - Needs: 18.1.
-  - Spec: preferences "Change a colour".
+  - Spec: preferences "Change a colour", "Change a search colour".
 - [ ] 18.3 [M] Build the Fonts page (NSFontPanel for the main, text and UI fonts) and the ⌘+/⌘−/⌘= font size commands (persisted) — Verify: `swift test --filter FontSettingsTests`.
   - Files: `PreferencesController.swift`, `MainWindowController.swift`, tests.
   - Port: 8873–8901, 11623–11700, 11903–11914.
   - Needs: 18.1.
   - Spec: preferences "Change the text font", "Increase font".
-- [ ] 18.4 [M] Save and restore window geometry (window frame, both split positions, column widths, ref-list frame), load settings at startup, and import legacy settings on first launch — Verify: `swift test --filter GeometryPersistenceTests`; with `GITK_SWIFT_CONFIG_DIR` pointing at a temp dir and an `XDG_CONFIG_HOME` holding the sample config, the first launch imports it (the snapshot shows the imported font).
-  - Files: `MainWindowController.swift`, `AppDelegate.swift`, tests.
+- [ ] 18.4 [M] Save and restore window geometry (window frame, the history/diff split, the history/sidebar split, the sidebar width and collapsed state, column widths, ref-list frame), load settings at startup, and import legacy settings on first launch — Verify: `swift test --filter GeometryPersistenceTests`; with `GITK_SWIFT_CONFIG_DIR` pointing at a temp dir and an `XDG_CONFIG_HOME` holding the sample config, the first launch imports it (the snapshot shows the imported font).
+  - Files: `MainWindowController.swift`, `MainSplitView.swift`, `AppDelegate.swift`, tests.
   - Needs: 4.6, 9.5.
-  - Spec: preferences "Geometry restored", "Import existing config", "Config with code", "Legacy file untouched", "Corrupt settings", "Fresh install".
+  - Spec: preferences "Geometry restored", "Sidebar state restored", "Import existing config", "Config with code", "Legacy file untouched", "Corrupt settings", "Fresh install".
 - [ ] 18.5 [S] Apply the "Hide remote refs", "Refs to hide", "Show local changes" and "Limit diffs" settings live (redraw or reload as needed) — Verify: `swift test --filter LiveSettingsTests`.
   - Files: `ViewSession.swift`, `MainWindowController.swift`, tests.
   - Needs: 18.1, 8.7.

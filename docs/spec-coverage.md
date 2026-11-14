@@ -4,7 +4,7 @@ Every scenario in `openspec/changes/rewrite-gitk-in-swift/specs/**/spec.md`, and
 When you implement a scenario, fill in **Covered by** with a test (`SuiteName/testName`), a snapshot check, or a smoke step (`smoke-test.md #N`), and set **Status** to `covered`.
 Task 20.2 checks that no row is still `pending`.
 
-Total scenarios: 145
+Total scenarios: 166
 
 | Capability | Requirement | Scenario | Covered by | Status |
 |---|---|---|---|---|
@@ -21,8 +21,10 @@ Total scenarios: 145
 | cli-launch | Environment and version checks | SHA-256 repository |  | pending |
 | cli-launch | Environment and version checks | Unknown hash algorithm |  | pending |
 | cli-launch | Foreground activation | Launch from terminal |  | pending |
-| commit-details | Commit header | Merge commit |  | pending |
-| commit-details | Commit header | Commit with notes |  | pending |
+| commit-details | Details sidebar | Sidebar follows selection |  | pending |
+| commit-details | Identity and metadata | Merge commit |  | pending |
+| commit-details | Message section | Commit with notes |  | pending |
+| commit-details | Message section | Message section collapses |  | pending |
 | commit-details | Nearby refs | Nearby tags computed in the background |  | pending |
 | commit-details | Nearby refs | Too many branches |  | pending |
 | commit-details | Nearby refs | Index reused across launches |  | pending |
@@ -31,13 +33,24 @@ Total scenarios: 145
 | commit-details | Web links | Open a URL |  | pending |
 | commit-details | Comment wrapping | Word wrap |  | pending |
 | commit-details | Annotated tag display | Click a tag |  | pending |
-| commit-find | Find criteria | Case-insensitive author search |  | pending |
-| commit-find | Find criteria | Pickaxe search |  | pending |
-| commit-find | Find criteria | Invalid regexp |  | pending |
+| commit-find | Search kinds | Pickaxe search |  | pending |
+| commit-find | Text matching options | Case-insensitive author search |  | pending |
+| commit-find | Text matching options | Invalid regexp |  | pending |
+| commit-find | Advanced search options | Options stay out of the bar |  | pending |
+| commit-find | Advanced search options | Advanced filters |  | pending |
+| commit-find | Advanced search options | Defaults |  | pending |
 | commit-find | Live highlighting | Highlight while typing |  | pending |
+| commit-find | Match boxes | Match boxes |  | pending |
+| commit-find | Match boxes | Current match box |  | pending |
+| commit-find | Match boxes | Matches in visible text |  | pending |
+| commit-find | Search performance | Responsive search on a large repo |  | pending |
+| commit-find | Search performance | Stale results never appear |  | pending |
+| commit-find | Search performance | Prefix refinement reuses results |  | pending |
+| commit-find | Search performance | Cancellation |  | pending |
 | commit-find | Stepping through matches | Wraparound |  | pending |
 | commit-find | Stepping through matches | No wrap with Shift |  | pending |
-| commit-find | Stepping through matches | Matches in visible text |  | pending |
+| commit-find | Match counter and progress | Match counter |  | pending |
+| commit-find | Match counter and progress | Searching status |  | pending |
 | commit-find | Touching-paths patterns | Directory path |  | pending |
 | commit-find | Touching-paths patterns | Quoted path with spaces |  | pending |
 | commit-find | Focus shortcuts | Slash to search |  | pending |
@@ -54,6 +67,10 @@ Total scenarios: 145
 | commit-graph | Ref labels | Many tags on one commit |  | pending |
 | commit-graph | Ref labels | Context menu on a head label |  | pending |
 | commit-graph | Line interaction | Click a line |  | pending |
+| commit-list | Window layout | Initial layout |  | pending |
+| commit-list | Window layout | Narrow window |  | pending |
+| commit-list | Titlebar controls | No top bar |  | pending |
+| commit-list | Titlebar controls | No unified titlebar |  | pending |
 | commit-list | Three-column list | Synchronized scrolling |  | pending |
 | commit-list | Three-column list | Date format with timezone |  | pending |
 | commit-list | Selection | Select a commit |  | pending |
@@ -64,10 +81,11 @@ Total scenarios: 145
 | commit-list | Keyboard navigation | Go to parent |  | pending |
 | commit-list | Back/forward history | Back after following a link |  | pending |
 | commit-list | Go to commit | Abbreviated ID |  | pending |
-| commit-list | Go to commit | Not in view |  | pending |
+| commit-list | Commit resolution errors | Not in view |  | pending |
 | commit-list | Row context menu | Context menu on a fake row |  | pending |
 | commit-list | Status and progress | Status during load |  | pending |
 | commit-list | Mouse scrolling | Wheel multiplier |  | pending |
+| diff-viewer | Diff pane placement | Selection shows the diff |  | pending |
 | diff-viewer | Patch display | Ordinary commit |  | pending |
 | diff-viewer | Patch display | Rename |  | pending |
 | diff-viewer | Patch display | Large diff |  | pending |
@@ -83,7 +101,8 @@ Total scenarios: 145
 | diff-viewer | Tree mode | View a file at a revision |  | pending |
 | diff-viewer | Per-file encodings | Shift-JIS file |  | pending |
 | diff-viewer | Line origin | Origin of an added line |  | pending |
-| file-list | Patch-mode file list | Jump to file |  | pending |
+| file-list | Changed Files section | Jump to file |  | pending |
+| file-list | Changed Files section | Change totals |  | pending |
 | file-list | Linked highlighting | Scroll the diff |  | pending |
 | file-list | Tree mode | Expand a directory |  | pending |
 | file-list | File context menu | External diff |  | pending |
@@ -116,8 +135,10 @@ Total scenarios: 145
 | preferences | Preferences window | Cancel |  | pending |
 | preferences | General settings page | Toggle local changes |  | pending |
 | preferences | Colour and font settings pages | Change the text font |  | pending |
+| preferences | Colour and font settings pages | Change a search colour |  | pending |
 | preferences | Defaults match gitk on macOS | Fresh install |  | pending |
 | preferences | Persistence | Geometry restored |  | pending |
+| preferences | Persistence | Sidebar state restored |  | pending |
 | preferences | Persistence | Corrupt settings |  | pending |
 | preferences | Legacy gitk config import | Import existing config |  | pending |
 | preferences | Legacy gitk config import | Config with code |  | pending |
