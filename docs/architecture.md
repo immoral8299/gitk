@@ -38,7 +38,11 @@ Recorded during implementation:
 
 User-visible strings with no gitk msgid. These have no translations.
 
-- (none yet)
+- `Settings…`
+- `Copy`
+- `Paste`
+- `Select all`
+- `Commit ID:`
 
 ## Performance
 
