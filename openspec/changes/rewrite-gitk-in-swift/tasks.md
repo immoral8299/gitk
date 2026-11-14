@@ -187,23 +187,23 @@ Order of work:
 
 ## 6. Core: display ordering (port of gitk "varc")
 
-- [ ] 6.1 [L] Port `varcinit`, `resetvarcs`, `seeds` and `newvarc` into `VarcOrdering`, keeping gitk's state names as Swift properties — Verify: `swift test --filter VarcOrderingInitTests` (unit tests on hand-built 5-commit graphs) passes.
+- [x] 6.1 [L] Port `varcinit`, `resetvarcs`, `seeds` and `newvarc` into `VarcOrdering`, keeping gitk's state names as Swift properties — Verify: `swift test --filter VarcOrderingInitTests` (unit tests on hand-built 5-commit graphs) passes.
   - Files: `Sources/GitkCore/History/VarcOrdering.swift`, tests.
   - Port: 872–1001.
   - Needs: 3.2.
-- [ ] 6.2 [L] Port `splitvarc`, `renumbervarc` and `fix_reversal` — Verify: `swift test --filter VarcOrderingSplitTests` covers a child arriving after its parent, using hand-built graphs.
+- [x] 6.2 [L] Port `splitvarc`, `renumbervarc` and `fix_reversal` — Verify: `swift test --filter VarcOrderingSplitTests` covers a child arriving after its parent, using hand-built graphs.
   - Files: `VarcOrdering.swift`, tests.
   - Port: 1001–1185.
   - Needs: 6.1.
-- [ ] 6.3 [M] Port `insertrow`, `insertfakerow`, `removefakerow`, `real_children`, `first_real_child` and `last_real_child` — Verify: `swift test --filter VarcOrderingInsertTests` (insert a fake row under HEAD, then remove it, and the order is restored).
+- [x] 6.3 [M] Port `insertrow`, `insertfakerow`, `removefakerow`, `real_children`, `first_real_child` and `last_real_child` — Verify: `swift test --filter VarcOrderingInsertTests` (insert a fake row under HEAD, then remove it, and the order is restored).
   - Files: `VarcOrdering.swift`, tests.
   - Port: 1185–1324.
   - Needs: 6.2.
-- [ ] 6.4 [M] Port `vtokcmp`, `modify_arc`, `update_arcrows`, `commitinview`, `rowofcommit`, `comes_before`, `bsearch`, `make_disporder`, `commitonrow`, `closevarcs` and `rewrite_commit` — Verify: `swift test --filter VarcOrderingRowTests` (`rowofcommit` and `commitonrow` are inverses on a 50-commit graph).
+- [x] 6.4 [M] Port `vtokcmp`, `modify_arc`, `update_arcrows`, `commitinview`, `rowofcommit`, `comes_before`, `bsearch`, `make_disporder`, `commitonrow`, `closevarcs` and `rewrite_commit` — Verify: `swift test --filter VarcOrderingRowTests` (`rowofcommit` and `commitonrow` are inverses on a 50-commit graph).
   - Files: `VarcOrdering.swift`, tests.
   - Port: 1324–1623.
   - Needs: 6.3.
-- [ ] 6.5 [M] Port the graph-building half of `getcommitlines` as `VarcOrdering.add(_ commit: ParsedCommit)`, plus `chewcommits`; I/O is not part of this — Verify: `swift test --filter OrderingParityTests`, where the display order and the `varcs` dump equal `OracleRunner` output for every fixture.
+- [x] 6.5 [M] Port the graph-building half of `getcommitlines` as `VarcOrdering.add(_ commit: ParsedCommit)`, plus `chewcommits`; I/O is not part of this — Verify: `swift test --filter OrderingParityTests`, where the display order and the `varcs` dump equal `OracleRunner` output for every fixture.
   - Files: `VarcOrdering.swift`, `Tests/GitkCoreTests/OrderingParityTests.swift`.
   - Port: 1700–1884.
   - Needs: 6.4, 5.5.
