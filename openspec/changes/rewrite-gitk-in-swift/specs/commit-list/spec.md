@@ -7,11 +7,11 @@ Defines the window layout and the history list: the titlebar search strip, the t
 ## ADDED Requirements
 
 ### Requirement: Window layout
-The window SHALL show the search bar in the titlebar, the history list in the upper left, the details sidebar on the right, and the diff pane below the list. The diff pane SHALL default to about half the window height. A status strip SHALL run along the bottom.
+The window SHALL show the search bar in the titlebar, the history list in the upper left, the details sidebar on the right, and the diff pane below the list. The diff pane SHALL be shown only while a commit is selected, at about half the window height by default; with no selection the history list SHALL fill the left column. On systems with a unified titlebar the panes SHALL extend under the titlebar so scrolled content is blurred behind it. A status strip SHALL run along the bottom.
 
 #### Scenario: Initial layout
 - **WHEN** a repository is opened
-- **THEN** the history list and the details sidebar fill the window, the diff pane is empty until a commit is selected, and the status strip reads "Row 0 / 0"
+- **THEN** the history list and the details sidebar fill the window, the diff pane is hidden until a commit is selected, and the status strip reads "Row 0 / 0"
 
 #### Scenario: Narrow window
 - **WHEN** the window is made narrower than 700 points

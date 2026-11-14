@@ -51,12 +51,13 @@ enum Chrome {
 
     /// Makes the titlebar unified with the content and hosts `bar` in it as a
     /// single flexible toolbar item, leaving the traffic lights at the left.
-    /// The content view then spans the whole window; lay content out below
-    /// `window.contentLayoutRect`.
+    /// The content view then spans the whole window. Scroll views placed under
+    /// the titlebar get the system's backdrop blur (scroll edge effect on
+    /// macOS 26, titlebar material before), so the titlebar must not be made
+    /// transparent.
     static func installUnifiedTitlebar(_ window: NSWindow, bar: NSView) {
         window.styleMask.insert(.fullSizeContentView)
         window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
         let host = TitlebarToolbar(bar: bar)
         window.toolbar = host.toolbar
         window.toolbarStyle = .unified

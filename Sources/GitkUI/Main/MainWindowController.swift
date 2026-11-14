@@ -251,6 +251,7 @@ final class MainWindowController: NSWindowController {
         guard session.row(of: id) != nil else { return }
         session.selection = session.selection.selecting(id, scrollPosition: currentDiffScrollPosition(), record: record || session.selection.history.entries.isEmpty)
         listController.restoreSelection(scroll: true)
+        splitView.showsDiffPane = true
         refreshBars()
         if settings.autoCopy {
             NSPasteboard.general.clearContents()
@@ -260,6 +261,7 @@ final class MainWindowController: NSWindowController {
     }
 
     private func refreshBars() {
+        if session.selection.selectedID.flatMap({ session.row(of: $0) }) == nil { splitView.showsDiffPane = false }
         statusBar.refresh(session: session)
         searchBar.refresh(session: session)
     }

@@ -13,6 +13,8 @@ final class DetailsSidebar: NSView {
     private let header = NSView()
     private(set) var body: NSView
     var onClose: (() -> Void)?
+    /// Height of a unified titlebar drawn over the top of the sidebar.
+    var topInset: CGFloat = 0 { didSet { needsLayout = true } }
 
     static let headerHeight: CGFloat = 30
 
@@ -49,11 +51,11 @@ final class DetailsSidebar: NSView {
     override func layout() {
         super.layout()
         let h = Self.headerHeight
-        header.frame = NSRect(x: 0, y: 0, width: bounds.width, height: h)
+        header.frame = NSRect(x: 0, y: topInset, width: bounds.width, height: h)
         let size = closeButton.fittingSize
         closeButton.frame = NSRect(x: bounds.width - size.width - 8, y: (h - size.height) / 2,
                                    width: size.width, height: size.height)
-        body.frame = NSRect(x: 0, y: h, width: bounds.width, height: max(0, bounds.height - h))
+        body.frame = NSRect(x: 0, y: topInset + h, width: bounds.width, height: max(0, bounds.height - topInset - h))
     }
 
     override func draw(_ dirtyRect: NSRect) {
