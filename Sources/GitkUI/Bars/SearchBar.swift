@@ -365,8 +365,11 @@ final class SearchToolbar: NSObject, NSToolbarDelegate {
         toolbarDefaultItemIdentifiers(toolbar)
     }
 
+    /// Toolbar symbols, a size below the default so the compact titlebar stays light.
     private func image(_ symbol: String) -> NSImage {
-        NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage()
+        let base = NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage()
+        let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .regular, scale: .small)
+        return base.withSymbolConfiguration(config) ?? base
     }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier id: NSToolbarItem.Identifier,
