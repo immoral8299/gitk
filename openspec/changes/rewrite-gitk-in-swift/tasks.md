@@ -447,7 +447,7 @@ Order of work:
   - Files: `Sources/GitkCore/Ancestry/AncestryIndex.swift`, `Tests/Oracle/oracle.tcl`, tests.
   - Port: 10414–10701.
   - Needs: 5.3, 3.2.
-- [ ] 12.2 [M] Implement `AncestryCache` read/write in gitk's text format, stored in `<gitdir>/gitk-swift.cache` with a `gitk-swift-cache 1` header line — Verify: `swift test --filter AncestryCacheTests` (round-trip; a corrupt cache is ignored and rebuilt).
+- [x] 12.2 [M] Implement `AncestryCache` read/write in gitk's text format, stored in `<gitdir>/gitk-swift.cache` with a `gitk-swift-cache 1` header line — Verify: `swift test --filter AncestryCacheTests` (round-trip; a corrupt cache is ignored and rebuilt).
   - Files: `Sources/GitkCore/Ancestry/AncestryCache.swift`, tests.
   - Port: 10701–10866.
   - Needs: 12.1.
