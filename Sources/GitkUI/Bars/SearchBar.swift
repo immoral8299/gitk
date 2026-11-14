@@ -28,6 +28,8 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
     let location = NSPopUpButton()
 
     private(set) var fieldMode: Mode = .search
+    /// Previous/next match, shown only while there is a query.
+    private var stepCluster = NSStackView()
     /// The titlebar presentation, when the bar's controls live in the toolbar.
     weak var toolbar: SearchToolbar?
     private let stack = NSStackView()
@@ -90,7 +92,8 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
         stack.distribution = .fill
         stack.edgeInsets = NSEdgeInsets(top: 0, left: 8, bottom: 0, right: 8)
         stack.setHuggingPriority(.defaultLow, for: .horizontal)
-        for view in [Self.cluster(back, forward), field, advanced, counter, Self.cluster(previous, next)] {
+        stepCluster = Self.cluster(previous, next)
+        for view in [Self.cluster(back, forward), field, advanced, counter, stepCluster] {
             stack.addArrangedSubview(view)
         }
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -225,7 +228,12 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
     }
 
     private func updateCounter() {
-        guard fieldMode == .search, !query.pattern.isEmpty else {
+        // The counter and previous/next only appear while there is a query.
+        let active = fieldMode == .search && !query.pattern.isEmpty
+        counter.isHidden = !active
+        stepCluster.isHidden = !active
+        toolbar?.setMatchControlsVisible(active)
+        guard active else {
             counter.stringValue = ""
             return
         }
@@ -357,7 +365,9 @@ final class SearchToolbar: NSObject, NSToolbarDelegate {
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.navigationID, Self.searchID, Self.advancedID, Self.counterID, Self.stepID,
+        // The flexible space pushes the counter and previous/next to the trailing
+        // edge of the content section, before the sidebar's titlebar section.
+        [Self.navigationID, Self.searchID, Self.advancedID, .flexibleSpace, Self.counterID, Self.stepID,
          .inspectorTrackingSeparator, .flexibleSpace, Self.sidebarID]
     }
 
@@ -405,12 +415,14 @@ final class SearchToolbar: NSObject, NSToolbarDelegate {
             let item = NSToolbarItem(itemIdentifier: id)
             item.view = bar.counter
             item.isBordered = false
+            if #available(macOS 15.0, *) { item.isHidden = bar.counter.isHidden }
             return item
         case Self.stepID:
             let group = NSToolbarItemGroup(itemIdentifier: id, images: [image("chevron.up"), image("chevron.down")],
                                            selectionMode: .momentary, labels: [L("Previous match"), L("Next match")],
                                            target: self, action: #selector(step(_:)))
             group.autovalidates = false
+            if #available(macOS 15.0, *) { group.isHidden = bar.counter.isHidden }
             return group
         case Self.sidebarID:
             let item = NSToolbarItem(itemIdentifier: id)
@@ -423,6 +435,17 @@ final class SearchToolbar: NSObject, NSToolbarDelegate {
             return item
         default:
             return nil
+        }
+    }
+
+    private var matchItems: [NSToolbarItem] {
+        toolbar.items.filter { $0.itemIdentifier == Self.counterID || $0.itemIdentifier == Self.stepID }
+    }
+
+    /// Hides the counter and previous/next while the query is empty.
+    func setMatchControlsVisible(_ visible: Bool) {
+        if #available(macOS 15.0, *) {
+            for item in matchItems { item.isHidden = !visible }
         }
     }
 
