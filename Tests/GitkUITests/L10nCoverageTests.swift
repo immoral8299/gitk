@@ -46,9 +46,14 @@ import Testing
     }
 
     static func gitkMsgids() throws -> Set<String> {
-        let data = try Data(contentsOf: repoRoot.appendingPathComponent("po/de.po"))
-        let catalog = try PoParser.parse(data: data)
-        return Set(catalog.entries.filter { !$0.id.isEmpty }.map { PoConverter.stripMnemonics($0.id) })
+        // No single catalog has every msgid (de.po predates some strings), so take the union.
+        let po = repoRoot.appendingPathComponent("po")
+        var ids = Set<String>()
+        for name in try FileManager.default.contentsOfDirectory(atPath: po.path) where name.hasSuffix(".po") {
+            let catalog = try PoParser.parse(data: Data(contentsOf: po.appendingPathComponent(name)))
+            ids.formUnion(catalog.entries.filter { !$0.id.isEmpty }.map { PoConverter.stripMnemonics($0.id) })
+        }
+        return ids
     }
 
     /// Bullet items under the "## New strings" heading of docs/architecture.md.
