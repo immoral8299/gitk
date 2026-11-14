@@ -37,6 +37,7 @@ Recorded during implementation:
 - 2026-11-15, 13.1: The Changed Files list is built from the streamed diff's file sections (with per-file +/− counts) instead of gitk's separate `git diff-tree -r` call, so it always matches the diff pane, renames and copies included (`-C`), and needs no extra git process. A clean merge, whose `--cc` diff is empty, therefore lists no files; gitk lists the files changed against the first parent.
 - 2026-11-14, cli-launch: `gitk-swift <path-to-repo> [args]` opens that repository when the path is a repository's top level, or when the working directory is not in a repository (`RepositoryArgument`). gitk always uses the working directory; a subdirectory of the current repository is still a path limit.
 - 2026-11-14, 11.1/11.5: A colour setting that still has gitk's default value (window, text, diff, link, find, graph line, merge, commit dot and ref label colours) is drawn with the app's pastel theme (Catppuccin Latte in light mode, Mocha in dark mode), so the app reads well in both appearances. A colour set in Preferences or `settings.json` is used exactly (`Palette`, `Theme`).
+- 2026-11-15, 10.1: The history list has a header row (Headline, Author, Date) whose dividers resize the columns, and the author and date columns fit their content with the headline taking the rest (`ColumnSizing`). gitk has no header and places the three panes at fixed sash positions (`pwsash0`, `pwsash1`), so its date pane can be cut off in a narrow window.
 
 ## New strings
 

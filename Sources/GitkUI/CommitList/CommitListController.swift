@@ -11,7 +11,7 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
     let scrollView = NSScrollView()
     let tableView = NSTableView()
     var onSelection: ((ObjectID) -> Void)?
-    var dateFormat = "%Y-%m-%d %H:%M:%S"
+    var dateFormat = "%Y-%m-%d %H:%M:%S" { didSet { measureColumns() } }
     var font: NSFont
     var highlightedIDs = Set<ObjectID>()
     var findQuery = FindQuery()
@@ -19,18 +19,40 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
     var settings = UISettings()
     private var updatingSelection = false
     private var colors: GraphColors?
+    /// Widest sampled author and date values, padding included.
+    private var authorContent: CGFloat = 0
+    private var dateContent: CGFloat = 0
+    /// Widths the user dragged the author and date columns to.
+    private(set) var userAuthorWidth: CGFloat?
+    private(set) var userDateWidth: CGFloat?
+    private var fitting = false
+    /// The widths `fitColumns` last applied.
+    private var fitted = ColumnSizing(subject: 0, author: 0, date: 0)
+    /// Rows measured for the author and date widths: the first ones plus the
+    /// visible ones, never the whole history.
+    static let measuredRows = 300
+    /// A text cell's insets plus a little air.
+    private static let cellPadding: CGFloat = 8
 
     init(session: ViewSession, font: NSFont) {
         self.session = session
         self.font = font
         super.init()
-        for (name, width) in [("subject", 560.0), ("author", 200.0), ("date", 220.0)] {
+        for (name, title) in [("subject", L("Headline")), ("author", L("Author")), ("date", L("Date"))] {
             let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(name))
-            column.width = width
-            column.minWidth = 40
+            column.title = title
+            column.minWidth = ColumnSizing.minColumn
+            column.resizingMask = [.autoresizingMask, .userResizingMask]
             tableView.addTableColumn(column)
         }
-        tableView.headerView = nil
+        // The header is there for dragging column dividers; it neither sorts
+        // nor selects columns.
+        tableView.allowsColumnSelection = false
+        tableView.allowsColumnReordering = false
+        tableView.allowsColumnResizing = true
+        // Window and sidebar resizes go to the headline column first;
+        // `fitColumns` then settles the exact widths.
+        tableView.columnAutoresizingStyle = .reverseSequentialColumnAutoresizingStyle
         tableView.rowHeight = ceil(font.ascender - font.descender + font.leading) + 2
         tableView.intercellSpacing = NSSize(width: 8, height: 0)
         tableView.usesAlternatingRowBackgroundColors = false
@@ -41,6 +63,96 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
+        scrollView.contentView.postsFrameChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(listWidthChanged(_:)), name: NSView.frameDidChangeNotification,
+            object: scrollView.contentView)
+        measureColumns()
+    }
+
+    // MARK: Column widths
+
+    @objc private func listWidthChanged(_ notification: Notification) { fitColumns() }
+
+    /// Width the three columns share: the list's width less intercell spacing
+    /// and the table style's leading and trailing row insets.
+    private var availableColumnWidth: CGFloat {
+        let columns = tableView.tableColumns
+        guard !columns.isEmpty else { return 0 }
+        let leading = tableView.rect(ofColumn: 0).minX
+        let spanned = tableView.rect(ofColumn: columns.count - 1).maxX - leading
+        let spacing = spanned - columns.reduce(0) { $0 + $1.width }
+        return scrollView.contentView.bounds.width - spacing - 2 * leading
+    }
+
+    /// Measures the widest author and date among the first `measuredRows`
+    /// rows and the visible ones, in the list font (bold for find matches).
+    private func measureColumns() {
+        let bold = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
+        let count = session.rowCount
+        var rows = IndexSet(integersIn: 0..<min(count, Self.measuredRows))
+        let visible = tableView.rows(in: scrollView.contentView.documentVisibleRect)
+        if visible.length > 0, visible.location < count {
+            rows.insert(integersIn: visible.location..<min(count, visible.location + visible.length))
+        }
+        var author: CGFloat = 0
+        var date: CGFloat = 0
+        if rows.isEmpty {
+            // Before the first rows arrive, size the date column for "now".
+            let sample = TclDateFormat.format(epoch: Int64(Date().timeIntervalSince1970),
+                tzOffsetSeconds: TimeZone.current.secondsFromGMT(), format: dateFormat)
+            date = (sample as NSString).size(withAttributes: [.font: font]).width
+        }
+        for row in rows {
+            guard let values = values(at: row) else { continue }
+            let rowFont = session.id(at: row).map { highlightedIDs.contains($0) } == true ? bold : font
+            author = max(author, (values[1] as NSString).size(withAttributes: [.font: rowFont]).width)
+            date = max(date, (values[2] as NSString).size(withAttributes: [.font: rowFont]).width)
+        }
+        authorContent = ceil(author) + Self.cellPadding
+        dateContent = ceil(date) + Self.cellPadding
+        fitColumns()
+    }
+
+    /// Applies `ColumnSizing.fit` to the list's current width.
+    func fitColumns() {
+        let columns = tableView.tableColumns
+        let available = availableColumnWidth
+        guard !fitting, columns.count == 3, available > 0 else { return }
+        let sizing = ColumnSizing.fit(available: available, authorContent: authorContent, dateContent: dateContent,
+                                      userAuthor: userAuthorWidth, userDate: userDateWidth)
+        fitted = sizing
+        fitting = true
+        defer { fitting = false }
+        for (column, width) in zip(columns, [sizing.subject, sizing.author, sizing.date]) where column.width != width {
+            column.width = width
+        }
+    }
+
+    /// A divider dragged in the header: the author and date columns keep the
+    /// widths the user gave them from then on; the headline takes the rest.
+    func tableViewColumnDidResize(_ notification: Notification) {
+        guard !fitting else { return }
+        let columns = tableView.tableColumns
+        if let header = tableView.headerView, header.resizedColumn >= 0, columns.count == 3 {
+            let user = ColumnSizing.dragged(column: header.resizedColumn, to: columns[header.resizedColumn].width,
+                                            from: fitted, available: availableColumnWidth)
+            if header.resizedColumn <= 1 { userAuthorWidth = user.author }
+            if header.resizedColumn >= 1 { userDateWidth = user.date }
+        }
+        fitColumns()
+    }
+
+    /// Double-clicking a divider fits the column to its content again.
+    func tableView(_ tableView: NSTableView, sizeToFitWidthOfColumn column: Int) -> CGFloat {
+        switch column {
+        case 1: userAuthorWidth = nil
+        case 2: userDateWidth = nil
+        default: return tableView.tableColumns[column].width
+        }
+        let sizing = ColumnSizing.fit(available: availableColumnWidth, authorContent: authorContent,
+                                      dateContent: dateContent, userAuthor: userAuthorWidth, userDate: userDateWidth)
+        return column == 1 ? sizing.author : sizing.date
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int { session.rowCount }
@@ -142,6 +254,7 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         }
         restoreSelection(scroll: false)
         updatingSelection = false
+        measureColumns()
     }
 
     func restoreSelection(scroll: Bool) {
@@ -161,10 +274,13 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         switch step {
         case .lines(let n): y += CGFloat(n) * tableView.rowHeight
         case .pages(let n): y += CGFloat(n) * clip.bounds.height
-        case .toStart: y = 0
-        case .toEnd: y = tableView.bounds.height
+        case .toStart: y = -.infinity
+        case .toEnd: y = .infinity
         }
-        y = max(0, min(y, max(0, tableView.bounds.height - clip.bounds.height)))
+        // The top inset covers the header and, with a unified titlebar, the
+        // titlebar; the first row must not end up underneath them.
+        let top = -clip.contentInsets.top
+        y = max(top, min(y, max(top, tableView.bounds.height + clip.contentInsets.bottom - clip.bounds.height)))
         clip.scroll(to: NSPoint(x: clip.bounds.minX, y: y))
         scrollView.reflectScrolledClipView(clip)
     }
