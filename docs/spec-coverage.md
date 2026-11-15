@@ -134,7 +134,7 @@ Total scenarios: 168
 | localization | Language override | C locale |  | pending |
 | localization | Catalog regeneration | Idempotent conversion |  | pending |
 | preferences | Preferences window | Change a colour |  | pending |
-| preferences | Preferences window | Cancel |  | pending |
+| preferences | Preferences window | Cancel | PrefsGeneralTests/cancelDiscardsChanges | covered |
 | preferences | General settings page | Toggle local changes |  | pending |
 | preferences | Colour and font settings pages | Change the text font |  | pending |
 | preferences | Colour and font settings pages | Change a search colour |  | pending |

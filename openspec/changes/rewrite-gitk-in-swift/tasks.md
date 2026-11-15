@@ -645,7 +645,7 @@ Order of work:
 
 ## 18. Preferences UI and persistence wiring
 
-- [ ] 18.1 [M] Build the General page of `PreferencesController` (all fields from the spec; external diff chooser), with OK and Cancel — Verify: a snapshot with `GITK_SWIFT_OPEN=prefs` shows the General page; `swift test --filter PrefsGeneralTests` (Cancel discards).
+- [x] 18.1 [M] Build the General page of `PreferencesController` (all fields from the spec; external diff chooser), with OK and Cancel — Verify: a snapshot with `GITK_SWIFT_OPEN=prefs` shows the General page; `swift test --filter PrefsGeneralTests` (Cancel discards).
   - Files: `Sources/GitkUI/Dialogs/PreferencesController.swift`, tests.
   - Port: 11700–11803, 11914–11972, 12078–12152.
   - Needs: 4.5, 9.6.
@@ -691,7 +691,7 @@ Order of work:
 
 ## 20. Integration, packaging and parity sign-off
 
-- [ ] 20.1 [S] Write `Tools/make-app.sh` (an `.app` bundle with `Info.plist`, a placeholder icon and the resource bundle) and Makefile `app`/`install PREFIX=` targets — Verify: `make app && open -a ./out/gitk-swift.app --args` from within a fixture opens the window; `make install PREFIX=/tmp/gs` produces `/tmp/gs/bin/gitk-swift`, which runs.
+- [x] 20.1 [S] Write `Tools/make-app.sh` (an `.app` bundle with `Info.plist`, a placeholder icon and the resource bundle) and Makefile `app`/`install PREFIX=` targets — Verify: `make app && open -a ./out/gitk-swift.app --args` from within a fixture opens the window; `make install PREFIX=/tmp/gs` produces `/tmp/gs/bin/gitk-swift`, which runs.
   - Files: `Tools/make-app.sh`, `Makefile`.
   - Needs: 9.2.
 - [ ] 20.2 [M] Fill in `docs/spec-coverage.md` so every scenario in `specs/**/spec.md` maps to a passing test or a numbered step in `docs/smoke-test.md`; write the smoke steps for the UI-only scenarios — Verify: a script `Tools/check-coverage.sh` reports 0 scenarios without a mapping.
