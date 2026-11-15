@@ -97,13 +97,15 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
     private(set) var showLocalChangesCheckbox: NSButton?
     private(set) var extDiffToolField: NSTextField?
     private(set) var spinners: [String: SpinnerField] = [:]
+    /// The Colors page wells, keyed by `ColorSetting.id`.
+    private(set) var colorWells: [String: NSColorWell] = [:]
     private(set) var okButton = NSButton()
     private(set) var cancelButton = NSButton()
 
     /// (title, builder) for each tab, in gitk's order.
     private(set) var pageBuilders: [(title: String, build: (PreferencesController) -> NSView)] = [
         (L("General"), { $0.makeGeneralPage() }),
-        (L("Colors"), { _ in NSView() }),
+        (L("Colors"), { $0.makeColorsPage() }),
         (L("Fonts"), { _ in NSView() }),
     ]
 
@@ -288,6 +290,87 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
         extDiffToolField?.stringValue = path
     }
 
+    // MARK: Colors page
+
+    /// One colour setting edited on the Colors page.
+    struct ColorSetting {
+        let id: String
+        let title: String
+        let set: (inout Settings, String) -> Void
+        let display: @MainActor (Settings) -> NSColor
+    }
+
+    /// Port of the `coloruielems` list in gitk proc `prefspage_colors`
+    /// (gitk/gitk 11836–11866), in gitk's order, followed by the two search
+    /// colours.
+    static let colorSettings: [ColorSetting] = [
+        ColorSetting(id: "bg", title: L("Background"), set: { $0.bgColor = $1 },
+                     display: { Palette.background($0) }),
+        ColorSetting(id: "fg", title: L("Main text"), set: { $0.fgColor = $1 },
+                     display: { Palette.foreground($0) }),
+        ColorSetting(id: "selbg", title: L("Selected text background"), set: { $0.selectBgColor = $1 },
+                     display: { Palette.tk($0.selectBgColor) }),
+        ColorSetting(id: "linkfg", title: L("Link text"), set: { $0.linkFgColor = $1 },
+                     display: { Palette.link($0) }),
+        ColorSetting(id: "diffold", title: L("Old line text"), set: { $0.setList(\.diffColors, 0, $1) },
+                     display: { Palette.diff($0, 0) }),
+        ColorSetting(id: "diffoldbg", title: L("Old line background"), set: { $0.setList(\.diffBgColors, 0, $1) },
+                     display: { Palette.diffBackground($0, 0) }),
+        ColorSetting(id: "diffnew", title: L("New line text"), set: { $0.setList(\.diffColors, 1, $1) },
+                     display: { Palette.diff($0, 1) }),
+        ColorSetting(id: "diffnewbg", title: L("New line background"), set: { $0.setList(\.diffBgColors, 1, $1) },
+                     display: { Palette.diffBackground($0, 1) }),
+        ColorSetting(id: "hunksep", title: L("Hunk header text"), set: { $0.setList(\.diffColors, 2, $1) },
+                     display: { Palette.diff($0, 2) }),
+        ColorSetting(id: "markbg", title: L("Marked line background"), set: { $0.markBgColor = $1 },
+                     display: { Palette.tk($0.markBgColor) }),
+        ColorSetting(id: "foundbg", title: L("Found text background"), set: { $0.foundBgColor = $1 },
+                     display: { Palette.found($0) }),
+        ColorSetting(id: "currenthit", title: L("Current search hit background"),
+                     set: { $0.currentSearchHitBgColor = $1 }, display: { Palette.tk($0.currentSearchHitBgColor) }),
+    ]
+
+    /// Tk colour string (`#rrggbb`) for an `NSColor`, via sRGB.
+    static func tkString(_ color: NSColor) -> String {
+        let c = color.usingColorSpace(.sRGB) ?? color
+        func byte(_ v: CGFloat) -> UInt8 { UInt8(min(max((v * 255).rounded(), 0), 255)) }
+        return TkColor.hexString(RGBA(r: byte(c.redComponent), g: byte(c.greenComponent), b: byte(c.blueComponent)))
+    }
+
+    /// Port of gitk proc `prefspage_colors` (colour part) and `choosecolor`.
+    /// A well edits the draft only; nothing applies until OK. The Themes
+    /// section is omitted (no Tk themes; see Deviations).
+    func makeColorsPage() -> NSView {
+        let grid = NSGridView()
+        grid.rowSpacing = 6
+        grid.columnSpacing = 8
+        grid.translatesAutoresizingMaskIntoConstraints = false
+        let title = label(L("Colors: press to choose"))
+        title.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
+        grid.addRow(with: [title, NSView()]).mergeCells(in: NSRange(location: 0, length: 2))
+        for item in Self.colorSettings {
+            let well = NSColorWell()
+            well.color = item.display(draft)
+            well.translatesAutoresizingMaskIntoConstraints = false
+            well.widthAnchor.constraint(equalToConstant: 64).isActive = true
+            well.heightAnchor.constraint(equalToConstant: 24).isActive = true
+            bind(well, ClosureTarget { [weak self, weak well] in
+                guard let self, let well else { return }
+                item.set(&self.draft, Self.tkString(well.color))
+            })
+            colorWells[item.id] = well
+            grid.addRow(with: [label(item.title), well])
+        }
+        let page = NSView()
+        page.addSubview(grid)
+        NSLayoutConstraint.activate([
+            grid.leadingAnchor.constraint(equalTo: page.leadingAnchor, constant: 12),
+            grid.trailingAnchor.constraint(lessThanOrEqualTo: page.trailingAnchor, constant: -12),
+            grid.topAnchor.constraint(equalTo: page.topAnchor, constant: 8),
+        ])
+        return page
+    }
+
     // MARK: Helpers
 
     private var targets: [ClosureTarget] = []
@@ -302,5 +385,13 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
         let l = NSTextField(labelWithString: text)
         l.alignment = .left
         return l
+    }
+}
+
+private extension Settings {
+    /// `lset`: replaces entry `i` of a colour list, growing it if short.
+    mutating func setList(_ path: WritableKeyPath<Settings, [String]>, _ i: Int, _ value: String) {
+        while self[keyPath: path].count <= i { self[keyPath: path].append("") }
+        self[keyPath: path][i] = value
     }
 }

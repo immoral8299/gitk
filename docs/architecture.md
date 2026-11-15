@@ -67,6 +67,8 @@ User-visible strings with no gitk msgid. These have no translations.
 - `%d more lines not shown.`
 - `Show all`
 - `%d Changed Files`
+- `Found text background`
+- `Current search hit background`
 
 ## Performance
 
