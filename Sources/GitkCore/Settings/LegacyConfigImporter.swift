@@ -159,6 +159,20 @@ enum LegacyConfigImporter {
         return items
     }
 
+    /// Font families gitk writes by default (gitk/gitk 12616–12629: aqua, Xft and
+    /// plain X11). gitk saves every preference, so these say nothing about a choice.
+    static let gitkDefaultFontFamilies: Set<String> = ["Lucida Grande", "Monaco", "sans", "monospace", "Helvetica", "Courier"]
+
+    /// A legacy font keeps only its family: Tk sizes are tuned for gitk and come
+    /// out far too small next to native macOS text, so the size and style stay
+    /// the app's. gitk's own default families are not imported at all.
+    static func importedFont(_ font: FontSpec, over current: FontSpec) -> FontSpec? {
+        guard !gitkDefaultFontFamilies.contains(font.family) else { return nil }
+        var result = current
+        result.family = font.family
+        return result
+    }
+
     /// Applies one supported variable; returns `false` if the name is unsupported or the
     /// value is invalid (the setting then keeps its previous value).
     private static func apply(_ name: String, _ v: String, to s: inout Settings) -> Bool {
@@ -193,9 +207,11 @@ enum LegacyConfigImporter {
         case "web_browser": return set(\.webBrowser, v)
         case "wrapcomment": return set(\.wrapComment, oneOf(["none", "char", "word"]))
         case "wrapdefault": return set(\.wrapDefault, oneOf(["none", "char", "word"]))
-        case "mainfont": return set(\.mainFont, TkFont.parse(v))
-        case "textfont": return set(\.textFont, TkFont.parse(v))
-        case "uifont": return set(\.uiFont, TkFont.parse(v))
+        case "mainfont", "textfont", "uifont":
+            guard let font = TkFont.parse(v) else { return false }
+            let kp: WritableKeyPath<Settings, FontSpec> = name == "mainfont" ? \.mainFont : name == "textfont" ? \.textFont : \.uiFont
+            if let imported = importedFont(font, over: s[keyPath: kp]) { s[keyPath: kp] = imported }
+            return true
         case "bgcolor": return set(\.bgColor, colour(v))
         case "fgcolor": return set(\.fgColor, colour(v))
         case "selectbgcolor": return set(\.selectBgColor, colour(v))

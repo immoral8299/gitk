@@ -27,9 +27,10 @@ import Testing
     @Test func importsSampleConfig() throws {
         let text = try String(contentsOf: sampleURL(), encoding: .utf8)
         let s = LegacyConfigImporter.parse(text)
-        #expect(s.mainFont == FontSpec(family: "Menlo", pointSize: 11))
-        #expect(s.textFont == FontSpec(family: "Courier New", pointSize: 10))
-        #expect(s.uiFont == FontSpec(family: "Lucida Grande", pointSize: 9, bold: true))
+        #expect(s.mainFont == FontSpec(family: "Menlo", pointSize: Settings().mainFont.pointSize))
+        // Family only; Lucida Grande is a gitk default family and is not imported.
+        #expect(s.textFont == FontSpec(family: "Courier New", pointSize: Settings().textFont.pointSize))
+        #expect(s.uiFont == Settings().uiFont)
         #expect(s.diffContext == 5)
         #expect(s.tabStop == 4)
         #expect(s.autoCopy && !s.autoSelect && s.hideRemotes)
@@ -141,5 +142,19 @@ import Testing
         let home = try tempHome()
         defer { try? FileManager.default.removeItem(at: home) }
         #expect(LegacyConfigImporter.importConfig(environment: [:], homeDirectory: home) == nil)
+    }
+}
+
+/// Legacy fonts: the family only, and never gitk's own default families.
+@Suite struct LegacyFontImportTests {
+    @Test func familyOnlyAndGitkDefaultsSkipped() {
+        let defaults = Settings()
+        let mono = LegacyConfigImporter.importedFont(FontSpec(family: "JetBrains Mono NL", pointSize: 8), over: defaults.textFont)
+        #expect(mono == FontSpec(family: "JetBrains Mono NL", pointSize: defaults.textFont.pointSize))
+        let ui = LegacyConfigImporter.importedFont(FontSpec(family: "Helvetica Neue", pointSize: 12, bold: true), over: defaults.uiFont)
+        #expect(ui?.family == "Helvetica Neue" && ui?.bold == defaults.uiFont.bold)
+        for family in ["Helvetica", "Lucida Grande", "sans", "Courier", "Monaco", "monospace"] {
+            #expect(LegacyConfigImporter.importedFont(FontSpec(family: family, pointSize: 9), over: defaults.mainFont) == nil)
+        }
     }
 }

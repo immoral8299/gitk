@@ -19,7 +19,12 @@ Planned (from the proposal and design):
   ported, because no gitk UI reaches them.
 - Default fonts are the system font, the monospaced system font and the bold
   system font at 12 pt, not Lucida Grande / Monaco at 9 pt (design D9).
-  Imported fonts are used as they are.
+  Legacy import takes only a font's family: Tk sizes (gitk saves 8–9 pt) are
+  far too small next to native macOS text, so size and style stay the app's.
+  gitk's own default families (Lucida Grande, Monaco, sans, monospace,
+  Helvetica, Courier) are not imported, since gitk writes them on every save.
+  This differs from the preferences "Import existing config" scenario, which
+  expects `Menlo 11`; the user chose families only on 2026-11-15.
 - gitk-swift never writes the Tcl gitk config file, and caches the ancestry
   index in `<gitdir>/gitk-swift.cache`, not `gitk.cache`.
 - The `b` key goes to the previous file in the diff (gitk's actual binding),

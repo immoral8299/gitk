@@ -89,7 +89,7 @@ private final class Warnings: @unchecked Sendable {
         """)
         let s = box.store().loadImportingLegacy()
         #expect(s.mainFont.family == "Menlo")
-        #expect(s.mainFont.pointSize == 11)
+        #expect(s.mainFont.pointSize == Settings().mainFont.pointSize)  // family only
         #expect(s.diffContext == 5)
         #expect(s.views.map(\.name) == ["one", "two"])
     }
