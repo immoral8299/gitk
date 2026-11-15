@@ -522,7 +522,7 @@ Order of work:
   - Port: 2560–2580, 4892–4936, 5024–5042.
   - Needs: 14.3, 10.1, 9.5.
   - Spec: commit-find "Highlight while typing", "Match boxes", "Current match box", "Advanced filters", "Defaults".
-- [ ] 14.5 [M] Port `dofind`, `findmore`, `findselectline`, `markmatches` and `stopfinding`: next and previous match with wrap or no wrap, progress, the current-match box, and the same boxes in the sidebar message — Verify: `swift test --filter FindSteppingTests` (wraps around; Shift-Down/⌘-G do not wrap); a snapshot shows one orange current box and yellow other boxes.
+- [x] 14.5 [M] Port `dofind`, `findmore`, `findselectline`, `markmatches` and `stopfinding`: next and previous match with wrap or no wrap, progress, the current-match box, and the same boxes in the sidebar message — Verify: `swift test --filter FindSteppingTests` (wraps around; Shift-Down/⌘-G do not wrap); a snapshot shows one orange current box and yellow other boxes.
   - Files: `Sources/GitkCore/Find/FindStepper.swift`, `SearchBar.swift`, `DetailsSidebar.swift`, tests.
   - Port: 6943–7187.
   - Needs: 14.4.
@@ -553,7 +553,7 @@ Order of work:
   - Port: 4434–4634.
   - Needs: 15.2, 9.5.
   - Spec: views "Create a view", "Apply without closing", "Paths field".
-- [ ] 15.4 [M] Implement the View menu: All files and Command line entries, plus new, edit, delete and switch (keeping the selection) and enablement — Verify: `swift test --filter ViewMenuTests` (the no-arguments state disables Edit and Delete; switching keeps the selection at view-model level).
+- [x] 15.4 [M] Implement the View menu: All files and Command line entries, plus new, edit, delete and switch (keeping the selection) and enablement — Verify: `swift test --filter ViewMenuTests` (the no-arguments state disables Edit and Delete; switching keeps the selection at view-model level).
   - Files: `MainMenu.swift`, `Sources/GitkCore/Views/ViewManager.swift`, tests.
   - Port: 4286–4303, 4559–4576, 4634–4765.
   - Needs: 15.3, 8.7.
@@ -573,7 +573,7 @@ Order of work:
   - Port: 9345–9424.
   - Needs: 11.5, 10.11.
   - Spec: repository-actions "Diff against selection".
-- [ ] 16.3 [M] Implement mark this commit, return to mark, and find descendant of this and mark (marked-row background) — Verify: `swift test --filter MarkTests` (`find_common_desc` on `criss-cross`).
+- [x] 16.3 [M] Implement mark this commit, return to mark, and find descendant of this and mark (marked-row background) — Verify: `swift test --filter MarkTests` (`find_common_desc` on `criss-cross`).
   - Files: `SelectionModel.swift`, `CommitListController.swift`, tests.
   - Port: 9188–9241.
   - Needs: 10.11, 12.3.

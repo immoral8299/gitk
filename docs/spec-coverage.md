@@ -43,14 +43,14 @@ Total scenarios: 168
 | commit-find | Advanced search options | Defaults | MatchBoxTests/advancedOptionsDefaultAndSnapshotQuery | covered |
 | commit-find | Live highlighting | Highlight while typing | MatchBoxTests/everyOccurrenceGetsABoxAndRowsStayRegular; snapshot GITK_SWIFT_FIND=containing:Exact:All fields:merge | covered |
 | commit-find | Match boxes | Match boxes | MatchBoxTests/everyOccurrenceGetsABoxAndRowsStayRegular | covered |
-| commit-find | Match boxes | Current match box | MatchBoxTests/currentMatchUsesTheCurrentHitColour | covered |
-| commit-find | Match boxes | Matches in visible text |  | pending |
+| commit-find | Match boxes | Current match box | MatchBoxTests/currentMatchUsesTheCurrentHitColour, MatchBoxTests/onlyTheFirstOccurrenceIsCurrent, FindSteppingTests/currentOccurrenceIsFirstInDisplayOrder | covered |
+| commit-find | Match boxes | Matches in visible text | MatchBoxTests/sidebarMessageShowsTheSameBoxes, MatchBoxTests/everyOccurrenceGetsABoxAndRowsStayRegular | covered |
 | commit-find | Search performance | Responsive search on a large repo |  | pending |
 | commit-find | Search performance | Stale results never appear |  | pending |
 | commit-find | Search performance | Prefix refinement reuses results |  | pending |
 | commit-find | Search performance | Cancellation |  | pending |
-| commit-find | Stepping through matches | Wraparound |  | pending |
-| commit-find | Stepping through matches | No wrap with Shift |  | pending |
+| commit-find | Stepping through matches | Wraparound | FindSteppingTests/wrapAndNoWrap, FindSteppingTests/steppingWalksEveryMatchAndWrapsOnce | covered |
+| commit-find | Stepping through matches | No wrap with Shift | FindSteppingTests/wrapAndNoWrap | covered |
 | commit-find | Match counter and progress | Match counter |  | pending |
 | commit-find | Match counter and progress | Searching status |  | pending |
 | commit-find | Touching-paths patterns | Directory path |  | pending |
@@ -166,13 +166,13 @@ Total scenarios: 168
 | repository-actions | Copy commit reference | Copy reference |  | pending |
 | repository-actions | External tools | git gui missing |  | pending |
 | repository-actions | Error reporting for write operations | Branch already exists outside the app |  | pending |
-| views | Command-line view | No arguments |  | pending |
+| views | Command-line view | No arguments | ViewMenuTests/noArgumentsDisablesEditAndDelete | covered |
 | views | View editor | Create a view | ViewEditorFormTests/createViewBuildsSpec; snapshot GITK_SWIFT_OPEN=viewEditor | covered |
 | views | View editor | Apply without closing | ViewEditorFormTests/editorFieldsRoundTrip | covered |
 | views | View editor fields | Pickaxe as regexp |  | pending |
 | views | View editor fields | Paths field | ViewEditorFormTests/pathsFieldSplitsLines | covered |
 | views | Round-trip of view arguments | Edit a command-line view |  | pending |
-| views | Switching and deleting views | Switch keeps selection |  | pending |
+| views | Switching and deleting views | Switch keeps selection | ViewMenuTests/switchKeepsSelectionWhenInNewView | covered |
 | views | Remembered views | Persist across launches |  | pending |
 | views | Remembered views | Unchecked view not saved |  | pending |
 | views | Merge-conflict view | Merge in progress |  | pending |
