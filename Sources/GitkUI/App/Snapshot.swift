@@ -76,7 +76,42 @@ final class Snapshot {
             bitsPerPixel: 0)
         else { return nil }
         view.cacheDisplay(in: view.bounds, to: rep)
+        if let window = view.window { drawPopovers(of: window, over: view, into: rep) }
         return rep.representation(using: .png, properties: [:])
+    }
+
+    /// `cacheDisplay` covers one window, and a popover is a window of its own.
+    /// Draws each open popover of `window` into `rep` at its place over `view`.
+    private static func drawPopovers(of window: NSWindow, over view: NSView, into rep: NSBitmapImageRep) {
+        let popovers = NSApp.windows.filter { $0 !== window && $0.isVisible && $0.className.contains("Popover") }
+        guard !popovers.isEmpty, let context = NSGraphicsContext(bitmapImageRep: rep) else { return }
+        for popover in popovers {
+            // The popover's chrome is a visual-effect view that leaves garbage in
+            // its transparent corners offscreen: paint a plain rounded panel and
+            // clip the rendering to it.
+            guard let body = popover.contentViewController?.view,
+                  let frameView = popover.contentView?.superview ?? popover.contentView,
+                  let shot = NSBitmapImageRep(
+                    bitmapDataPlanes: nil, pixelsWide: Int(frameView.bounds.width.rounded()),
+                    pixelsHigh: Int(frameView.bounds.height.rounded()), bitsPerSample: 8, samplesPerPixel: 4,
+                    hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)
+            else { continue }
+            frameView.cacheDisplay(in: frameView.bounds, to: shot)
+            func place(_ source: NSView) -> NSRect {
+                let screen = popover.convertToScreen(source.convert(source.bounds, to: nil))
+                var rect = view.convert(window.convertFromScreen(screen), from: nil)
+                if view.isFlipped { rect.origin.y = view.bounds.height - rect.maxY }
+                return rect
+            }
+            let panel = NSBezierPath(roundedRect: place(body).insetBy(dx: -6, dy: -6), xRadius: 12, yRadius: 12)
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = context
+            NSColor.windowBackgroundColor.setFill()
+            panel.fill()
+            NSBezierPath(roundedRect: place(body), xRadius: 16, yRadius: 16).addClip()
+            shot.draw(in: place(frameView))
+            NSGraphicsContext.restoreGraphicsState()
+        }
     }
 
     /// Waits for readiness, writes the PNG and exits: 0 on success, 1 on failure.

@@ -249,6 +249,9 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
     @objc func findPrevious() { step(forward: false, wrap: true) }
     @objc private func optionsChanged() { refresh() }
 
+    /// Test hook: whether the Advanced popover is open.
+    var advancedShown: Bool { popover.isShown }
+
     // MARK: Find (gitk dofind/findmore, row level; see FindStepper)
 
     var query: FindQuery {
@@ -263,16 +266,37 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
         let parts = text.split(separator: ":", omittingEmptySubsequences: false).map(String.init)
         guard parts.count >= 4 else { return }
         let kinds = ["containing", "touching paths", "adding/removing string", "changing lines matching"]
-        type.selectItem(at: kinds.firstIndex(of: parts[0]) ?? 0)
-        mode.selectItem(at: ["Exact", "IgnCase", "Regexp"].firstIndex(of: parts[1]) ?? 0)
-        location.selectItem(at: ["All fields", "Headline", "Comments", "Author", "Committer"].firstIndex(of: parts[2]) ?? 0)
+        let modes = ["Exact", "IgnCase", "Regexp"]
+        let fields = ["All fields", "Headline", "Comments", "Author", "Committer"]
+        setSearch(type: kinds.firstIndex(of: parts[0]) ?? 0, mode: modes.firstIndex(of: parts[1]) ?? 0,
+                  field: fields.firstIndex(of: parts[2]) ?? 0, pattern: parts.dropFirst(3).joined(separator: ":"))
+    }
+
+    /// Sets the three Advanced choices and the text, then searches. The entry
+    /// point for "Highlight this too/only" (13.5) and for `GITK_SWIFT_FIND`.
+    func setSearch(type typeIndex: Int, mode modeIndex: Int, field fieldIndex: Int, pattern: String) {
+        type.selectItem(at: typeIndex)
+        mode.selectItem(at: modeIndex)
+        location.selectItem(at: fieldIndex)
         enterSearchMode()
-        field.stringValue = parts.dropFirst(3).joined(separator: ":")
+        field.stringValue = pattern
         refresh()
+    }
+
+    /// Opens the Advanced popover if it is closed (`GITK_SWIFT_FIND_POPOVER`).
+    func showAdvanced() { if !popover.isShown { toggleAdvanced() } }
+
+    /// The Advanced button carries a dot while the kind, match mode or field
+    /// differs from containing / Exact / All fields.
+    private func updateAdvancedDot() {
+        let changed = type.indexOfSelectedItem > 0 || mode.indexOfSelectedItem > 0 || location.indexOfSelectedItem > 0
+        advanced.title = changed ? "Aa •" : "Aa"
+        toolbar?.setAdvancedDot(changed)
     }
 
     func refresh() {
         cancel()
+        updateAdvancedDot()
         let generation = serial
         let query = query
         matches = []
@@ -447,6 +471,12 @@ final class SearchToolbar: NSObject, NSToolbarDelegate {
         if #available(macOS 15.0, *) {
             for item in matchItems { item.isHidden = !visible }
         }
+    }
+
+    /// Marks the Advanced item while its options differ from the defaults.
+    func setAdvancedDot(_ on: Bool) {
+        advancedItem?.image = image(on ? "textformat.alt" : "textformat")
+        advancedItem?.toolTip = on ? L("Search in") + " •" : L("Search in")
     }
 
     func setNavigation(back: Bool, forward: Bool) {

@@ -293,6 +293,7 @@ final class MainWindowController: NSWindowController {
             if let snapshotQuery = environment["GITK_SWIFT_FIND"] {
                 searchBar.applySnapshotQuery(snapshotQuery)
             } else { searchBar.refresh() }
+            if environment["GITK_SWIFT_FIND_POPOVER"] == "1" { searchBar.showAdvanced() }
         }
     }
 

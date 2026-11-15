@@ -98,6 +98,7 @@ final class GraphCellView: NSTableCellView {
             text.addAttribute(.foregroundColor, value: NSColor.selectedTextColor, range: NSRange(location: 0, length: text.length))
         }
         let textHeight = font.ascender - font.descender
+        MatchBoxes.draw(text, at: NSPoint(x: CGFloat(geometry.textX), y: (bounds.height - textHeight) / 2 - 1), height: textHeight)
         text.draw(in: NSRect(x: CGFloat(geometry.textX), y: (bounds.height - textHeight) / 2 - 1,
             width: max(0, bounds.width - CGFloat(geometry.textX)), height: bounds.height))
         setAccessibilityLabel(attributedHeadline.string)
@@ -142,5 +143,51 @@ final class GraphCellView: NSTableCellView {
         let length = dx * dx + dy * dy
         let t = length > 0 ? max(0, min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length)) : 0
         return hypot(p.x - a.x - t * dx, p.y - a.y - t * dy)
+    }
+}
+
+/// Rounded match boxes behind the glyphs (design D17), replacing gitk's bold
+/// rows. A range carries the box colour under `key`; the boxes are measured from
+/// the text itself, so they follow it when a column is resized.
+enum MatchBoxes {
+    static let key = NSAttributedString.Key("gitk.matchBox")
+
+    /// Draws the boxes for `text` laid out on one line starting at `origin`
+    /// (the top-left of the line box), `height` tall.
+    static func draw(_ text: NSAttributedString, at origin: NSPoint, height: CGFloat) {
+        guard text.length > 0 else { return }
+        text.enumerateAttribute(key, in: NSRange(location: 0, length: text.length)) { value, range, _ in
+            guard let colour = value as? NSColor else { return }
+            let before = text.attributedSubstring(from: NSRange(location: 0, length: range.location)).size().width
+            let width = text.attributedSubstring(from: range).size().width
+            let box = NSRect(x: origin.x + before - 1, y: origin.y, width: width + 2, height: height)
+            colour.setFill()
+            NSBezierPath(roundedRect: box, xRadius: 3, yRadius: 3).fill()
+        }
+    }
+}
+
+/// A list cell label that draws `MatchBoxes` behind its text.
+@MainActor
+final class MatchLabel: NSTextField {
+    init() {
+        super.init(frame: .zero)
+        isEditable = false
+        isSelectable = false
+        isBordered = false
+        drawsBackground = false
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    override func draw(_ dirtyRect: NSRect) {
+        if let cell {
+            let rect = cell.titleRect(forBounds: bounds)
+            let size = attributedStringValue.size()
+            MatchBoxes.draw(attributedStringValue,
+                            at: NSPoint(x: rect.minX, y: rect.minY + (rect.height - size.height) / 2), height: size.height)
+        }
+        super.draw(dirtyRect)
     }
 }

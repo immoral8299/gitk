@@ -21,6 +21,8 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
     /// Colours, circle colours and graph limits for the graph column.
     var settings = UISettings()
     private var updatingSelection = false
+    /// The row the current-match box was last drawn for.
+    private var shownSelectedRow = -1
     private var colors: GraphColors?
     /// Widest sampled author and date values, padding included.
     private var authorContent: CGFloat = 0
@@ -106,9 +108,8 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
     }
 
     /// Measures the widest author and date among the first `measuredRows`
-    /// rows and the visible ones, in the list font (bold for find matches).
+    /// rows and the visible ones, in the list font.
     private func measureColumns() {
-        let bold = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
         let count = session.rowCount
         var rows = IndexSet(integersIn: 0..<min(count, Self.measuredRows))
         let visible = tableView.rows(in: scrollView.contentView.documentVisibleRect)
@@ -125,9 +126,8 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         }
         for row in rows {
             guard let values = values(at: row) else { continue }
-            let rowFont = session.id(at: row).map { highlightedIDs.contains($0) } == true ? bold : font
-            author = max(author, (values[1] as NSString).size(withAttributes: [.font: rowFont]).width)
-            date = max(date, (values[2] as NSString).size(withAttributes: [.font: rowFont]).width)
+            author = max(author, (values[1] as NSString).size(withAttributes: [.font: font]).width)
+            date = max(date, (values[2] as NSString).size(withAttributes: [.font: font]).width)
         }
         authorContent = ceil(author) + Self.cellPadding
         dateContent = ceil(date) + Self.cellPadding
@@ -194,17 +194,18 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         return made
     }
 
-    /// Text of one cell, bold for find matches, with matched ranges highlighted.
+    /// Text of one cell. Rows keep their normal weight; matched ranges carry
+    /// `MatchBoxes.key` and are drawn as rounded boxes behind the glyphs, in the
+    /// current-search-hit colour on the selected row and the found colour
+    /// elsewhere (design D17).
     private func cellText(_ value: String, position: Int, row: Int) -> NSAttributedString {
-        let cellFont = session.id(at: row).map { highlightedIDs.contains($0) } == true
-            ? NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask) : font
-        let text = NSMutableAttributedString(string: value, attributes: [.font: cellFont, .foregroundColor: NSColor.labelColor])
+        let text = NSMutableAttributedString(string: value, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
         let eligible = (position < 2 && findQuery.field == .allFields) || (position == 0 && findQuery.field == .headline)
             || (position == 1 && findQuery.field == .author)
-        if eligible {
-            for range in findQuery.matches(in: value) {
-                text.addAttribute(.backgroundColor, value: Palette.found(settings), range: NSRange(range, in: value))
-            }
+        guard eligible, let id = session.id(at: row), highlightedIDs.contains(id) else { return text }
+        let colour = id == session.selection.selectedID ? Palette.tk(settings.currentSearchHitBgColor) : Palette.found(settings)
+        for range in findQuery.matches(in: value) {
+            text.addAttribute(MatchBoxes.key, value: colour, range: NSRange(range, in: value))
         }
         return text
     }
@@ -243,8 +244,7 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
               let values = values(at: row) else { return nil }
         if position == 0 { return graphCell(row: row, column: column, headline: values[0]) }
         let identifier = column.identifier
-        let field = (tableView.makeView(withIdentifier: identifier, owner: self) as? NSTextField)
-            ?? NSTextField(labelWithString: "")
+        let field = (tableView.makeView(withIdentifier: identifier, owner: self) as? MatchLabel) ?? MatchLabel()
         field.identifier = identifier
         field.stringValue = values[position]
         field.attributedStringValue = cellText(values[position], position: position, row: row)
@@ -255,6 +255,12 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
 
     /// Port of gitk proc `selectline` (selection notification only).
     func tableViewSelectionDidChange(_ notification: Notification) {
+        // The current match box follows the selection.
+        if !highlightedIDs.isEmpty {
+            let rows = IndexSet([shownSelectedRow, tableView.selectedRow].filter { $0 >= 0 && $0 < session.rowCount })
+            if !rows.isEmpty { tableView.reloadData(forRowIndexes: rows, columnIndexes: IndexSet(integersIn: 0..<3)) }
+        }
+        shownSelectedRow = tableView.selectedRow
         guard !updatingSelection, let id = session.id(at: tableView.selectedRow) else { return }
         onSelection?(id)
     }
