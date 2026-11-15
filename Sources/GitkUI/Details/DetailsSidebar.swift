@@ -250,6 +250,38 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         setMessage(messages.joined(separator: "\n\n"), session: session)
     }
 
+    /// Shows the two commits of a row-menu diff. Port of the text of gitk proc
+    /// `doseldiff` (gitk/gitk 9407–9420): "From" and "To" lines with each ID as
+    /// a commit link and its headline. The Changed Files section stays and is
+    /// filled from the diff pane.
+    func show(diff: TwoCommitDiff, session: ViewSession) {
+        self.session = session
+        shownID = nil
+        shownHeader = nil
+        for section in sections { section.isHidden = false }
+        commitSection.title = L("Commit")
+        identityView.isHidden = true
+        idButton.isHidden = true
+        refsLabel.isHidden = true
+        messageSection.isHidden = true
+        func headline(_ id: ObjectID) -> String {
+            guard let commit = session.store.index(of: id), session.store.isLoaded(commit) else { return "" }
+            return session.store.headline(at: commit)
+        }
+        let header = diff.header(oldHeadline: headline(diff.old), newHeadline: headline(diff.new))
+        let text = NSMutableAttributedString(string: header.text, attributes: [
+            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize), .foregroundColor: NSColor.labelColor,
+        ])
+        for (range, id) in [(header.oldRange, diff.old), (header.newRange, diff.new)] {
+            text.addAttributes([
+                .font: NSFont.monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular),
+                .link: LinkHandling.commitScheme + id.hex, .foregroundColor: Palette.link(settings),
+            ], range: range)
+        }
+        setText(rowsView, text)
+        setMessage("", session: session)
+    }
+
     /// Sets the message (the subject only until Show More), with commit and web
     /// links, and scrolls the sidebar to the top.
     private func setMessage(_ text: String, session: ViewSession) {

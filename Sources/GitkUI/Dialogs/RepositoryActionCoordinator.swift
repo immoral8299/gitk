@@ -15,6 +15,7 @@ final class RepositoryActionCoordinator {
     var onBusy: ((String?) -> Void)?
     var onSelect: ((ObjectID) -> Void)?
     /// Called after the mark changed (old, new) so the list can redraw the marked row.
+    var onDiffCommits: ((TwoCommitDiff) -> Void)?
     var onMarkChanged: ((ObjectID?, ObjectID?) -> Void)?
     /// Replaces spawning `git <arguments>` (tests only), receiving the base commit for the author.
     var toolLauncher: (([String], ObjectID?) -> Void)?
@@ -215,6 +216,10 @@ final class RepositoryActionCoordinator {
             return true
         case .findDescendantAndMark:
             if let id, let found = session.findCommonDesc(marked: session.selection.markedID, menuID: id) { onSelect?(found) }
+            return true
+        case .diffThisToSelected, .diffSelectedToThis, .diffThisToMarked, .diffMarkedToThis:
+            if let id, let diff = TwoCommitDiff.make(command: command, menuID: id, selected: selected,
+                                                     marked: session.selection.markedID) { onDiffCommits?(diff) }
             return true
         default: break
         }

@@ -36,6 +36,7 @@ final class MainWindowController: NSWindowController {
         let coordinator = RepositoryActionCoordinator(session: session)
         coordinator.parentWindow = window
         coordinator.onSelect = { [weak self] in self?.select($0) }
+        coordinator.onDiffCommits = { [weak self] in self?.showTwoCommitDiff($0) }
         coordinator.onMarkChanged = { [weak self] old, new in self?.listController.markChanged(old: old, new: new) }
         return coordinator
     }()
@@ -639,6 +640,17 @@ final class MainWindowController: NSWindowController {
             ancestry = index
             if let id = sidebar.shownID { sidebar.nearby = nearby(for: id) }
         }
+    }
+
+    /// Port of gitk proc `doseldiff` (gitk/gitk 9399–9424): the sidebar names
+    /// both commits and the bottom pane shows the diff between them.
+    func showTwoCommitDiff(_ diff: TwoCommitDiff) {
+        detailsTask?.cancel()
+        detailsTask = nil
+        treeTask?.cancel()
+        splitView.showsDiffPane = true
+        sidebar.show(diff: diff, session: session)
+        diffPane.showDiff(from: diff.old, to: diff.new, session: session)
     }
 
     /// A commit link in the sidebar (commit-details "Revert message link").
