@@ -257,6 +257,27 @@ final class DiffPane: NSObject, NSTextViewDelegate {
         fetch(ids: [from, to], session: session)
     }
 
+    /// Called when a commit link in a report (`showReport`) is clicked.
+    var onSelectCommit: ((ObjectID) -> Void)?
+
+    /// Shows plain report text (the patch-ID comparison); `.link` runs get the link colour.
+    func showReport(_ text: NSAttributedString) {
+        cancel()
+        ids = []
+        document = DiffDocument()
+        sectionOffsets = []
+        lineOffsets = []
+        finished = true
+        let styled = NSMutableAttributedString(string: text.string, attributes: renderer.base)
+        text.enumerateAttributes(in: NSRange(location: 0, length: text.length)) { attrs, range, _ in
+            if let link = attrs[.link] {
+                styled.addAttributes([.link: link, .foregroundColor: Palette.link(settings)], range: range)
+            }
+        }
+        textView.textStorage?.setAttributedString(styled)
+        onSectionsChanged?(document)
+    }
+
     /// Tree mode before a file is chosen: an empty pane bound to commit `id`.
     func showEmpty(id: ObjectID, session: ViewSession) {
         cancel()
@@ -460,6 +481,7 @@ final class DiffPane: NSObject, NSTextViewDelegate {
     }
 
     func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+        if let id = LinkHandling.commit(in: link) { onSelectCommit?(id); return true }
         guard (link as? String) == Self.showAllLink else { return false }
         showAllLines()
         return true

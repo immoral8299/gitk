@@ -37,6 +37,7 @@ final class MainWindowController: NSWindowController {
         coordinator.parentWindow = window
         coordinator.onSelect = { [weak self] in self?.select($0) }
         coordinator.onDiffCommits = { [weak self] in self?.showTwoCommitDiff($0) }
+        coordinator.onShowReport = { [weak self] in self?.diffPane.showReport($0) }
         coordinator.onMarkChanged = { [weak self] old, new in self?.listController.markChanged(old: old, new: new) }
         return coordinator
     }()
@@ -151,6 +152,7 @@ final class MainWindowController: NSWindowController {
             self?.diffPane.scrollView.reflectScrolledClipView(clip)
         }
         listController.onSelection = { [weak self] in self?.select($0) }
+        diffPane.onSelectCommit = { [weak self] in self?.select($0) }
         listController.onRowCommand = { [weak self] command, id in
             guard let self else { return }
             actionCoordinator.perform(command, id: id, selected: session.selection.selectedID)

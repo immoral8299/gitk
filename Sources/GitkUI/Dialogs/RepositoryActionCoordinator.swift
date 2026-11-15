@@ -17,6 +17,8 @@ final class RepositoryActionCoordinator {
     /// Called after the mark changed (old, new) so the list can redraw the marked row.
     var onDiffCommits: ((TwoCommitDiff) -> Void)?
     var onMarkChanged: ((ObjectID?, ObjectID?) -> Void)?
+    /// Receives the "Compare with marked commit" report for the diff pane.
+    var onShowReport: ((NSAttributedString) -> Void)?
     /// Replaces spawning `git <arguments>` (tests only), receiving the base commit for the author.
     var toolLauncher: (([String], ObjectID?) -> Void)?
     private(set) var isBusy = false
@@ -199,6 +201,54 @@ final class RepositoryActionCoordinator {
         })
     }
 
+    private var patchCompare: PatchIDCompare?
+
+    /// Port of gitk proc `compare_commits` (gitk/gitk 9241–9248): needs a mark that is in the view.
+    func compareWithMarked(_ id: ObjectID) {
+        guard let marked = session.selection.markedID, let index = session.store.index(of: marked),
+              session.ordering.commitInView(index) else { return }
+        let compare = patchCompare ?? PatchIDCompare(runner: session.runner, graph: PatchIDGraph(session: session))
+        patchCompare = compare
+        externalTasks.append(Task { [weak self] in
+            guard let lines = try? await compare.compare(marked, id), let self else { return }
+            onShowReport?(Self.renderReport(lines))
+        })
+    }
+
+    /// The report text of gitk proc `do_cmp_commits`; short IDs carry `gitk-commit:` links.
+    static func renderReport(_ lines: [PatchIDReportLine]) -> NSAttributedString {
+        let out = NSMutableAttributedString()
+        func plain(_ text: String) { out.append(NSAttributedString(string: text)) }
+        func link(_ id: ObjectID, pre: String = "", post: String = "") {
+            plain(pre)
+            out.append(NSAttributedString(string: id.abbreviated(8),
+                                          attributes: [.link: LinkHandling.commitScheme + id.hex]))
+            plain(post)
+        }
+        for line in lines {
+            switch line {
+            case .skippingMerge(let id): link(id, pre: L("Skipping merge commit "), post: "\n")
+            case .patchIDError(let id): link(id, pre: L("Error getting patch ID for "), post: L(" - stopping\n"))
+            case .samePatch(let a, let b, let headA, let headB):
+                if headA == headB {
+                    link(a, pre: L("Commit ")); link(b, pre: " == ", post: "  \(headA)\n")
+                } else {
+                    link(a, pre: L("Commit "), post: "  \(headA)\n")
+                    link(b, pre: L(" is the same patch as\n       "), post: "  \(headB)\n")
+                }
+            case .differs(let a, let b, let headA, let headB):
+                plain("\n")
+                link(a, pre: L("Commit "), post: "  \(headA)\n")
+                link(b, pre: L(" differs from\n       "), post: "  \(headB)\n")
+                plain(L("Diff of commits:\n\n"))
+            case .tooManyChildren(let id, let count, let leadingBlank):
+                if leadingBlank { plain("\n") }
+                link(id, pre: L("Commit "), post: L(" has %s children - stopping\n", String(count)))
+            }
+        }
+        return out
+    }
+
     /// Returns false for commands handled by navigation/diff controllers.
     @discardableResult
     func perform(_ command: AppCommand, id: ObjectID?, selected: ObjectID?, branchName: String? = nil,
@@ -220,6 +270,9 @@ final class RepositoryActionCoordinator {
         case .diffThisToSelected, .diffSelectedToThis, .diffThisToMarked, .diffMarkedToThis:
             if let id, let diff = TwoCommitDiff.make(command: command, menuID: id, selected: selected,
                                                      marked: session.selection.markedID) { onDiffCommits?(diff) }
+            return true
+        case .compareWithMarked:
+            if let id { compareWithMarked(id) }
             return true
         default: break
         }
