@@ -485,9 +485,8 @@ final class MainWindowController: NSWindowController {
             }
             // The progress bar's total is counted alongside the load, never
             // before it: on a large repo that is a full history walk.
-            let counting = Task { [weak self] in
-                guard let count = await self?.commitCountEstimate() else { return }
-                self?.expectedCommitCount = count
+            let counting = Task {
+                if let count = await self.commitCountEstimate() { self.expectedCommitCount = count }
             }
             await session.load()
             counting.cancel()
