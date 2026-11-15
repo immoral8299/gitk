@@ -85,7 +85,7 @@ final class MainWindowController: NSWindowController {
         let hasCommandLine = !(launch.revisionArgs.isEmpty && launch.paths.isEmpty)
         viewManager = ViewManager(commandLine: hasCommandLine
             ? ViewSpec(name: ViewManager.commandLineName, args: launch.revisionArgs, files: launch.paths, argsCmd: launch.argsCmd)
-            : nil)
+            : nil, remembered: settings.views.map(ViewSpec.init(saved:)))
         session = ViewSession(repo: startup.repo, runner: runner, view: viewManager.currentView)
         session.showLocalChanges = settings.showLocalChanges
         session.hideRemotes = settings.hideRemotes
@@ -445,11 +445,19 @@ final class MainWindowController: NSWindowController {
             editingViewNumber = number
             if let change = viewManager.switchTo(number, selected: session.selection.selectedID) { show(change) }
         }
+        persistRememberedViews()
     }
 
     private func deleteCurrentView() {
         guard let result = viewManager.deleteCurrent(selected: session.selection.selectedID) else { return }
         show(result.switched)
+        persistRememberedViews()
+    }
+
+    /// Copies the views with "Remember this view" into `settings.views` and saves them.
+    private func persistRememberedViews() {
+        settings.views = viewManager.rememberedViews.map(SavedView.init(view:))
+        saveSettings()
     }
 
     func startLoading() {

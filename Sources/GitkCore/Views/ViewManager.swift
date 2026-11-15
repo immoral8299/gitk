@@ -112,3 +112,20 @@ public struct ViewManager: Sendable, Equatable {
         return rows.first
     }
 }
+
+extension ViewSpec {
+    /// Reads an entry of `Settings.views` (gitk's `permviews`). Every saved view is
+    /// remembered, so `perm` is set; an empty `argsCmd` means none.
+    public init(saved: SavedView) {
+        self.init(
+            name: saved.name, args: saved.args, files: saved.files,
+            argsCmd: saved.argsCmd.isEmpty ? nil : saved.argsCmd, perm: true)
+    }
+}
+
+extension SavedView {
+    /// The `Settings.views` entry for a remembered view.
+    public init(view: ViewSpec) {
+        self.init(name: view.name, files: view.files, args: view.args, argsCmd: view.argsCmd ?? "")
+    }
+}
