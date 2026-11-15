@@ -17,4 +17,14 @@ public enum FindStepper {
         }
         return nil
     }
+
+    /// The occurrence drawn in the current-match colour inside the selected
+    /// row: the first one in display order. `counts` holds the number of
+    /// occurrences in each searched field in display order (list headline,
+    /// list author; or the sidebar message). Every other occurrence uses the
+    /// found colour. Port of gitk proc `findselectline` and `markmatches`
+    /// (gitk/gitk 7130–7172), where the selected row's boxes are raised.
+    public static func currentOccurrence(counts: [Int]) -> (field: Int, index: Int)? {
+        counts.firstIndex { $0 > 0 }.map { ($0, 0) }
+    }
 }

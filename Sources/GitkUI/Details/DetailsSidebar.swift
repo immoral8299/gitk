@@ -30,6 +30,8 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
     /// Show More / Show Less for the message beyond its first line.
     let moreButton = NSButton(title: "", target: nil, action: nil)
     private(set) var messageExpanded = false
+    private var findQuery = FindQuery()
+    private var findMatches = Set<ObjectID>()
     private var fullMessage = NSAttributedString()
     /// The Changed Files list (13.1).
     let fileList = FileListController()
@@ -414,6 +416,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
     /// The subject only, or the whole message and notes when expanded.
     private func showMessage() {
         let text = fullMessage.string as NSString
+        let fullMessage = markedMessage()
         let firstLineEnd = text.range(of: "\n").location
         let hasMore = firstLineEnd != NSNotFound
             && !text.substring(from: firstLineEnd).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -424,6 +427,31 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         }
         moreButton.isHidden = !hasMore
         moreButton.title = messageExpanded ? L("Show Less") : L("Show More")
+    }
+
+    /// The find query and the ids it matches; the message of a matching commit
+    /// shows the same match boxes as the list (commit-find "Matches in visible
+    /// text"). Port of gitk proc `findselectline` (gitk/gitk 7130–7152).
+    func setFind(_ query: FindQuery, matches: Set<ObjectID>) {
+        findQuery = query
+        findMatches = matches
+        if shownID != nil, messageSection?.isHidden == false { showMessage() }
+    }
+
+    /// `fullMessage` with `MatchBoxes.key` on each match: the first occurrence
+    /// in the current-match colour, the rest in the found colour.
+    private func markedMessage() -> NSAttributedString {
+        guard let id = shownID, findMatches.contains(id), findQuery.field == .allFields || findQuery.field == .comments
+        else { return fullMessage }
+        let marked = NSMutableAttributedString(attributedString: fullMessage)
+        let string = fullMessage.string
+        let ranges = findQuery.matches(in: string)
+        let first = FindStepper.currentOccurrence(counts: [ranges.count]) != nil
+        for (n, range) in ranges.enumerated() {
+            let colour = first && n == 0 ? Palette.tk(settings.currentSearchHitBgColor) : Palette.found(settings)
+            marked.addAttribute(MatchBoxes.key, value: colour, range: NSRange(range, in: string))
+        }
+        return marked
     }
 
     @objc private func toggleMore() {
@@ -476,6 +504,21 @@ final class AutoHeightTextView: NSTextView {
         isHorizontallyResizable = false
         textContainer?.widthTracksTextView = true
         textContainer?.containerSize = NSSize(width: 200, height: CGFloat.greatestFiniteMagnitude)
+    }
+
+    /// Match boxes (`MatchBoxes.key`) behind the text, as in the list.
+    override func drawBackground(in rect: NSRect) {
+        super.drawBackground(in: rect)
+        guard let storage = textStorage, let manager = layoutManager, let container = textContainer, storage.length > 0 else { return }
+        storage.enumerateAttribute(MatchBoxes.key, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
+            guard let colour = value as? NSColor else { return }
+            let glyphs = manager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+            manager.enumerateEnclosingRects(forGlyphRange: glyphs, withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0), in: container) { box, _ in
+                let r = box.offsetBy(dx: self.textContainerOrigin.x, dy: self.textContainerOrigin.y).insetBy(dx: -1, dy: 0)
+                colour.setFill()
+                NSBezierPath(roundedRect: r, xRadius: 3, yRadius: 3).fill()
+            }
+        }
     }
 
     override var intrinsicContentSize: NSSize {

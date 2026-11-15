@@ -168,6 +168,7 @@ final class MainWindowController: NSWindowController {
             self.listController.highlightedIDs = ids
             self.listController.findQuery = query
             self.listController.refresh()
+            self.sidebar.setFind(query, matches: ids)
             self.onFindQueryChanged?(query)
         }
         searchBar.onBusy = { [weak self] searching in

@@ -205,8 +205,17 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         let eligible = (position < 2 && findQuery.field == .allFields) || (position == 0 && findQuery.field == .headline)
             || (position == 1 && findQuery.field == .author)
         guard eligible, let id = session.id(at: row), highlightedIDs.contains(id) else { return text }
-        let colour = id == session.selection.selectedID ? Palette.tk(settings.currentSearchHitBgColor) : Palette.found(settings)
-        for range in findQuery.matches(in: value) {
+        // Only the first occurrence in the selected row is the current match.
+        var currentHere = false
+        if id == session.selection.selectedID, let values = values(at: row) {
+            let fields = (0..<2).filter { p in
+                findQuery.field == .allFields || (p == 0 && findQuery.field == .headline) || (p == 1 && findQuery.field == .author)
+            }
+            let counts = fields.map { findQuery.matches(in: values[$0]).count }
+            currentHere = FindStepper.currentOccurrence(counts: counts).map { fields[$0.field] == position } ?? false
+        }
+        for (n, range) in findQuery.matches(in: value).enumerated() {
+            let colour = currentHere && n == 0 ? Palette.tk(settings.currentSearchHitBgColor) : Palette.found(settings)
             text.addAttribute(MatchBoxes.key, value: colour, range: NSRange(range, in: value))
         }
         return text

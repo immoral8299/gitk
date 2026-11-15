@@ -68,6 +68,34 @@ import Testing
         #expect(found != current)
     }
 
+    @Test func onlyTheFirstOccurrenceIsCurrent() throws {
+        let (session, ids) = try makeSession()
+        let controller = CommitListController(session: session, font: .systemFont(ofSize: 12))
+        controller.findQuery = FindQuery(pattern: "merge")
+        controller.highlightedIDs = [ids[0]]
+        session.selection = session.selection.selecting(ids[0])
+        let text = try #require(headline(controller, row: 0))
+        let first = text.attribute(MatchBoxes.key, at: 0, effectiveRange: nil) as? NSColor
+        let second = text.attribute(MatchBoxes.key, at: 10, effectiveRange: nil) as? NSColor
+        #expect(first == Palette.tk(controller.settings.currentSearchHitBgColor))
+        #expect(second == Palette.found(controller.settings))
+    }
+
+    @Test func sidebarMessageShowsTheSameBoxes() throws {
+        let (session, ids) = try makeSession()
+        let sidebar = DetailsSidebar()
+        let index = try #require(session.store.index(of: ids[0]))
+        sidebar.show(DetailsHeaderBuilder.build(commit: index, session: session), session: session)
+        sidebar.setFind(FindQuery(pattern: "merge"), matches: [ids[0]])
+        let storage = try #require(sidebar.messageView.textStorage)
+        let first = storage.attribute(MatchBoxes.key, at: 0, effectiveRange: nil) as? NSColor
+        let second = storage.attribute(MatchBoxes.key, at: 10, effectiveRange: nil) as? NSColor
+        #expect(first == Palette.tk(sidebar.settings.currentSearchHitBgColor))
+        #expect(second == Palette.found(sidebar.settings))
+        sidebar.setFind(FindQuery(pattern: "merge"), matches: [])
+        #expect(sidebar.messageView.textStorage?.attribute(MatchBoxes.key, at: 0, effectiveRange: nil) == nil)
+    }
+
     @Test func advancedOptionsDefaultAndSnapshotQuery() throws {
         let (session, _) = try makeSession()
         let bar = SearchBar(session: session)
