@@ -18,4 +18,13 @@ import Testing
         #expect(try String(contentsOf: output, encoding: .utf8) == id.hex + "\n")
         await repo.cleanup()
     }
+
+    @Test func failingCommandReportsErrorWithGitkPrefix() async throws {
+        let repo = try await ActionTestRepo.make()
+        let id = try await repo.resolve()
+        let output = repo.directory.appendingPathComponent("never")
+        #expect(await repo.actions.writeCommit(id, command: "echo boom >&2; exit 3", output: output) == false)
+        #expect(repo.messages.contains { $0.contains("Error writing commit:") })
+        await repo.cleanup()
+    }
 }

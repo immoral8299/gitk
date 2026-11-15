@@ -153,7 +153,10 @@ final class RepositoryActionCoordinator {
     }
 
     func writeCommit(_ id: ObjectID, command: String, output: URL) async -> Bool {
-        await run { try await actions.writeCommit(id, command: command, to: output) }
+        await run {
+            do { try await actions.writeCommit(id, command: command, to: output) }
+            catch { throw WriteCommitError(message: L("Error writing commit:") + " " + error.localizedDescription) }
+        }
     }
 
     /// Port of gitk proc `exec_citool` and File→Start git gui (gitk/gitk 2403, 9858–9882).
@@ -236,4 +239,10 @@ final class RepositoryActionCoordinator {
         externalTasks.forEach { $0.cancel() }
         externalTasks.removeAll()
     }
+}
+
+/// gitk's `wrcomgo` prefixes failures with "Error writing commit:".
+struct WriteCommitError: LocalizedError {
+    let message: String
+    var errorDescription: String? { message }
 }

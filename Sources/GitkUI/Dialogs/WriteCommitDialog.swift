@@ -14,6 +14,13 @@ final class WriteCommitDialog: RepositoryDialog {
     init(id: ObjectID, coordinator: RepositoryActionCoordinator) {
         super.init(title: L("Write commit to file"), accept: L("Write"))
         field(label: L("ID:"), value: id.hex, editable: false)
+        let headline = field(label: "", value: "", editable: false)
+        let runner = coordinator.session.runner
+        Task { [weak headline] in
+            let out = try? await runner.run(["show", "-s", "--format=%s", id.hex])
+            let text = out.map { String(decoding: $0.stdout, as: UTF8.self).trimmingCharacters(in: .newlines) } ?? ""
+            headline?.stringValue = text
+        }
         row(label: L("Command:"), control: commandField)
         let base = URL(fileURLWithPath: coordinator.session.repo.worktree, isDirectory: true)
         outputField.stringValue = base.appendingPathComponent("commit-" + id.abbreviated(7)).path
