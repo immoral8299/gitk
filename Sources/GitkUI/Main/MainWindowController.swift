@@ -25,6 +25,13 @@ final class MainWindowController: NSWindowController {
     /// The per-run temp directory (gitk `gitknewtmpdir`), removed on quit.
     private(set) lazy var tempFiles: TempFiles? = try? TempFiles(environment: environment)
     let session: ViewSession
+    /// Runs the row-menu repository actions (cherry-pick, revert, ...), created on first use.
+    private(set) lazy var actionCoordinator: RepositoryActionCoordinator = {
+        let coordinator = RepositoryActionCoordinator(session: session)
+        coordinator.parentWindow = window
+        coordinator.onSelect = { [weak self] in self?.select($0) }
+        return coordinator
+    }()
     let listController: CommitListController
     let searchBar: SearchBar
     let diffPane: DiffPane
@@ -123,6 +130,10 @@ final class MainWindowController: NSWindowController {
             self?.diffPane.scrollView.reflectScrolledClipView(clip)
         }
         listController.onSelection = { [weak self] in self?.select($0) }
+        listController.onRowCommand = { [weak self] command, id in
+            guard let self else { return }
+            actionCoordinator.perform(command, id: id, selected: session.selection.selectedID)
+        }
         searchBar.onCommand = { [weak self] in self?.perform($0) }
         searchBar.onGo = { [weak self] value in Task { await self?.goToCommit(value) } }
         searchBar.onDismiss = { [weak self] in

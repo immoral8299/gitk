@@ -14,6 +14,8 @@ final class RepositoryActionCoordinator {
     weak var parentWindow: NSWindow?
     var onBusy: ((String?) -> Void)?
     var onSelect: ((ObjectID) -> Void)?
+    /// Replaces spawning `git <arguments>` (tests only), receiving the base commit for the author.
+    var toolLauncher: (([String], ObjectID?) -> Void)?
     private(set) var isBusy = false
     private var externalTasks: [Task<Void, Never>] = []
     private var dialog: RepositoryDialog?
@@ -170,6 +172,7 @@ final class RepositoryActionCoordinator {
 
     /// Port of gitk proc `exec_citool` and File→Start git gui (gitk/gitk 2403, 9858–9882).
     func launchGitTool(_ arguments: [String] = ["gui"], authorOf id: ObjectID? = nil) {
+        if let toolLauncher { toolLauncher(arguments, id); return }
         let runner = session.runner
         let repo = session.repo
         externalTasks.append(Task { [weak self] in
