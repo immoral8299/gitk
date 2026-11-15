@@ -40,9 +40,9 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
     let view = NSStackView()
     let titleLabel = NSTextField(labelWithString: "")
     let totalsLabel = NSTextField(labelWithString: "")
+    /// One three-way switch: changed files as a List or a Tree (Patch mode),
+    /// or All files of the commit (gitk's Tree mode).
     let layoutSwitch = NSSegmentedControl()
-    /// The Patch/Tree switch.
-    let modeSwitch = NSSegmentedControl()
     let tableView = NSTableView()
     private var heightConstraint: NSLayoutConstraint?
     private(set) var entries: [Entry] = []
@@ -62,8 +62,7 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
     var mode: Mode = .patch {
         didSet {
             guard mode != oldValue else { return }
-            modeSwitch.selectedSegment = mode.rawValue
-            layoutSwitch.isHidden = mode == .tree
+            syncSwitch()
             selectedBlob = nil
             rebuildRows()
             onModeChange?(mode)
@@ -77,7 +76,7 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
     var onTitleChange: ((String) -> Void)?
     var layout: Layout = .list {
         didSet {
-            layoutSwitch.selectedSegment = layout.rawValue
+            syncSwitch()
             rebuildRows()
         }
     }
@@ -91,30 +90,18 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
         titleLabel.textColor = .secondaryLabelColor
         totalsLabel.font = .monospacedDigitSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium)
 
-        layoutSwitch.segmentCount = 2
+        layoutSwitch.segmentCount = Self.switchSegments.count
         layoutSwitch.trackingMode = .selectOne
         layoutSwitch.controlSize = .small
         layoutSwitch.focusRingType = .none
-        for (index, (symbol, label)) in [("list.bullet", L("List")), ("list.bullet.indent", L("Tree"))].enumerated() {
+        for (index, (symbol, label)) in Self.switchSegments.enumerated() {
             layoutSwitch.setImage(NSImage(systemSymbolName: symbol, accessibilityDescription: label), forSegment: index)
             layoutSwitch.setToolTip(label, forSegment: index)
             layoutSwitch.setWidth(26, forSegment: index)
         }
         layoutSwitch.selectedSegment = 0
         layoutSwitch.target = self
-        layoutSwitch.action = #selector(layoutChanged)
-
-        modeSwitch.segmentCount = 2
-        modeSwitch.trackingMode = .selectOne
-        modeSwitch.controlSize = .small
-        modeSwitch.focusRingType = .none
-        for (index, label) in [L("Patch"), L("Tree")].enumerated() {
-            modeSwitch.setLabel(label, forSegment: index)
-            modeSwitch.setToolTip(label, forSegment: index)
-        }
-        modeSwitch.selectedSegment = 0
-        modeSwitch.target = self
-        modeSwitch.action = #selector(modeChanged)
+        layoutSwitch.action = #selector(switchChanged)
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("file"))
         column.resizingMask = .autoresizingMask
@@ -245,12 +232,23 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
         updatingSelection = false
     }
 
-    @objc private func layoutChanged() {
-        layout = Layout(rawValue: layoutSwitch.selectedSegment) ?? .list
+    /// The switch's segments: (SF Symbol, tooltip).
+    static let switchSegments = [("list.bullet", L("List")), ("list.bullet.indent", L("Tree")), ("folder", L("All files"))]
+
+    /// The segment for a layout and mode: 0 List, 1 Tree, 2 All files.
+    static func segment(layout: Layout, mode: Mode) -> Int { mode == .tree ? 2 : layout.rawValue }
+
+    /// The layout and mode a segment selects (All files keeps the layout).
+    static func selection(segment: Int, layout: Layout) -> (Layout, Mode) {
+        segment == 2 ? (layout, .tree) : (Layout(rawValue: segment) ?? .list, .patch)
     }
 
-    @objc private func modeChanged() {
-        mode = Mode(rawValue: modeSwitch.selectedSegment) ?? .patch
+    private func syncSwitch() { layoutSwitch.selectedSegment = Self.segment(layout: layout, mode: mode) }
+
+    @objc private func switchChanged() {
+        let (newLayout, newMode) = Self.selection(segment: layoutSwitch.selectedSegment, layout: layout)
+        if newLayout != layout { layout = newLayout }
+        mode = newMode
     }
 
     /// Port of gitk proc `treeclick` (gitk/gitk 3447–3472) for directories: a

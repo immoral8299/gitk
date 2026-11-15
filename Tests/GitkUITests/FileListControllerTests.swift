@@ -80,6 +80,36 @@ import Testing
         #expect(controller.tableView.focusRingType == .none)
         #expect(controller.layoutSwitch.focusRingType == .none)
     }
+
+    /// One three-way switch: List, Tree (changed files) and All files (Tree mode).
+    @Test func threeWaySwitchDrivesLayoutAndMode() {
+        let controller = FileListController()
+        let switchControl = controller.layoutSwitch
+        #expect(switchControl.segmentCount == 3)
+        #expect(switchControl.toolTip(forSegment: 2) == L("All files"))
+        var modes: [FileListController.Mode] = []
+        controller.onModeChange = { modes.append($0) }
+
+        switchControl.selectedSegment = 1
+        _ = switchControl.sendAction(switchControl.action, to: switchControl.target)
+        #expect(controller.layout == .tree && controller.mode == .patch)
+
+        switchControl.selectedSegment = 2
+        _ = switchControl.sendAction(switchControl.action, to: switchControl.target)
+        #expect(controller.mode == .tree && controller.layout == .tree)
+        #expect(modes == [.tree])
+
+        switchControl.selectedSegment = 0
+        _ = switchControl.sendAction(switchControl.action, to: switchControl.target)
+        #expect(controller.layout == .list && controller.mode == .patch)
+        #expect(modes == [.tree, .patch])
+
+        // Setting the mode from outside (saved cmitmode) moves the switch.
+        controller.mode = .tree
+        #expect(switchControl.selectedSegment == 2)
+        controller.mode = .patch
+        #expect(switchControl.selectedSegment == 0)
+    }
 }
 
 @MainActor
