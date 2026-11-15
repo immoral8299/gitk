@@ -138,13 +138,13 @@ Total scenarios: 168
 | preferences | General settings page | Toggle local changes |  | pending |
 | preferences | Colour and font settings pages | Change the text font | FontSettingsTests/textFontReachesDiff | covered |
 | preferences | Colour and font settings pages | Change a search colour | PrefsColorsTests/searchColoursReachPalette | covered |
-| preferences | Defaults match gitk on macOS | Fresh install |  | pending |
-| preferences | Persistence | Geometry restored |  | pending |
-| preferences | Persistence | Sidebar state restored |  | pending |
-| preferences | Persistence | Corrupt settings |  | pending |
-| preferences | Legacy gitk config import | Import existing config |  | pending |
-| preferences | Legacy gitk config import | Config with code |  | pending |
-| preferences | Legacy gitk config import | Legacy file untouched |  | pending |
+| preferences | Defaults match gitk on macOS | Fresh install | GeometryPersistenceTests/freshInstall | covered |
+| preferences | Persistence | Geometry restored | GeometryPersistenceTests/geometryRestored | covered |
+| preferences | Persistence | Sidebar state restored | GeometryPersistenceTests/sidebarStateRestored | covered |
+| preferences | Persistence | Corrupt settings | GeometryPersistenceTests/corruptSettings | covered |
+| preferences | Legacy gitk config import | Import existing config | GeometryPersistenceTests/importExistingConfig | covered |
+| preferences | Legacy gitk config import | Config with code | GeometryPersistenceTests/configWithCodeIsSkipped | covered |
+| preferences | Legacy gitk config import | Legacy file untouched | GeometryPersistenceTests/legacyFileUntouched | covered |
 | preferences | Font size shortcuts | Increase font | FontSettingsTests/increaseTwicePersists | covered |
 | preferences | Quit and close | Quit during load | ViewSessionTests/cancelDuringLoadReturnsPromptly; live `huge` run with GITK_SWIFT_QUIT_AFTER_MS=500 (no git log children left) | covered |
 | reference-list | Reference list window | Open with F2 | RefListModelTests/openListsAllHeadsAndTags | covered |

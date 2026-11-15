@@ -660,7 +660,7 @@ Order of work:
   - Port: 8873–8901, 11623–11700, 11903–11914.
   - Needs: 18.1.
   - Spec: preferences "Change the text font", "Increase font".
-- [ ] 18.4 [M] Save and restore window geometry (window frame, the history/diff split, the history/sidebar split, the sidebar width and collapsed state, column widths, ref-list frame), load settings at startup, and import legacy settings on first launch — Verify: `swift test --filter GeometryPersistenceTests`; with `GITK_SWIFT_CONFIG_DIR` pointing at a temp dir and an `XDG_CONFIG_HOME` holding the sample config, the first launch imports it (the snapshot shows the imported font).
+- [x] 18.4 [M] Save and restore window geometry (window frame, the history/diff split, the history/sidebar split, the sidebar width and collapsed state, column widths, ref-list frame), load settings at startup, and import legacy settings on first launch — Verify: `swift test --filter GeometryPersistenceTests`; with `GITK_SWIFT_CONFIG_DIR` pointing at a temp dir and an `XDG_CONFIG_HOME` holding the sample config, the first launch imports it (the snapshot shows the imported font).
   - Files: `MainWindowController.swift`, `MainSplitView.swift`, `AppDelegate.swift`, tests.
   - Needs: 4.6, 9.5.
   - Spec: preferences "Geometry restored", "Sidebar state restored", "Import existing config", "Config with code", "Legacy file untouched", "Corrupt settings", "Fresh install".
