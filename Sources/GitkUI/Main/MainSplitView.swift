@@ -106,6 +106,15 @@ final class MainSplitController: NSSplitViewController {
     let sidebarItem: NSSplitViewItem
     private let metrics: MainLayoutMetrics
     /// Set by View → Details Sidebar and the toolbar toggle.
+    /// Width restored from the settings; used instead of the default.
+    var restoredSidebarWidth: CGFloat? {
+        didSet { if let width = restoredSidebarWidth { sidebar.frame.size.width = width } }
+    }
+    /// The sidebar's width while it is shown, else the last one used.
+    var sidebarWidth: CGFloat {
+        if !sidebarItem.isCollapsed, sidebar.frame.width > 0 { return sidebar.frame.width }
+        return restoredSidebarWidth ?? metrics.sidebarWidth
+    }
     var sidebarHiddenByUser = false { didSet { updateSidebar(animated: true) } }
     /// True while the sidebar is shown (not hidden and not collapsed by width).
     var isSidebarShown: Bool { !sidebarItem.isCollapsed }
@@ -157,8 +166,9 @@ final class MainSplitController: NSSplitViewController {
 
     /// Puts the sidebar at its default width once the window has its size.
     func applyDefaultSidebarWidth() {
-        guard !sidebarItem.isCollapsed, splitView.subviews.count == 2 else { return }
-        splitView.setPosition(splitView.bounds.width - metrics.sidebarWidth - splitView.dividerThickness, ofDividerAt: 0)
+        guard !sidebarItem.isCollapsed, splitView.arrangedSubviews.count == 2 else { return }
+        let width = min(max(restoredSidebarWidth ?? metrics.sidebarWidth, metrics.sidebarMinWidth), sidebarItem.maximumThickness)
+        splitView.setPosition(splitView.bounds.width - width, ofDividerAt: 0)
     }
 
     // A divider dragged to the edge collapses the sidebar: remember that.
@@ -203,6 +213,15 @@ final class MainSplitView: NSView, NSSplitViewDelegate {
         }
     }
     private var diffFraction: CGFloat = 0.5
+    /// A diff height restored from the settings, applied when the divider is first placed.
+    var initialDiffHeight: CGFloat?
+
+    /// The diff pane's height below the history list (the saved value).
+    var diffHeight: CGFloat? {
+        let total = listDiffSplit.bounds.height - listDiffSplit.dividerThickness
+        guard total > 0 else { return initialDiffHeight }
+        return (diffFraction * total).rounded()
+    }
 
     init(metrics: MainLayoutMetrics) {
         self.metrics = metrics
@@ -247,6 +266,10 @@ final class MainSplitView: NSView, NSSplitViewDelegate {
     private func placeDiffDivider() {
         let total = listDiffSplit.bounds.height - listDiffSplit.dividerThickness
         guard total > 0 else { return }
+        if let height = initialDiffHeight {
+            diffFraction = min(max(height / total, 0.05), 0.95)
+            initialDiffHeight = nil
+        }
         listDiffSplit.setPosition(floor(total * (1 - diffFraction)), ofDividerAt: 0)
     }
 

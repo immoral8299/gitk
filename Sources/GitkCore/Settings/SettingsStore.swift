@@ -21,6 +21,8 @@ public final class SettingsStore: @unchecked Sendable {
     public var fileURL: URL { directory.appendingPathComponent(Self.fileName) }
 
     private let warn: @Sendable (String) -> Void
+    private let environment: [String: String]
+    private let homeDirectory: URL
     private let lock = NSLock()
     private var badFileProtected = false
 
@@ -31,6 +33,8 @@ public final class SettingsStore: @unchecked Sendable {
             FileHandle.standardError.write(Data((message + "\n").utf8))
         }
     ) {
+        self.environment = environment
+        self.homeDirectory = homeDirectory
         if let override = environment[Self.configDirVariable], !override.isEmpty {
             directory = URL(fileURLWithPath: override, isDirectory: true)
         } else {
@@ -71,6 +75,17 @@ public final class SettingsStore: @unchecked Sendable {
             protect("gitk-swift: cannot parse \(fileURL.path): \(error); using defaults")
             return Settings()
         }
+    }
+
+    /// Like `load()`, but when the app has no settings file yet, imports the Tcl gitk
+    /// config (`$XDG_CONFIG_HOME/git/gitk`, `~/.config/git/gitk`, `~/.gitk`). The
+    /// legacy file is only read. `HOME` in the environment, when set, names the home
+    /// directory.
+    public func loadImportingLegacy() -> Settings {
+        if fileExists { return load() }
+        let home = environment["HOME"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0, isDirectory: true) }
+            ?? homeDirectory
+        return LegacyConfigImporter.importConfig(environment: environment, homeDirectory: home) ?? Settings()
     }
 
     /// Records that the user changed something, allowing the next `save` to replace a

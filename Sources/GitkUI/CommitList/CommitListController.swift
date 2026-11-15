@@ -30,8 +30,8 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
     private var authorContent: CGFloat = 0
     private var dateContent: CGFloat = 0
     /// Widths the user dragged the author and date columns to.
-    private(set) var userAuthorWidth: CGFloat?
-    private(set) var userDateWidth: CGFloat?
+    var userAuthorWidth: CGFloat?
+    var userDateWidth: CGFloat?
     private var fitting = false
     /// The widths `fitColumns` last applied.
     private var fitted = ColumnSizing(subject: 0, author: 0, date: 0)

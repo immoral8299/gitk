@@ -67,7 +67,7 @@ final class MainWindowController: NSWindowController {
 
     convenience init(startup: StartupContext, launch: LaunchArguments, settingsStore: SettingsStore, cwd: URL,
                      environment: [String: String] = ProcessInfo.processInfo.environment) {
-        self.init(startup: startup, launch: launch, settings: settingsStore.load(), store: settingsStore, cwd: cwd, environment: environment)
+        self.init(startup: startup, launch: launch, settings: settingsStore.loadImportingLegacy(), store: settingsStore, cwd: cwd, environment: environment)
     }
 
     init(startup: StartupContext, launch: LaunchArguments, settings: UISettings, store: SettingsStore? = nil, cwd: URL,
@@ -178,6 +178,7 @@ final class MainWindowController: NSWindowController {
         }
         session.onEvent = { [weak self] in self?.handle($0) }
         window.center()
+        restoreGeometry()
         setWindowTitle(cwd: cwd)
         window.commandHandler = { [weak self] command in
             guard let self, self.canPerform(command) else { return false }
@@ -194,17 +195,55 @@ final class MainWindowController: NSWindowController {
         refreshViewMenu()
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowDidResize(_:)), name: NSWindow.didResizeNotification, object: window)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(windowDidEndLiveResize(_:)), name: NSWindow.didEndLiveResizeNotification, object: window)
         DispatchQueue.main.async { [weak self] in self?.splitController.applyDefaultSidebarWidth() }
     }
 
     @objc private func windowDidResize(_ notification: Notification) { fitToolbar() }
+    @objc private func windowDidEndLiveResize(_ notification: Notification) { saveSettings() }
+
+    /// Puts back the saved window frame, diff height, sidebar width and state, and
+    /// the column widths the user set (spec preferences "Persistence").
+    private func restoreGeometry() {
+        if let saved = settings.windowFrame, let window {
+            var frame = NSRect(x: saved.x, y: saved.y, width: saved.width, height: saved.height)
+            if let screen = NSScreen.main ?? NSScreen.screens.first {
+                frame = window.constrainFrameRect(frame, to: screen)
+            }
+            window.setFrame(frame, display: false)
+        }
+        splitView.initialDiffHeight = settings.diffHeight.map { CGFloat($0) }
+        splitController.restoredSidebarWidth = settings.sidebarWidth.map { CGFloat($0) }
+        if settings.sidebarHidden { splitController.sidebarHiddenByUser = true }
+        listController.userAuthorWidth = settings.authorWidth.map { CGFloat($0) }
+        listController.userDateWidth = settings.dateWidth.map { CGFloat($0) }
+    }
+
+    /// Copies the live geometry into `settings`.
+    private func captureGeometry() {
+        if let window, !window.isMiniaturized, !window.styleMask.contains(.fullScreen) {
+            let f = window.frame
+            settings.windowFrame = StoredFrame(x: f.origin.x, y: f.origin.y, width: f.width, height: f.height)
+        }
+        settings.diffHeight = splitView.diffHeight.map { Double($0) }
+        settings.sidebarWidth = Double(splitController.sidebarWidth)
+        settings.sidebarHidden = splitController.sidebarHiddenByUser
+        settings.authorWidth = listController.userAuthorWidth.map { Double($0) }
+        settings.dateWidth = listController.userDateWidth.map { Double($0) }
+    }
 
     /// Writes the settings when they changed (gitk's `savestuff`), never in
     /// snapshot runs. Unchanged defaults are not written, so a first launch does
     /// not block the later legacy gitk config import.
     func saveSettings() {
-        guard environment["GITK_SWIFT_SNAPSHOT"] == nil, settings != loadedSettings else { return }
-        settingsStore?.markChanged()
+        guard environment["GITK_SWIFT_SNAPSHOT"] == nil else { return }
+        captureGeometry()
+        guard settings != loadedSettings else { return }
+        // A geometry-only difference must not replace a corrupt settings file.
+        var withoutGeometry = settings
+        withoutGeometry.geometry = loadedSettings.geometry
+        if withoutGeometry != loadedSettings { settingsStore?.markChanged() }
         _ = try? settingsStore?.save(settings)
     }
 
@@ -627,8 +666,20 @@ final class MainWindowController: NSWindowController {
                      { [session] id in session.store.index(of: id).map { session.store.headline(at: $0) } })
                 },
                 onSelect: { [unowned self] in select($0) })
+            if let saved = settings.refListFrame, let refWindow = refListController?.window {
+                refWindow.setFrame(NSRect(x: saved.x, y: saved.y, width: saved.width, height: saved.height), display: false)
+            }
+            for name in [NSWindow.didMoveNotification, NSWindow.didResizeNotification] {
+                NotificationCenter.default.addObserver(
+                    self, selector: #selector(refListFrameChanged(_:)), name: name, object: refListController?.window)
+            }
         }
         refListController?.present()
+    }
+
+    @objc private func refListFrameChanged(_ notification: Notification) {
+        guard let f = refListController?.window?.frame else { return }
+        settings.refListFrame = StoredFrame(x: f.origin.x, y: f.origin.y, width: f.width, height: f.height)
     }
 
     func setWindowTitle(cwd: URL) {
