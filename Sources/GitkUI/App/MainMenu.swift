@@ -50,12 +50,30 @@ final class MainMenu: NSObject, NSMenuItemValidation {
         add(L("Edit view..."), .editView, key: functionKey(NSF4FunctionKey), modifiers: [], to: viewMenu)
         add(L("Delete view"), .deleteView, to: viewMenu)
         viewMenu.addItem(.separator())
-        let all = add(L("All files"), .showView(0), to: viewMenu)
-        all.state = .on
         viewMenu.addItem(.separator())
+        setViews([(0, L("All files"))])
         add(L("Details Sidebar"), .toggleDetailsSidebar, to: viewMenu)
         let help = addMenu(L("Help"))
         add(L("Key bindings"), .keyBindings, to: help)
+    }
+
+    /// Port of gitk proc `addviewmenu` (gitk/gitk 4649–4655): replaces the view
+    /// entries (the items between the two separators after "Delete view") with one
+    /// item per view; the checkmark comes from `isChecked(.showView(n))`.
+    func setViews(_ views: [(number: Int, title: String)]) {
+        let separators = viewMenu.items.indices.filter { viewMenu.items[$0].isSeparatorItem }
+        let start = (separators.first ?? viewMenu.items.count - 1) + 1
+        while start < viewMenu.items.count, !viewMenu.items[start].isSeparatorItem {
+            let item = viewMenu.items[start]
+            commands[ObjectIdentifier(item)] = nil
+            viewMenu.removeItem(at: start)
+        }
+        for (offset, view) in views.enumerated() {
+            let item = NSMenuItem(title: view.title, action: #selector(invoke(_:)), keyEquivalent: "")
+            item.target = self
+            commands[ObjectIdentifier(item)] = .showView(view.number)
+            viewMenu.insertItem(item, at: start + offset)
+        }
     }
 
     private func functionKey(_ value: Int) -> String {

@@ -26,6 +26,11 @@ final class MainWindowController: NSWindowController {
     /// The per-run temp directory (gitk `gitknewtmpdir`), removed on quit.
     private(set) lazy var tempFiles: TempFiles? = try? TempFiles(environment: environment)
     let session: ViewSession
+    /// The View menu's list of views and the current one (task 15.4).
+    private(set) var viewManager: ViewManager
+    private var viewEditor: ViewEditorController?
+    /// The view the open editor works on; nil while it still describes a new view.
+    private var editingViewNumber: Int?
     /// Runs the row-menu repository actions (cherry-pick, revert, ...), created on first use.
     private(set) lazy var actionCoordinator: RepositoryActionCoordinator = {
         let coordinator = RepositoryActionCoordinator(session: session)
@@ -75,9 +80,11 @@ final class MainWindowController: NSWindowController {
         self.environment = environment
         self.cwd = cwd
         let runner = GitRunner(cwd: cwd, baseEnvironment: environment)
-        session = ViewSession(repo: startup.repo, runner: runner,
-            view: ViewSpec(name: launch.revisionArgs.isEmpty && launch.paths.isEmpty ? "All files" : "Command line",
-                           args: launch.revisionArgs, files: launch.paths, argsCmd: launch.argsCmd))
+        let hasCommandLine = !(launch.revisionArgs.isEmpty && launch.paths.isEmpty)
+        viewManager = ViewManager(commandLine: hasCommandLine
+            ? ViewSpec(name: ViewManager.commandLineName, args: launch.revisionArgs, files: launch.paths, argsCmd: launch.argsCmd)
+            : nil)
+        session = ViewSession(repo: startup.repo, runner: runner, view: viewManager.currentView)
         session.showLocalChanges = settings.showLocalChanges
         session.hideRemotes = settings.hideRemotes
         session.refsToHide = settings.refsToHide
@@ -180,8 +187,10 @@ final class MainWindowController: NSWindowController {
             dispatch: { [weak self] in self?.perform($0) },
             isEnabled: { [weak self] in self?.canPerform($0) ?? false })
         mainMenu?.isChecked = { [weak self] command in
-            command == .toggleDetailsSidebar ? (self?.splitController.isSidebarShown ?? true) : nil
+            if case .showView(let number) = command { return self?.viewManager.current == number }
+            return command == .toggleDetailsSidebar ? (self?.splitController.isSidebarShown ?? true) : nil
         }
+        refreshViewMenu()
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowDidResize(_:)), name: NSWindow.didResizeNotification, object: window)
         DispatchQueue.main.async { [weak self] in self?.splitController.applyDefaultSidebarWidth() }
@@ -287,6 +296,9 @@ final class MainWindowController: NSWindowController {
              .goToParent, .scrollList, .focusFind, .findNext, .findPrev, .toggleDetailsSidebar,
              .scrollPane, .nextFile, .prevFile, .listRefs, .preferences,
              .fontBigger, .fontSmaller: return true
+        case .newView, .showView: return true
+        case .editView: return viewManager.canEdit
+        case .deleteView: return viewManager.canDelete
         case .goBack: return session.selection.history.canGoBack
         case .goForward: return session.selection.history.canGoForward
         default: return commandValidator?(command) ?? (commandHandler != nil)
@@ -328,8 +340,71 @@ final class MainWindowController: NSWindowController {
         case .preferences: showPreferences()
         case .fontBigger: changeFontSize(by: 1)
         case .fontSmaller: changeFontSize(by: -1)
+        case .newView: openViewEditor(editing: nil)
+        case .editView: openViewEditor(editing: viewManager.canEdit ? viewManager.current : nil)
+        case .deleteView: deleteCurrentView()
+        case .showView(let number):
+            if let change = viewManager.switchTo(number, selected: session.selection.selectedID) { show(change) }
         default: commandHandler?(command)
         }
+    }
+
+    // MARK: Views
+
+    /// Rebuilds the View menu's view entries; the names of the built-in views are translated.
+    private func refreshViewMenu() {
+        mainMenu?.setViews(viewManager.entries.map {
+            ($0.number, $0.isBuiltIn ? L($0.spec.name) : $0.spec.name)
+        })
+    }
+
+    /// The load half of gitk proc `showview` (gitk/gitk 4668–4765): the new view loads and
+    /// the previously selected commit stays selected when the view contains it.
+    private func show(_ change: ViewManager.Switch) {
+        requestedID = change.requestedID
+        refreshViewMenu()
+        loadTask = Task { await session.load(view: change.view) }
+    }
+
+    /// Port of gitk procs `newview`, `editview` (gitk/gitk 4286–4303, 4440–4452).
+    private func openViewEditor(editing number: Int?) {
+        if let viewEditor { viewEditor.present(); return }
+        let editor: ViewEditorController
+        let alerts = Alerts(environment: environment)
+        if let number, let entry = viewManager.entry(number) {
+            editingViewNumber = number
+            editor = ViewEditorController(view: entry.spec, alerts: alerts)
+        } else {
+            editingViewNumber = nil
+            let prefill = ViewSpec(
+                name: "\(L("View")) \(viewManager.nextNumber)", args: launch.revisionArgs,
+                argsCmd: viewManager.currentView.argsCmd)
+            editor = ViewEditorController(view: prefill, title: L("Gitk view definition"), alerts: alerts)
+        }
+        editor.onApply = { [weak self] in self?.applyView($0) }
+        editor.onClose = { [weak self] in self?.viewEditor = nil }
+        viewEditor = editor
+        editor.present()
+    }
+
+    /// The model half of gitk proc `newviewok` (gitk/gitk 4576–4630): a new view is added and
+    /// shown; an edited view is replaced and, being the current one, reloaded.
+    private func applyView(_ spec: ViewSpec) {
+        if let number = editingViewNumber {
+            viewManager.replace(number, with: spec)
+            requestedID = session.selection.selectedID
+            refreshViewMenu()
+            if number == viewManager.current { loadTask = Task { await session.load(view: spec) } }
+        } else {
+            let number = viewManager.add(spec)
+            editingViewNumber = number
+            if let change = viewManager.switchTo(number, selected: session.selection.selectedID) { show(change) }
+        }
+    }
+
+    private func deleteCurrentView() {
+        guard let result = viewManager.deleteCurrent(selected: session.selection.selectedID) else { return }
+        show(result.switched)
     }
 
     func startLoading() {

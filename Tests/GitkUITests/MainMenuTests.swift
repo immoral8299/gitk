@@ -22,6 +22,8 @@ import GitkCore
         #expect(file.items[1].keyEquivalentModifierMask == .shift)
         #expect(!menu.validateMenuItem(menu.viewMenu.items[1]))
         #expect(!menu.validateMenuItem(menu.viewMenu.items[2]))
+        menu.isChecked = { $0 == .showView(0) ? true : nil }
+        _ = menu.validateMenuItem(menu.viewMenu.items[4])
         #expect(menu.viewMenu.items[4].state == .on)
         let sidebar = try #require(menu.viewMenu.items.last)
         #expect(sidebar.title == L("Details Sidebar"))
