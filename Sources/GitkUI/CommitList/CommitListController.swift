@@ -11,6 +11,9 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
     let scrollView = NSScrollView()
     let tableView = NSTableView()
     var onSelection: ((ObjectID) -> Void)?
+    /// Receives a row context-menu command and the commit it was opened on.
+    /// Nil until the actions are wired (group 16); the items then do nothing.
+    var onRowCommand: ((AppCommand, ObjectID) -> Void)?
     var dateFormat = "%Y-%m-%d %H:%M:%S" { didSet { measureColumns() } }
     var font: NSFont
     var highlightedIDs = Set<ObjectID>()
@@ -59,6 +62,11 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         tableView.allowsMultipleSelection = false
         tableView.dataSource = self
         tableView.delegate = self
+        // The menu is filled per click in `menuNeedsUpdate`, once NSTableView
+        // has set `clickedRow` to the row under the pointer.
+        let rowMenu = NSMenu()
+        rowMenu.delegate = self
+        tableView.menu = rowMenu
         scrollView.documentView = tableView
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
@@ -68,6 +76,18 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
             self, selector: #selector(listWidthChanged(_:)), name: NSView.frameDidChangeNotification,
             object: scrollView.contentView)
         measureColumns()
+    }
+
+    // MARK: Row context menu
+
+    /// The commit context menu for a row (gitk `rowmenu`), or nil for a row
+    /// that is not there. Local-changes rows get the reduced menu.
+    func contextMenu(forRow row: Int) -> NSMenu? {
+        guard row >= 0, let id = session.id(at: row) else { return nil }
+        return RowMenus.commitMenu(id: id, selected: session.selection.selectedID,
+                                   marked: session.selection.markedID, refs: session.refs) { [weak self] command in
+            self?.onRowCommand?(command, id)
+        }
     }
 
     // MARK: Column widths
@@ -283,5 +303,17 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         y = max(top, min(y, max(top, tableView.bounds.height + clip.contentInsets.bottom - clip.bounds.height)))
         clip.scroll(to: NSPoint(x: clip.bounds.minX, y: y))
         scrollView.reflectScrolledClipView(clip)
+    }
+}
+
+extension CommitListController: NSMenuDelegate {
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        guard let built = contextMenu(forRow: tableView.clickedRow) else { return }
+        // An NSMenuItem belongs to one menu at a time, so move the items over.
+        for item in built.items {
+            built.removeItem(item)
+            menu.addItem(item)
+        }
     }
 }
