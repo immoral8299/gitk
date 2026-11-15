@@ -173,6 +173,6 @@ Total scenarios: 168
 | views | View editor fields | Paths field | ViewEditorFormTests/pathsFieldSplitsLines | covered |
 | views | Round-trip of view arguments | Edit a command-line view |  | pending |
 | views | Switching and deleting views | Switch keeps selection | ViewMenuTests/switchKeepsSelectionWhenInNewView | covered |
-| views | Remembered views | Persist across launches |  | pending |
-| views | Remembered views | Unchecked view not saved |  | pending |
+| views | Remembered views | Persist across launches | RememberedViewsTests/persistAcrossLaunches | covered |
+| views | Remembered views | Unchecked view not saved | RememberedViewsTests/uncheckedViewNotSaved | covered |
 | views | Merge-conflict view | Merge in progress |  | pending |

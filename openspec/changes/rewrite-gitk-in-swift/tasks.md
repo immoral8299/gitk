@@ -558,7 +558,7 @@ Order of work:
   - Port: 4286–4303, 4559–4576, 4634–4765.
   - Needs: 15.3, 8.7.
   - Spec: views "No arguments", "Switch keeps selection".
-- [ ] 15.5 [S] Persist remembered views in `Settings.views`, importing them from the legacy `permviews` on first launch — Verify: `swift test --filter RememberedViewsTests` (persist and reload; an unchecked view is not saved).
+- [x] 15.5 [S] Persist remembered views in `Settings.views`, importing them from the legacy `permviews` on first launch — Verify: `swift test --filter RememberedViewsTests` (persist and reload; an unchecked view is not saved).
   - Files: `ViewManager.swift`, tests.
   - Needs: 15.4, 4.5, 4.6.
   - Spec: views "Persist across launches", "Unchecked view not saved".
