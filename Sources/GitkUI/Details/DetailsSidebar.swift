@@ -23,6 +23,8 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
     private let emailLabel = NSTextField(labelWithString: "")
     let idButton = NSButton(title: "", target: nil, action: nil)
     private let refsLabel = NSTextField(labelWithString: "")
+    /// The monogram and name block, hidden while a tag is shown.
+    private var identityView: NSView!
     private let rowsView = AutoHeightTextView()
     let messageView = AutoHeightTextView()
     /// Show More / Show Less for the message beyond its first line.
@@ -84,6 +86,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         names.alignment = .leading
         names.spacing = 1
         let identity = NSStackView(views: [monogram, names])
+        identityView = identity
         for stack in [names, identity] { stack.setClippingResistancePriority(.defaultLow, for: .horizontal) }
         identity.alignment = .top
         identity.spacing = 10
@@ -210,13 +213,45 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         refsLabel.attributedStringValue = refsText(header.refs, id: header.id, session: session)
         refsLabel.isHidden = header.refs.isEmpty
         shownHeader = header
+        identityView.isHidden = false
+        idButton.isHidden = false
+        commitSection.title = L("Commit")
         setText(rowsView, rowsText(header))
         var message = header.message.trimmingCharacters(in: .newlines)
         if let notes = header.notes, !notes.isEmpty {
             // git's notes text already starts with its "Notes:" heading.
             message += "\n\n" + notes.trimmingCharacters(in: .newlines)
         }
-        let body = NSMutableAttributedString(string: message, attributes: [
+        setMessage(message, session: session)
+    }
+
+    /// Shows one or more tags (commit-details "Click a tag"). Port of gitk procs
+    /// `showtag` and `showtags` (gitk/gitk 11573–11603): one block per tag with
+    /// a blank line between blocks. Each block gives the tag name, the tagged
+    /// commit as a link and, for an annotated tag, the tagger and message. The
+    /// commit identity and the Changed Files section are cleared.
+    func show(tags: [TagInfo], session: ViewSession) {
+        guard !tags.isEmpty else { clear(); return }
+        self.session = session
+        shownID = nil
+        shownHeader = nil
+        for section in sections { section.isHidden = false }
+        commitSection.title = L("Tag")
+        identityView.isHidden = true
+        idButton.isHidden = true
+        refsLabel.isHidden = true
+        setText(rowsView, tagRowsText(tags, session: session))
+        let messages = tags.map(\.message).filter { !$0.isEmpty }
+        messageSection.isHidden = messages.isEmpty
+        filesSection.isHidden = true
+        fileList.update(nil)
+        setMessage(messages.joined(separator: "\n\n"), session: session)
+    }
+
+    /// Sets the message (the subject only until Show More), with commit and web
+    /// links, and scrolls the sidebar to the top.
+    private func setMessage(_ text: String, session: ViewSession) {
+        let body = NSMutableAttributedString(string: text, attributes: [
             .font: MainLayoutMetrics.nsFont(settings.textFont), .foregroundColor: NSColor.textColor,
         ])
         LinkHandling.addLinks(to: body, session: session, settings: settings)
@@ -224,6 +259,49 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         messageExpanded = false
         showMessage()
         scrollView.contentView.scroll(to: NSPoint(x: 0, y: -scrollView.contentInsets.top))
+    }
+
+    /// The tag name, tagged commit and tagger lines for `show(tags:)`. Labels use
+    /// gitk's "Tag" and "Id" msgids; the tagger line has no label because gitk
+    /// has no msgid for one, so it lines up with the values like the Author row.
+    private func tagRowsText(_ tags: [TagInfo], session: ViewSession) -> NSAttributedString {
+        let labelFont = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold)
+        let valueFont = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        let refFont = NSFont.monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.tabStops = [NSTextTab(textAlignment: .left, location: 74)]
+        paragraph.headIndent = 74
+        paragraph.paragraphSpacing = 3
+        let label: [NSAttributedString.Key: Any] = [
+            .font: labelFont, .foregroundColor: NSColor.secondaryLabelColor, .paragraphStyle: paragraph,
+        ]
+        let value: [NSAttributedString.Key: Any] = [
+            .font: valueFont, .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph,
+        ]
+        let result = NSMutableAttributedString()
+        for (n, tag) in tags.enumerated() {
+            if n > 0 { result.append(NSAttributedString(string: "\n", attributes: value)) }
+            result.append(NSAttributedString(string: L("Tag") + "\t", attributes: label))
+            result.append(NSAttributedString(string: tag.name + "\n", attributes: value))
+            if let object = tag.object {
+                result.append(NSAttributedString(string: L("Id") + "\t", attributes: label))
+                result.append(NSAttributedString(string: object.abbreviated(8), attributes: [
+                    .font: refFont, .link: LinkHandling.commitScheme + object.hex,
+                    .foregroundColor: Palette.link(settings), .paragraphStyle: paragraph,
+                ]))
+                if let commit = session.store.index(of: object), session.store.isLoaded(commit) {
+                    result.append(NSAttributedString(string: " " + session.store.headline(at: commit), attributes: value))
+                }
+                result.append(NSAttributedString(string: "\n", attributes: value))
+            }
+            if let name = tag.taggerName {
+                let email = tag.taggerEmail.map { $0.isEmpty ? "" : " <\($0)>" } ?? ""
+                let date = tag.taggerDate.map { "  " + $0 } ?? ""
+                result.append(NSAttributedString(string: "\t" + name + email + date + "\n", attributes: value))
+            }
+        }
+        if result.length > 0 { result.deleteCharacters(in: NSRange(location: result.length - 1, length: 1)) }
+        return result
     }
 
     private func setText(_ view: AutoHeightTextView, _ text: NSAttributedString) {
