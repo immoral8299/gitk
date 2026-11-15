@@ -246,6 +246,28 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         return cell
     }
 
+    /// The marked row's background (gitk `make_idmark`, `markbgcolor`).
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        let view = (tableView.makeView(withIdentifier: MarkedRowView.identifier, owner: self) as? MarkedRowView) ?? MarkedRowView()
+        view.identifier = MarkedRowView.identifier
+        view.markColor = isMarked(row: row) ? Palette.tk(settings.markBgColor) : nil
+        return view
+    }
+
+    func isMarked(row: Int) -> Bool {
+        guard let marked = session.selection.markedID else { return false }
+        return session.id(at: row) == marked
+    }
+
+    /// Redraws the rows that gained or lost the mark.
+    func markChanged(old: ObjectID?, new: ObjectID?) {
+        for id in [old, new].compactMap({ $0 }) {
+            guard let row = session.row(of: id), row < tableView.numberOfRows,
+                  let view = tableView.rowView(atRow: row, makeIfNecessary: false) as? MarkedRowView else { continue }
+            view.markColor = isMarked(row: row) ? Palette.tk(settings.markBgColor) : nil
+        }
+    }
+
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         guard let column = tableColumn,
               let position = tableView.tableColumns.firstIndex(of: column),
@@ -357,5 +379,18 @@ extension CommitListController: NSMenuDelegate {
             built.removeItem(item)
             menu.addItem(item)
         }
+    }
+}
+
+/// Row view that paints gitk's marked-line background behind the cells.
+final class MarkedRowView: NSTableRowView {
+    static let identifier = NSUserInterfaceItemIdentifier("MarkedRowView")
+    var markColor: NSColor? { didSet { needsDisplay = true } }
+
+    override func drawBackground(in dirtyRect: NSRect) {
+        super.drawBackground(in: dirtyRect)
+        guard let markColor else { return }
+        markColor.setFill()
+        bounds.fill()
     }
 }

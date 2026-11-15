@@ -31,6 +31,7 @@ final class MainWindowController: NSWindowController {
         let coordinator = RepositoryActionCoordinator(session: session)
         coordinator.parentWindow = window
         coordinator.onSelect = { [weak self] in self?.select($0) }
+        coordinator.onMarkChanged = { [weak self] old, new in self?.listController.markChanged(old: old, new: new) }
         return coordinator
     }()
     let listController: CommitListController

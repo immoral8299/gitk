@@ -52,3 +52,47 @@ public struct SelectionModel: Sendable {
         return rows.indices.contains(target) ? selecting(rows[target]) : self
     }
 }
+
+extension SelectionModel {
+    /// Port of gitk proc `markhere` (gitk/gitk 9188–9193): the row-menu commit becomes the mark.
+    public func marking(_ id: ObjectID) -> SelectionModel {
+        var result = self
+        result.markedID = id
+        return result
+    }
+
+    /// Port of gitk proc `gotomark` (gitk/gitk 9195–9201): the mark, when there is one.
+    public var markTarget: ObjectID? { markedID }
+}
+
+extension ViewSession {
+    /// Port of gitk proc `replace_by_kids` (gitk/gitk 9203–9212).
+    func replaceByKids(_ list: [Int], _ r: Int) -> [Int] {
+        var l = Array(list.dropFirst())
+        if let commit = ordering.commitOnRow(r) {
+            for kid in ordering.children[commit] ?? [] {
+                if let kidRow = ordering.rowOfCommit(kid) { l.append(kidRow) }
+            }
+        }
+        // lsort -integer -decreasing -unique
+        return Array(Set(l)).sorted(by: >)
+    }
+
+    /// Port of gitk proc `find_common_desc` (gitk/gitk 9214–9239). Returns the
+    /// commit gitk would pass to `selectline`: the nearest common descendant of
+    /// the mark and `menuID` in this view, or nil.
+    public func findCommonDesc(marked: ObjectID?, menuID: ObjectID) -> ObjectID? {
+        guard let marked else { return nil }
+        guard let markedCommit = store.index(of: marked), let menuCommit = store.index(of: menuID),
+              ordering.commitInView(markedCommit), ordering.commitInView(menuCommit),
+              let markedRow = ordering.rowOfCommit(markedCommit),
+              let menuRow = ordering.rowOfCommit(menuCommit) else { return nil }
+        var l1 = [markedRow]
+        var l2 = [menuRow]
+        while true {
+            guard let r1 = l1.first, let r2 = l2.first else { return nil }
+            if r1 == r2 { return id(at: r1) }
+            if r1 > r2 { l1 = replaceByKids(l1, r1) } else { l2 = replaceByKids(l2, r2) }
+        }
+    }
+}

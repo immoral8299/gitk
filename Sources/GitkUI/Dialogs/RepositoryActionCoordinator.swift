@@ -14,6 +14,8 @@ final class RepositoryActionCoordinator {
     weak var parentWindow: NSWindow?
     var onBusy: ((String?) -> Void)?
     var onSelect: ((ObjectID) -> Void)?
+    /// Called after the mark changed (old, new) so the list can redraw the marked row.
+    var onMarkChanged: ((ObjectID?, ObjectID?) -> Void)?
     /// Replaces spawning `git <arguments>` (tests only), receiving the base commit for the author.
     var toolLauncher: (([String], ObjectID?) -> Void)?
     private(set) var isBusy = false
@@ -201,6 +203,21 @@ final class RepositoryActionCoordinator {
     func perform(_ command: AppCommand, id: ObjectID?, selected: ObjectID?, branchName: String? = nil,
                  copyLength: Int = 40) -> Bool {
         if command == .startGitGui { launchGitTool(); return true }
+        switch command {
+        case .markCommit:
+            guard let id else { return true }
+            let old = session.selection.markedID
+            session.selection = session.selection.marking(id)
+            onMarkChanged?(old, id)
+            return true
+        case .returnToMark:
+            if let target = session.selection.markTarget { onSelect?(target) }
+            return true
+        case .findDescendantAndMark:
+            if let id, let found = session.findCommonDesc(marked: session.selection.markedID, menuID: id) { onSelect?(found) }
+            return true
+        default: break
+        }
         guard !isBusy else { return true }
         guard let id else { return false }
         let nextDialog: RepositoryDialog?
