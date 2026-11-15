@@ -20,6 +20,7 @@ final class MainWindowController: NSWindowController {
     /// The ancestry index for nearby tags and heads (12.x), once loaded.
     private var ancestry: AncestryIndex?
     private var ancestryTask: Task<Void, Never>?
+    private var treeTask: Task<Void, Never>?
     private var refListController: RefListWindowController?
     private let cwd: URL
     /// The per-run temp directory (gitk `gitknewtmpdir`), removed on quit.
@@ -112,6 +113,15 @@ final class MainWindowController: NSWindowController {
         sidebar.fileList.settings = settings
         if environment["GITK_SWIFT_FILE_LAYOUT"] == "tree" { sidebar.fileList.layout = .tree }
         sidebar.fileList.onSelectFile = { [weak self] in self?.diffPane.jumpToFile($0) }
+        sidebar.fileList.onModeChange = { [weak self] mode in
+            self?.settings.cmitMode = mode == .tree ? "tree" : "patch"
+            self?.reselectForMode()
+        }
+        sidebar.fileList.onSelectBlob = { [weak self] path, blob in
+            guard let self, let id = session.selection.selectedID else { return }
+            diffPane.showBlob(path: path, blob: blob, id: id, session: session)
+        }
+        if environment["GITK_SWIFT_CMIT_MODE"] == "tree" || settings.cmitMode == "tree" { sidebar.fileList.mode = .tree }
         if let options = environment["GITK_SWIFT_DIFF_OPTIONS"] { diffPane.applySnapshotOptions(options) }
         diffPane.onShowOrigin = { [weak self] id, path, line in
             self?.select(id)
@@ -433,7 +443,37 @@ final class MainWindowController: NSWindowController {
         guard sidebar.shownID != id || diffPane.ids != [id], let index = session.store.index(of: id) else { return }
         sidebar.show(DetailsHeaderBuilder.build(commit: index, session: session, dateFormat: settings.dateTimeFormat), session: session)
         sidebar.nearby = nearby(for: id)
-        diffPane.show(id, session: session)
+        showFiles(id)
+    }
+
+    /// The bottom pane and file list for `id` in the current Patch/Tree mode
+    /// (gitk's `selectline` ending in `gettree`/`gettreediffs`).
+    private func showFiles(_ id: ObjectID) {
+        treeTask?.cancel()
+        guard sidebar.fileList.mode == .tree else {
+            diffPane.show(id, session: session)
+            return
+        }
+        diffPane.showEmpty(id: id, session: session)
+        sidebar.fileList.setOutline(nil)
+        let runner = session.runner
+        treeTask = Task { [weak self] in
+            guard let outline = try? await TreeOutline.load(id: id, runner: runner), !Task.isCancelled,
+                  let self, session.selection.selectedID == id, sidebar.fileList.mode == .tree else { return }
+            sidebar.fileList.setOutline(outline)
+            if let path = environment["GITK_SWIFT_TREE_FILE"], let blob = outline.objectID(ofFile: path) {
+                var opened = outline
+                opened.reveal(path)
+                sidebar.fileList.setOutline(opened, selecting: path)
+                diffPane.showBlob(path: path, blob: blob, id: id, session: session)
+            }
+        }
+    }
+
+    /// The Patch/Tree switch re-selects the commit (gitk's `changemode` → `reselectline`).
+    private func reselectForMode() {
+        guard let id = session.selection.selectedID else { return }
+        showFiles(id)
     }
 
     private func nearby(for id: ObjectID) -> DetailsSidebar.Nearby {

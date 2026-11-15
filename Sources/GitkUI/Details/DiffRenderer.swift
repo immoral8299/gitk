@@ -52,6 +52,16 @@ struct DiffRenderer {
         return NSAttributedString(string: text + "\n", attributes: separatorAttributes())
     }
 
+    /// The file name line above a blob shown in Tree mode (gitk's `filesep` in `showfile`).
+    func blobSeparator(path: String) -> NSAttributedString {
+        NSAttributedString(string: path + "\n", attributes: separatorAttributes())
+    }
+
+    /// A blob's text in the pane's plain style.
+    func blobText(_ text: String) -> NSAttributedString {
+        NSAttributedString(string: text, attributes: base)
+    }
+
     /// Port of gitk proc `parseblobdiffline` (gitk/gitk 8272–8542), the display part.
     mutating func render(_ line: DiffLine) -> NSAttributedString {
         if wordMode != .line {
@@ -245,6 +255,50 @@ final class DiffPane: NSObject, NSTextViewDelegate {
     func showDiff(from: ObjectID, to: ObjectID, session: ViewSession) {
         self.session = session
         fetch(ids: [from, to], session: session)
+    }
+
+    /// Tree mode before a file is chosen: an empty pane bound to commit `id`.
+    func showEmpty(id: ObjectID, session: ViewSession) {
+        cancel()
+        self.session = session
+        ids = [id]
+        document = DiffDocument()
+        finished = true
+        sectionOffsets = []
+        lineOffsets = []
+        textView.textStorage?.setAttributedString(NSAttributedString())
+    }
+
+    /// Tree mode: shows `path`'s blob in place of the patch. Port of gitk procs
+    /// `showfile` and `getblobline` (gitk/gitk 7900–7960); `id` keeps the pane
+    /// bound to the selected commit.
+    func showBlob(path: String, blob: ObjectID, id: ObjectID, session: ViewSession) {
+        showEmpty(id: id, session: session)
+        let token = generation
+        truncationNotice = nil
+        renderer = DiffRenderer(settings: settings, mode: mode, wordMode: options.wordDiff)
+        renderer.encoding = session.repo.guiEncoding
+        sectionOffsets = [0]
+        textView.setSelectedRange(NSRange(location: 0, length: 0))
+        scrollView.contentView.scroll(to: NSPoint(x: scrollView.contentView.bounds.minX, y: 0))
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+        let runner = session.runner
+        let encoding = session.repo.guiEncoding
+        let perFile = settings.perFileAttrs
+        task = Task { [weak self] in
+            do {
+                let text = try await TreeOutline.blobText(blob, path: path, runner: runner, attributes: GitAttributes(runner: runner),
+                                                          guiEncoding: encoding, perFileAttrs: perFile)
+                guard let self, generation == token, !Task.isCancelled, let storage = textView.textStorage else { return }
+                storage.beginEditing()
+                storage.append(renderer.blobSeparator(path: path))
+                storage.append(renderer.blobText(text))
+                storage.endEditing()
+            } catch {
+                guard let self, generation == token, !Task.isCancelled else { return }
+                Alerts().showError(L("Error getting diffs: %s", error.localizedDescription), parent: scrollView.window)
+            }
+        }
     }
 
     func clear() {

@@ -125,7 +125,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         messageSection = SidebarSection(title: L("Message"), body: Self.column([messageView, moreButton], spacing: 4))
         filesSection = SidebarSection(title: "", body: fileList.view, padded: false)
         filesSection.titleLabel.attributedStringValue = NSAttributedString()
-        filesSection.accessory = [fileList.totalsLabel, fileList.layoutSwitch]
+        filesSection.accessory = [fileList.totalsLabel, fileList.layoutSwitch, fileList.modeSwitch]
         fileList.onTitleChange = { [weak self] in self?.filesSection.title = $0 }
 
         stack.orientation = .vertical

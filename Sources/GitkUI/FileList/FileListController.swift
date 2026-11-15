@@ -17,6 +17,10 @@ import GitkCore
 final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDelegate {
     enum Layout: Int { case list, tree }
 
+    /// gitk's `cmitmode`: the Patch/Tree radio buttons. Patch lists the changed
+    /// files; Tree shows the commit's whole tree as an outline (task 13.3).
+    enum Mode: Int { case patch, tree }
+
     struct Entry: Equatable {
         var path: String
         var oldPath: String?
@@ -29,21 +33,42 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
     enum Row: Equatable {
         case file(Int, depth: Int)
         case folder(String, depth: Int)
+        /// A row of the Tree-mode outline.
+        case outline(TreeOutline.Row)
     }
 
     let view = NSStackView()
     let titleLabel = NSTextField(labelWithString: "")
     let totalsLabel = NSTextField(labelWithString: "")
     let layoutSwitch = NSSegmentedControl()
+    /// The Patch/Tree switch.
+    let modeSwitch = NSSegmentedControl()
     let tableView = NSTableView()
     private var heightConstraint: NSLayoutConstraint?
     private(set) var entries: [Entry] = []
     private(set) var rows: [Row] = []
     private(set) var highlighted: Int?
     private var updatingSelection = false
+    private(set) var outline = TreeOutline()
+    /// The file shown in the diff pane in Tree mode.
+    private(set) var selectedBlob: String?
 
     var settings = Settings() { didSet { tableView.reloadData() } }
     var onSelectFile: ((Int) -> Void)?
+    /// Tree mode: a file was clicked (path, blob).
+    var onSelectBlob: ((String, ObjectID) -> Void)?
+    /// The Patch/Tree switch changed (gitk `changemode`/`cmitmode` trace).
+    var onModeChange: ((Mode) -> Void)?
+    var mode: Mode = .patch {
+        didSet {
+            guard mode != oldValue else { return }
+            modeSwitch.selectedSegment = mode.rawValue
+            layoutSwitch.isHidden = mode == .tree
+            selectedBlob = nil
+            rebuildRows()
+            onModeChange?(mode)
+        }
+    }
     /// The section title ("N Changed Files") changed.
     var onTitleChange: ((String) -> Void)?
     var layout: Layout = .list {
@@ -75,6 +100,18 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
         layoutSwitch.target = self
         layoutSwitch.action = #selector(layoutChanged)
 
+        modeSwitch.segmentCount = 2
+        modeSwitch.trackingMode = .selectOne
+        modeSwitch.controlSize = .small
+        modeSwitch.focusRingType = .none
+        for (index, label) in [L("Patch"), L("Tree")].enumerated() {
+            modeSwitch.setLabel(label, forSegment: index)
+            modeSwitch.setToolTip(label, forSegment: index)
+        }
+        modeSwitch.selectedSegment = 0
+        modeSwitch.target = self
+        modeSwitch.action = #selector(modeChanged)
+
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("file"))
         column.resizingMask = .autoresizingMask
         tableView.addTableColumn(column)
@@ -87,6 +124,8 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
         tableView.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.target = self
+        tableView.action = #selector(rowClicked)
         tableView.translatesAutoresizingMaskIntoConstraints = false
         let height = tableView.heightAnchor.constraint(equalToConstant: 0)
         height.isActive = true
@@ -102,6 +141,7 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
     /// Port of gitk's file list filling in `gettreediffs`/`addtocflist`, from
     /// the diff's file sections; nil empties the list.
     func update(_ document: DiffDocument?) {
+        guard mode == .patch else { return }
         let sections = document?.sections ?? []
         let new = sections.enumerated().map { index, section in
             Entry(path: section.newPath ?? section.oldPath ?? "", oldPath: section.oldPath == section.newPath ? nil : section.oldPath,
@@ -133,7 +173,25 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
         tableView.reloadData(forRowIndexes: changed, columnIndexes: IndexSet(integer: 0))
     }
 
+    /// Tree mode: the outline of `ls-tree -r` for the selected commit (nil empties it).
+    func setOutline(_ new: TreeOutline?, selecting path: String? = nil) {
+        outline = new ?? TreeOutline()
+        selectedBlob = path
+        if mode == .tree { rebuildRows() }
+    }
+
     private func rebuildRows() {
+        if mode == .tree {
+            rows = outline.rows.map { .outline($0) }
+            tableView.reloadData()
+            heightConstraint?.constant = CGFloat(rows.count) * Self.rowHeight
+            if let selectedBlob, let row = rows.firstIndex(where: { if case .outline(let r) = $0 { r.path == selectedBlob } else { false } }) {
+                updatingSelection = true
+                tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+                updatingSelection = false
+            }
+            return
+        }
         switch layout {
         case .list:
             rows = entries.indices.map { .file($0, depth: 0) }
@@ -169,7 +227,7 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
 
     /// Port of gitk proc `highlightfile` (gitk/gitk 8549–8558): `index` is the file's diff section.
     func highlight(_ index: Int?) {
-        guard index != highlighted else { return }
+        guard mode == .patch, index != highlighted else { return }
         highlighted = index
         updatingSelection = true
         if let index, let row = row(ofFile: index) {
@@ -184,6 +242,19 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
         layout = Layout(rawValue: layoutSwitch.selectedSegment) ?? .list
     }
 
+    @objc private func modeChanged() {
+        mode = Mode(rawValue: modeSwitch.selectedSegment) ?? .patch
+    }
+
+    /// Port of gitk proc `treeclick` (gitk/gitk 3447–3472) for directories: a
+    /// click opens or closes them. Files are handled by the selection change.
+    @objc private func rowClicked() {
+        let clicked = tableView.clickedRow
+        guard mode == .tree, rows.indices.contains(clicked), case .outline(let row) = rows[clicked], row.isDirectory else { return }
+        outline.toggle(row.path)
+        rebuildRows()
+    }
+
     // MARK: Table
 
     func numberOfRows(in tableView: NSTableView) -> Int { rows.count }
@@ -196,19 +267,32 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
             cell.configure(entries[index], depth: depth, showDirectory: layout == .list, settings: settings)
         case .folder(let name, let depth):
             cell.configureFolder(name, depth: depth)
+        case .outline(let row):
+            cell.configureOutline(row)
         }
         return cell
     }
 
     func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
-        if case .file = rows[row] { true } else { false }
+        switch rows[row] {
+        case .file: true
+        case .folder: false
+        case .outline(let row): !row.isDirectory
+        }
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
-        guard !updatingSelection, rows.indices.contains(tableView.selectedRow),
-              case .file(let index, _) = rows[tableView.selectedRow] else { return }
-        highlighted = index
-        onSelectFile?(index)
+        guard !updatingSelection, rows.indices.contains(tableView.selectedRow) else { return }
+        switch rows[tableView.selectedRow] {
+        case .file(let index, _):
+            highlighted = index
+            onSelectFile?(index)
+        case .outline(let row):
+            guard !row.isDirectory, let blob = row.objectID else { return }
+            selectedBlob = row.path
+            onSelectBlob?(row.path, blob)
+        case .folder: break
+        }
     }
 }
 
@@ -281,6 +365,20 @@ final class FileRowView: NSTableCellView {
         name.attributedStringValue = NSAttributedString(string: folder, attributes: Self.attributes(
             .systemFont(ofSize: NSFont.smallSystemFontSize), .secondaryLabelColor))
         name.toolTip = folder
+        counts.attributedStringValue = NSAttributedString()
+    }
+
+    /// A Tree-mode row: a disclosure triangle for a directory, a document for a file.
+    func configureOutline(_ row: TreeOutline.Row) {
+        setDepth(row.depth)
+        let symbol = row.isDirectory ? (row.isOpen ? "chevron.down" : "chevron.right") : "doc"
+        icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 10, weight: .regular))
+        icon.contentTintColor = .secondaryLabelColor
+        name.attributedStringValue = NSAttributedString(string: row.name, attributes: Self.attributes(
+            .systemFont(ofSize: NSFont.smallSystemFontSize, weight: row.isDirectory ? .regular : .medium),
+            row.isDirectory ? .secondaryLabelColor : .labelColor))
+        name.toolTip = row.path
         counts.attributedStringValue = NSAttributedString()
     }
 
