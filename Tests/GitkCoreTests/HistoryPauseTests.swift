@@ -16,12 +16,24 @@ import Testing
         return session
     }
 
+    private func waitUntil(_ condition: () -> Bool) async throws {
+        let deadline = ContinuousClock.now + .seconds(20)
+        while !condition() {
+            #expect(ContinuousClock.now < deadline, "condition not reached")
+            if ContinuousClock.now >= deadline { return }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+    }
+
     @Test func pausedLoadTakesNoRowsUntilResumed() async throws {
         let session = try await session()
         session.historyPaused = true
         session.historyPauseLimit = .seconds(30)
         let load = Task { await session.load() }
-        try await Task.sleep(for: .milliseconds(600))
+        // Wait for the load to start (refs are read first), then give the
+        // first batch time to arrive and be held back.
+        try await waitUntil { session.isLoading }
+        try await Task.sleep(for: .milliseconds(400))
         #expect(session.isLoading)
         #expect(session.rowCount == 0)
         session.historyPaused = false
@@ -44,7 +56,7 @@ import Testing
         session.historyPaused = true
         session.historyPauseLimit = .seconds(30)
         let load = Task { await session.load() }
-        try await Task.sleep(for: .milliseconds(300))
+        try await waitUntil { session.isLoading }
         let start = ContinuousClock.now
         await session.cancel()
         await load.value
