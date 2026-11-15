@@ -235,12 +235,22 @@ final class MainSplitView: NSView, NSSplitViewDelegate {
         diffPane.isHidden = true
         addSubview(listDiffSplit)
         addSubview(statusBar)
+        statusBar.onBusyChange = { [weak self] _ in
+            guard let self, let window = self.window else { return }
+            window.invalidateCursorRects(for: self)
+        }
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
     override var isFlipped: Bool { true }
+
+    /// The busy cursor (gitk's `nowbusy` sets the watch cursor). Views with their
+    /// own cursor, such as the text views, keep theirs.
+    override func resetCursorRects() {
+        if statusBar.isBusy { addCursorRect(bounds, cursor: StatusBar.busyCursor) }
+    }
 
     /// Puts the search bar in the first content row (no unified titlebar).
     func installSearchRow(_ view: NSView) {

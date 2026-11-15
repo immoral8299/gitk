@@ -102,8 +102,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if let snapshot = Snapshot.fromEnvironment(environment) {
             snapshot.ready = { [weak controller] window in
-                await controller?.waitForSnapshot(early: self.environment["GITK_SWIFT_SNAPSHOT_EARLY"] == "1")
-                await Snapshot.defaultReady(window)
+                // GITK_SWIFT_SNAPSHOT_EARLY=1 captures right after the first history batch, without the settle delay.
+                let early = self.environment["GITK_SWIFT_SNAPSHOT_EARLY"] == "1"
+                await controller?.waitForSnapshot(early: early)
+                await Snapshot.defaultReady(window, settleMilliseconds: early ? 0 : Snapshot.settleMilliseconds)
             }
             snapshot.capturesFrame = prefsWindow != nil
             Task { await snapshot.run(window: prefsWindow ?? w) }

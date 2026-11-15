@@ -24,7 +24,7 @@ final class Snapshot {
 
     /// Suspends until the window shows what the snapshot should capture.
     /// Injectable so tests, and later the history loader, can supply their own.
-    var ready: @MainActor (NSWindow) async -> Void = Snapshot.defaultReady
+    var ready: @MainActor (NSWindow) async -> Void = { window in await Snapshot.defaultReady(window) }
 
     init(outputURL: URL, size: NSSize?) {
         self.outputURL = outputURL
@@ -50,7 +50,7 @@ final class Snapshot {
 
     /// Default readiness: the window is on screen and laid out, plus a short
     /// settle delay.
-    static func defaultReady(_ window: NSWindow) async {
+    static func defaultReady(_ window: NSWindow, settleMilliseconds: Int = Snapshot.settleMilliseconds) async {
         for _ in 0..<100 where !window.isVisible {
             try? await Task.sleep(for: .milliseconds(20))
         }

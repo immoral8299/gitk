@@ -8,12 +8,41 @@ import GitkCore
 /// The slim status strip along the bottom of the window (design D16): the row
 /// counter that gitk shows beside the Commit ID field, then the busy status and
 /// its progress bar.
+///
+/// Busy state follows gitk's `nowbusy`/`notbusy` (gitk/gitk 6913–6943): while
+/// the history is read or a search runs, the status text names the operation
+/// and the window shows the busy cursor (`onBusyChange`).
 @MainActor
 final class StatusBar: NSView {
     let rowLabel = NSTextField(labelWithString: "")
     let label = NSTextField(labelWithString: "")
     let progress = NSProgressIndicator()
     private let stack = NSStackView()
+    private var reading = false
+    private var searching = false
+    /// The reading progress as a fraction, or nil while the total is unknown.
+    private var fraction: Double?
+    private var reportedBusy = false
+
+    /// True while a read or a search is running.
+    var isBusy: Bool { reading || searching }
+    /// Called when `isBusy` changes, so the window can show or drop the busy cursor.
+    var onBusyChange: ((Bool) -> Void)?
+
+    /// gitk's watch cursor: an hourglass, centred on its hot spot.
+    static let busyCursor: NSCursor = {
+        let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
+        guard let symbol = NSImage(systemSymbolName: "hourglass", accessibilityDescription: nil)?
+            .withSymbolConfiguration(config)
+        else { return .arrow }
+        let image = NSImage(size: symbol.size, flipped: false) { rect in
+            symbol.draw(in: rect)
+            NSColor.black.set()
+            rect.fill(using: .sourceIn)
+            return true
+        }
+        return NSCursor(image: image, hotSpot: NSPoint(x: image.size.width / 2, y: image.size.height / 2))
+    }()
 
     init() {
         super.init(frame: NSRect(x: 0, y: 0, width: 600, height: 22))
@@ -25,7 +54,9 @@ final class StatusBar: NSView {
         progress.style = .bar
         progress.controlSize = .small
         progress.isIndeterminate = true
-        progress.isDisplayedWhenStopped = false
+        progress.minValue = 0
+        progress.maxValue = 1
+        progress.isHidden = true
         progress.widthAnchor.constraint(equalToConstant: 120).isActive = true
         stack.orientation = .horizontal
         stack.alignment = .centerY
@@ -65,14 +96,36 @@ final class StatusBar: NSView {
         setRow(row, of: session.rowCount)
     }
 
-    func setSearching() {
-        label.stringValue = L("Searching")
-        progress.startAnimation(nil)
+    /// Shows "Searching" with an indeterminate bar, or clears it (gitk `nowbusy finding`).
+    func setSearching(_ on: Bool = true) {
+        searching = on
+        update()
     }
 
-    func setReading(_ reading: Bool, count: Int = 0) {
-        label.stringValue = reading ? L("Reading") : ""
-        if reading { progress.startAnimation(nil) } else { progress.stopAnimation(nil) }
-        progress.setAccessibilityValue(reading ? String(count) : "")
+    /// Shows "Reading" while the history loads. With `total` known the bar fills
+    /// to `count / total`, capped below full until the load finishes; otherwise
+    /// it runs indeterminately. Turning reading off clears the text and the bar.
+    func setReading(_ on: Bool, count: Int = 0, total: Int? = nil) {
+        reading = on
+        if on, let total, total > 0 {
+            fraction = min(Double(count) / Double(total), 0.99)
+        } else {
+            fraction = nil
+        }
+        update()
+        progress.setAccessibilityValue(on ? String(count) : "")
+    }
+
+    private func update() {
+        label.stringValue = searching ? L("Searching") : reading ? L("Reading") : ""
+        let determinate = reading && !searching && fraction != nil
+        progress.isIndeterminate = !determinate
+        if determinate, let fraction { progress.doubleValue = fraction }
+        progress.isHidden = !isBusy
+        if isBusy { progress.startAnimation(nil) } else { progress.stopAnimation(nil) }
+        if isBusy != reportedBusy {
+            reportedBusy = isBusy
+            onBusyChange?(isBusy)
+        }
     }
 }

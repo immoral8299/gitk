@@ -68,6 +68,9 @@ final class MainWindowController: NSWindowController {
     private var detailsTask: Task<Void, Never>?
     private var requestedID: ObjectID?
     private var initialLoadFinished = false
+    /// The commit count `git rev-list --count --all` gave before the load, the
+    /// progress bar's denominator; nil when git could not say.
+    private var expectedCommitCount: Int?
     var commandHandler: ((AppCommand) -> Void)?
     var commandValidator: ((AppCommand) -> Bool)?
     private(set) var mainMenu: MainMenu?
@@ -192,8 +195,7 @@ final class MainWindowController: NSWindowController {
         }
         searchBar.onBusy = { [weak self] searching in
             guard let self else { return }
-            if searching { self.statusBar.setSearching() }
-            else { self.statusBar.setReading(self.session.isLoading) }
+            self.statusBar.setSearching(searching)
         }
         session.onEvent = { [weak self] in self?.handle($0) }
         window.center()
@@ -481,6 +483,7 @@ final class MainWindowController: NSWindowController {
                     requestedID = ObjectID(hex: String(decoding: output.stdout, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines))
                 }
             }
+            expectedCommitCount = await commitCountEstimate()
             await session.load()
             loadAncestry()
             initialLoadFinished = true
@@ -504,6 +507,14 @@ final class MainWindowController: NSWindowController {
         try? tempFiles?.cleanup()
     }
 
+    /// The number of commits in the repository, for the status bar's progress
+    /// bar. The view's own revisions are not resolved here, so filtered views
+    /// fill less far than their real share; the bar clears when the load ends.
+    private func commitCountEstimate() async -> Int? {
+        guard let output = try? await session.runner.run(["rev-list", "--count", "--all"]) else { return nil }
+        return Int(String(decoding: output.stdout, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
     func waitForSnapshot(early: Bool) async {
         if early {
             while session.rowCount == 0 && !initialLoadFinished && session.errorMessage == nil {
@@ -524,8 +535,10 @@ final class MainWindowController: NSWindowController {
 
     private func handle(_ event: ViewSession.Event) {
         switch event {
-        case .loadStarted: statusBar.setReading(true)
-        case .loadProgress(let count): statusBar.setReading(true, count: count)
+        case .loadStarted: statusBar.setReading(true, total: expectedCommitCount)
+        case .loadProgress(let count):
+            statusBar.setReading(true, count: count, total: expectedCommitCount)
+            statusBar.refresh(session: session)
         case .rowsChanged:
             listController.refresh()
             if let selected = session.selection.selectedID, session.row(of: selected) != nil {
