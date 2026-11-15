@@ -39,11 +39,11 @@ Total scenarios: 168
 | commit-find | Text matching options | Case-insensitive author search |  | pending |
 | commit-find | Text matching options | Invalid regexp |  | pending |
 | commit-find | Advanced search options | Options stay out of the bar |  | pending |
-| commit-find | Advanced search options | Advanced filters |  | pending |
-| commit-find | Advanced search options | Defaults |  | pending |
-| commit-find | Live highlighting | Highlight while typing |  | pending |
-| commit-find | Match boxes | Match boxes |  | pending |
-| commit-find | Match boxes | Current match box |  | pending |
+| commit-find | Advanced search options | Advanced filters | MatchBoxTests/advancedOptionsDefaultAndSnapshotQuery; snapshot GITK_SWIFT_FIND_POPOVER=1 | covered |
+| commit-find | Advanced search options | Defaults | MatchBoxTests/advancedOptionsDefaultAndSnapshotQuery | covered |
+| commit-find | Live highlighting | Highlight while typing | MatchBoxTests/everyOccurrenceGetsABoxAndRowsStayRegular; snapshot GITK_SWIFT_FIND=containing:Exact:All fields:merge | covered |
+| commit-find | Match boxes | Match boxes | MatchBoxTests/everyOccurrenceGetsABoxAndRowsStayRegular | covered |
+| commit-find | Match boxes | Current match box | MatchBoxTests/currentMatchUsesTheCurrentHitColour | covered |
 | commit-find | Match boxes | Matches in visible text |  | pending |
 | commit-find | Search performance | Responsive search on a large repo |  | pending |
 | commit-find | Search performance | Stale results never appear |  | pending |
@@ -100,13 +100,13 @@ Total scenarios: 168
 | diff-viewer | Path-limited diffs | Limited view |  | pending |
 | diff-viewer | Text search in the pane | Incremental search | PaneSearchTests/highlightsEveryMatchAndSelectsFirstAfterCursor, PaneSearchTests/nextAndPreviousStepAndStopAtEnds | covered |
 | diff-viewer | Pane scrolling keys | Next file |  | pending |
-| diff-viewer | Tree mode | View a file at a revision |  | pending |
+| diff-viewer | Tree mode | View a file at a revision | TreeModeTests/loadsTreeAndDecodesBlob; snapshot GITK_SWIFT_CMIT_MODE=tree GITK_SWIFT_TREE_FILE=sjis.txt on encodings | covered |
 | diff-viewer | Per-file encodings | Shift-JIS file | GitAttributesTests/shiftJISFileTextDecodes | covered |
 | diff-viewer | Line origin | Origin of an added line | LineOriginTests/normalHunkCoordinates, LineOriginTests/wholeDiffLookupMatchesHunkLookup, LineOriginTests/findsNewFileLineInDiff | covered |
 | file-list | Changed Files section | Jump to file |  | pending |
 | file-list | Changed Files section | Change totals |  | pending |
 | file-list | Linked highlighting | Scroll the diff |  | pending |
-| file-list | Tree mode | Expand a directory |  | pending |
+| file-list | Tree mode | Expand a directory | TreeModeTests/directoriesStartClosedAndExpand | covered |
 | file-list | File context menu | External diff |  | pending |
 | file-list | File context menu | External diff with a renamed file |  | pending |
 | file-list | File context menu | Highlight this only |  | pending |
@@ -136,7 +136,7 @@ Total scenarios: 168
 | preferences | Preferences window | Change a colour | PrefsColorsTests/newLineBackgroundReachesDiffAttributes, PrefsColorsTests/changesApplyOnlyOnOK | covered |
 | preferences | Preferences window | Cancel | PrefsGeneralTests/cancelDiscardsChanges | covered |
 | preferences | General settings page | Toggle local changes |  | pending |
-| preferences | Colour and font settings pages | Change the text font |  | pending |
+| preferences | Colour and font settings pages | Change the text font | FontSettingsTests/textFontReachesDiff | covered |
 | preferences | Colour and font settings pages | Change a search colour | PrefsColorsTests/searchColoursReachPalette | covered |
 | preferences | Defaults match gitk on macOS | Fresh install |  | pending |
 | preferences | Persistence | Geometry restored |  | pending |
@@ -145,7 +145,7 @@ Total scenarios: 168
 | preferences | Legacy gitk config import | Import existing config |  | pending |
 | preferences | Legacy gitk config import | Config with code |  | pending |
 | preferences | Legacy gitk config import | Legacy file untouched |  | pending |
-| preferences | Font size shortcuts | Increase font |  | pending |
+| preferences | Font size shortcuts | Increase font | FontSettingsTests/increaseTwicePersists | covered |
 | preferences | Quit and close | Quit during load | ViewSessionTests/cancelDuringLoadReturnsPromptly; live `huge` run with GITK_SWIFT_QUIT_AFTER_MS=500 (no git log children left) | covered |
 | reference-list | Reference list window | Open with F2 | RefListModelTests/openListsAllHeadsAndTags | covered |
 | reference-list | Filtering and sorting | Filter refs | RefListModelTests/globFilter | covered |
@@ -158,19 +158,19 @@ Total scenarios: 168
 | repository-actions | Branch operations | Remove current branch |  | pending |
 | repository-actions | Branch operations | Checkout with local changes |  | pending |
 | repository-actions | Tag creation | Annotated tag | CreateTagTests/annotatedTagAndValidation, CreateTagTests/emptyMessageMakesLightweightTagAndLabelIsInSession | covered |
-| repository-actions | Cherry-pick and revert | Successful cherry-pick |  | pending |
-| repository-actions | Cherry-pick and revert | Conflict |  | pending |
-| repository-actions | Cherry-pick and revert | Nothing to commit |  | pending |
+| repository-actions | Cherry-pick and revert | Successful cherry-pick | CherryPickTests/successRefreshesRefsAndSelectsNewCommit | covered |
+| repository-actions | Cherry-pick and revert | Conflict | CherryPickTests/noOpAndConflictMessages, CherryPickTests/conflictAcceptedRunsCitoolWithAuthorOfCommit | covered |
+| repository-actions | Cherry-pick and revert | Nothing to commit | CherryPickTests/emptyPickShowsNoChanges | covered |
 | repository-actions | Reset | Hard reset | ResetTests/mixedDefaultAndHardResetRefreshesChanges | covered |
 | repository-actions | Patch and commit export | Make patch | MakePatchTests/patchAppliesAtParent, MakePatchTests/reverseSwapsEndpointsAndGeneratesReversePatch | covered |
 | repository-actions | Copy commit reference | Copy reference |  | pending |
 | repository-actions | External tools | git gui missing |  | pending |
 | repository-actions | Error reporting for write operations | Branch already exists outside the app |  | pending |
 | views | Command-line view | No arguments |  | pending |
-| views | View editor | Create a view |  | pending |
-| views | View editor | Apply without closing |  | pending |
+| views | View editor | Create a view | ViewEditorFormTests/createViewBuildsSpec; snapshot GITK_SWIFT_OPEN=viewEditor | covered |
+| views | View editor | Apply without closing | ViewEditorFormTests/editorFieldsRoundTrip | covered |
 | views | View editor fields | Pickaxe as regexp |  | pending |
-| views | View editor fields | Paths field |  | pending |
+| views | View editor fields | Paths field | ViewEditorFormTests/pathsFieldSplitsLines | covered |
 | views | Round-trip of view arguments | Edit a command-line view |  | pending |
 | views | Switching and deleting views | Switch keeps selection |  | pending |
 | views | Remembered views | Persist across launches |  | pending |

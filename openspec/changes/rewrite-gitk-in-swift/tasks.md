@@ -479,7 +479,7 @@ Order of work:
   - Port: 8549–8574, 8775–8800.
   - Needs: 13.1.
   - Spec: file-list "Scroll the diff".
-- [ ] 13.3 [M] Implement Tree mode in the sidebar section: an outline of `ls-tree` (directories collapsed), clicking a file shows the blob decoded with its encoding in the bottom pane, and the Patch/Tree switch re-selects — Verify: `swift test --filter TreeModeTests` (outline structure); a snapshot in Tree mode shows the file content in the bottom pane.
+- [x] 13.3 [M] Implement Tree mode in the sidebar section: an outline of `ls-tree` (directories collapsed), clicking a file shows the blob decoded with its encoding in the bottom pane, and the Patch/Tree switch re-selects — Verify: `swift test --filter TreeModeTests` (outline structure); a snapshot in Tree mode shows the file content in the bottom pane.
   - Files: `FileListController.swift`, `DiffRenderer.swift`, tests.
   - Port: 3293–3504, 7900–7975.
   - Needs: 13.1, 3.6, 11.11.
@@ -517,7 +517,7 @@ Order of work:
   - Port: 4989–5079.
   - Needs: 14.1, 14.2, 2.3.
   - Spec: commit-find "Pickaxe search".
-- [ ] 14.4 [M] Build `SearchBar` in the titlebar: the search field ("Search commits…"), the Advanced ("Aa") popover with kind, match mode and field (Exact and All fields hidden by default), the "N / M" counter, ‹ › stepping, and the ← → history buttons. Draw matches as rounded background boxes in the found colour, with the current match in the current-search-hit colour, instead of bolding rows. No "Find" label, no text ↑/↓ buttons and no controls beside the traffic lights — Verify: a snapshot with `GITK_SWIFT_FIND="containing:Exact:All fields:merge"` shows a box around every visible match and no bold rows; a snapshot with the popover open shows the three option groups.
+- [x] 14.4 [M] Build `SearchBar` in the titlebar: the search field ("Search commits…"), the Advanced ("Aa") popover with kind, match mode and field (Exact and All fields hidden by default), the "N / M" counter, ‹ › stepping, and the ← → history buttons. Draw matches as rounded background boxes in the found colour, with the current match in the current-search-hit colour, instead of bolding rows. No "Find" label, no text ↑/↓ buttons and no controls beside the traffic lights — Verify: a snapshot with `GITK_SWIFT_FIND="containing:Exact:All fields:merge"` shows a box around every visible match and no bold rows; a snapshot with the popover open shows the three option groups.
   - Files: `Sources/GitkUI/Bars/SearchBar.swift`, `CommitListController.swift`, `GraphCellView.swift`, `Snapshot.swift`.
   - Port: 2560–2580, 4892–4936, 5024–5042.
   - Needs: 14.3, 10.1, 9.5.
@@ -548,7 +548,7 @@ Order of work:
   - Port: 4372–4434.
   - Needs: 15.1.
   - Spec: views "Edit a command-line view".
-- [ ] 15.3 [M] Build the `ViewEditorController` form from the `ViewOptions` table (layout flags `+`, `..`, `*`, `*.`), with OK, Apply (F5) and Cancel — Verify: a snapshot of the editor (`GITK_SWIFT_OPEN=viewEditor`) shows every field in gitk's order.
+- [x] 15.3 [M] Build the `ViewEditorController` form from the `ViewOptions` table (layout flags `+`, `..`, `*`, `*.`), with OK, Apply (F5) and Cancel — Verify: a snapshot of the editor (`GITK_SWIFT_OPEN=viewEditor`) shows every field in gitk's order.
   - Files: `Sources/GitkUI/Dialogs/ViewEditorController.swift`, `Snapshot.swift`.
   - Port: 4434–4634.
   - Needs: 15.2, 9.5.
@@ -606,7 +606,7 @@ Order of work:
   - Port: 9706–9858.
   - Needs: 16.1, 10.3.
   - Spec: repository-actions "Create branch".
-- [ ] 16.10 [M] Implement Cherry-pick: re-apply confirmation, local-changes error naming the file, conflict prompt that runs `git citool`, "No changes committed", and on success a new row on top of HEAD with the label moved and selected — Verify: `swift test --filter CherryPickTests` (success, conflict and no-op on temp repos with headless confirm).
+- [x] 16.10 [M] Implement Cherry-pick: re-apply confirmation, local-changes error naming the file, conflict prompt that runs `git citool`, "No changes committed", and on success a new row on top of HEAD with the label moved and selected — Verify: `swift test --filter CherryPickTests` (success, conflict and no-op on temp repos with headless confirm).
   - Files: `RepoActions.swift`, `MainWindowController.swift`, tests.
   - Port: 9858–9947.
   - Needs: 16.1, 8.7.
@@ -655,7 +655,7 @@ Order of work:
   - Port: 11803–11903, 12017–12078.
   - Needs: 18.1.
   - Spec: preferences "Change a colour", "Change a search colour".
-- [ ] 18.3 [M] Build the Fonts page (NSFontPanel for the main, text and UI fonts) and the ⌘+/⌘−/⌘= font size commands (persisted) — Verify: `swift test --filter FontSettingsTests`.
+- [x] 18.3 [M] Build the Fonts page (NSFontPanel for the main, text and UI fonts) and the ⌘+/⌘−/⌘= font size commands (persisted) — Verify: `swift test --filter FontSettingsTests`.
   - Files: `PreferencesController.swift`, `MainWindowController.swift`, tests.
   - Port: 8873–8901, 11623–11700, 11903–11914.
   - Needs: 18.1.
