@@ -531,7 +531,7 @@ Order of work:
   - Files: `MainWindowController.swift`, `SearchBar.swift`, tests.
   - Needs: 14.4, 9.7.
   - Spec: commit-find "Slash to search".
-- [ ] 14.7 [M] Make search fast: `SearchIndex` with immutable chunks of searchable fields, scanning off the main actor, a 100 ms debounce, prefix narrowing (when the pattern extends, scan only the previous matches), field pruning, and generation cancellation. Add `FindPerfTests` behind `GITK_PERF=1` on `huge` for a common pattern and a no-match pattern — Verify: first visible boxes appear in ≤ 120 ms, the full result arrives in ≤ 1 s, a superseded search stops in ≤ 50 ms, and the main thread is never blocked for more than 16 ms; record the numbers in `docs/architecture.md`.
+- [x] 14.7 [M] Make search fast: `SearchIndex` with immutable chunks of searchable fields, scanning off the main actor, a 100 ms debounce, prefix narrowing (when the pattern extends, scan only the previous matches), field pruning, and generation cancellation. Add `FindPerfTests` behind `GITK_PERF=1` on `huge` for a common pattern and a no-match pattern — Verify: first visible boxes appear in ≤ 120 ms, the full result arrives in ≤ 1 s, a superseded search stops in ≤ 50 ms, and the main thread is never blocked for more than 16 ms; record the numbers in `docs/architecture.md`.
   - Files: `Sources/GitkCore/Find/SearchIndex.swift`, `Sources/GitkCore/Find/SearchScanner.swift`, `SearchBar.swift`, tests, `docs/architecture.md`.
   - Needs: 14.3, 14.4, 3.2.
   - Spec: commit-find "Responsive search on a large repo", "Stale results never appear", "Prefix refinement reuses results", "Cancellation".

@@ -45,10 +45,10 @@ Total scenarios: 168
 | commit-find | Match boxes | Match boxes | MatchBoxTests/everyOccurrenceGetsABoxAndRowsStayRegular | covered |
 | commit-find | Match boxes | Current match box | MatchBoxTests/currentMatchUsesTheCurrentHitColour, MatchBoxTests/onlyTheFirstOccurrenceIsCurrent, FindSteppingTests/currentOccurrenceIsFirstInDisplayOrder | covered |
 | commit-find | Match boxes | Matches in visible text | MatchBoxTests/sidebarMessageShowsTheSameBoxes, MatchBoxTests/everyOccurrenceGetsABoxAndRowsStayRegular | covered |
-| commit-find | Search performance | Responsive search on a large repo |  | pending |
-| commit-find | Search performance | Stale results never appear |  | pending |
-| commit-find | Search performance | Prefix refinement reuses results |  | pending |
-| commit-find | Search performance | Cancellation |  | pending |
+| commit-find | Search performance | Responsive search on a large repo | FindPerfTests/hugeSearchMeetsBudgets (GITK_PERF=1), SearchScannerTests/visibleRowsAreDeliveredFirst, SearchScannerTests/debounceWaitsBeforeScanning | covered |
+| commit-find | Search performance | Stale results never appear | SearchScannerTests/supersededSearchDeliversNothing, SearchScannerTests/cancelStopsDelivery | covered |
+| commit-find | Search performance | Prefix refinement reuses results | SearchScannerTests/prefixNarrowingScansOnlyPreviousMatches, SearchScannerTests/narrowingIsNotUsedWhenItWouldBeWrong | covered |
+| commit-find | Search performance | Cancellation | SearchScannerTests/cancelStopsDelivery, FindPerfTests/hugeSearchMeetsBudgets | covered |
 | commit-find | Stepping through matches | Wraparound | FindSteppingTests/wrapAndNoWrap, FindSteppingTests/steppingWalksEveryMatchAndWrapsOnce | covered |
 | commit-find | Stepping through matches | No wrap with Shift | FindSteppingTests/wrapAndNoWrap | covered |
 | commit-find | Match counter and progress | Match counter |  | pending |
