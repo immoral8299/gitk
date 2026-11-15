@@ -587,7 +587,7 @@ Order of work:
   - Port: 9424–9514.
   - Needs: 16.1.
   - Spec: repository-actions "Make patch".
-- [ ] 16.6 [M] Build the Create tag dialog (ID, name, optional message giving an annotated tag; empty and duplicate names refused); the label appears without a reload — Verify: `swift test --filter CreateTagTests`.
+- [x] 16.6 [M] Build the Create tag dialog (ID, name, optional message giving an annotated tag; empty and duplicate names refused); the label appears without a reload — Verify: `swift test --filter CreateTagTests`.
   - Files: `Sources/GitkUI/Dialogs/TagDialog.swift`, tests.
   - Port: 9514–9632.
   - Needs: 16.1, 10.3.

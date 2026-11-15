@@ -157,7 +157,7 @@ Total scenarios: 168
 | repository-actions | Branch operations | Create branch |  | pending |
 | repository-actions | Branch operations | Remove current branch |  | pending |
 | repository-actions | Branch operations | Checkout with local changes |  | pending |
-| repository-actions | Tag creation | Annotated tag |  | pending |
+| repository-actions | Tag creation | Annotated tag | CreateTagTests/annotatedTagAndValidation, CreateTagTests/emptyMessageMakesLightweightTagAndLabelIsInSession | covered |
 | repository-actions | Cherry-pick and revert | Successful cherry-pick |  | pending |
 | repository-actions | Cherry-pick and revert | Conflict |  | pending |
 | repository-actions | Cherry-pick and revert | Nothing to commit |  | pending |
