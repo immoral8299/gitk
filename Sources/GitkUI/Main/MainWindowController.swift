@@ -20,6 +20,7 @@ final class MainWindowController: NSWindowController {
     /// The ancestry index for nearby tags and heads (12.x), once loaded.
     private var ancestry: AncestryIndex?
     private var ancestryTask: Task<Void, Never>?
+    private var refListController: RefListWindowController?
     private let cwd: URL
     /// The per-run temp directory (gitk `gitknewtmpdir`), removed on quit.
     private(set) lazy var tempFiles: TempFiles? = try? TempFiles(environment: environment)
@@ -204,7 +205,7 @@ final class MainWindowController: NSWindowController {
         case .quit, .closeWindow, .about, .update, .reload, .rereadRefs, .focusCommitID,
              .selectPrev, .selectNext, .selectFirst, .selectLast, .selectPageUp, .selectPageDown,
              .goToParent, .scrollList, .focusFind, .findNext, .findPrev, .toggleDetailsSidebar,
-             .scrollPane, .nextFile, .prevFile: return true
+             .scrollPane, .nextFile, .prevFile, .listRefs: return true
         case .goBack: return session.selection.history.canGoBack
         case .goForward: return session.selection.history.canGoForward
         default: return commandValidator?(command) ?? (commandHandler != nil)
@@ -217,6 +218,7 @@ final class MainWindowController: NSWindowController {
         case .reload: loadTask = Task { await session.reload() }
         case .rereadRefs: Task { await session.readReferences() }
         case .focusFind: searchBar.enterSearchMode(focus: true)
+        case .listRefs: showRefList()
         case .findNext(let wrap):
             window?.makeFirstResponder(listController.tableView)
             searchBar.step(forward: true, wrap: wrap)
@@ -398,6 +400,20 @@ final class MainWindowController: NSWindowController {
         } catch {
             Alerts(environment: environment).errorPopup(String(describing: error), parent: window)
         }
+    }
+
+    /// Port of gitk proc `showrefs` (gitk/gitk 10209–10260): one window, raised if open.
+    private func showRefList() {
+        if refListController == nil {
+            refListController = RefListWindowController(
+                repoName: Self.repoName(gitDir: startup.repo.gitDir, cwd: cwd),
+                source: { [unowned self] in
+                    (session.refs, { [session] in session.row(of: $0) != nil },
+                     { [session] id in session.store.index(of: id).map { session.store.headline(at: $0) } })
+                },
+                onSelect: { [unowned self] in select($0) })
+        }
+        refListController?.present()
     }
 
     func setWindowTitle(cwd: URL) {
