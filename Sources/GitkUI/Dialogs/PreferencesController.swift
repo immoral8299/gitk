@@ -99,6 +99,11 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
     private(set) var spinners: [String: SpinnerField] = [:]
     /// The Colors page wells, keyed by `ColorSetting.id`.
     private(set) var colorWells: [String: NSColorWell] = [:]
+    /// The Fonts page rows, keyed by `FontSetting.id`: the family label and the button.
+    private(set) var fontLabels: [String: NSTextField] = [:]
+    private(set) var fontButtons: [String: NSButton] = [:]
+    /// The row whose font the system font panel is editing.
+    private var activeFontRow: String?
     private(set) var okButton = NSButton()
     private(set) var cancelButton = NSButton()
 
@@ -106,7 +111,7 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
     private(set) var pageBuilders: [(title: String, build: (PreferencesController) -> NSView)] = [
         (L("General"), { $0.makeGeneralPage() }),
         (L("Colors"), { $0.makeColorsPage() }),
-        (L("Fonts"), { _ in NSView() }),
+        (L("Fonts"), { $0.makeFontsPage() }),
     ]
 
     init(settings: Settings, hashLength: Int = 40, notificationCenter: NotificationCenter = .default) {
@@ -369,6 +374,99 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
             grid.topAnchor.constraint(equalTo: page.topAnchor, constant: 8),
         ])
         return page
+    }
+
+    // MARK: Fonts page
+
+    /// One font edited on the Fonts page.
+    struct FontSetting {
+        let id: String
+        let title: String
+        let path: WritableKeyPath<Settings, FontSpec>
+    }
+
+    /// The `mkfontdisp` rows of gitk proc `prefspage_fonts`, in gitk's order.
+    static let fontSettings: [FontSetting] = [
+        FontSetting(id: "main", title: L("Main font"), path: \.mainFont),
+        FontSetting(id: "text", title: L("Diff display font"), path: \.textFont),
+        FontSetting(id: "ui", title: L("User interface font"), path: \.uiFont),
+    ]
+
+    /// Port of gitk proc `prefspage_fonts` (gitk/gitk 11903–11912) and
+    /// `mkfontdisp` (11623–11633): a button per font that opens the system font
+    /// panel, and a label showing the family in that font.
+    func makeFontsPage() -> NSView {
+        let grid = NSGridView()
+        grid.rowSpacing = 6
+        grid.columnSpacing = 8
+        grid.translatesAutoresizingMaskIntoConstraints = false
+        let title = label(L("Fonts: press to choose"))
+        title.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
+        grid.addRow(with: [title, NSView()]).mergeCells(in: NSRange(location: 0, length: 2))
+        for item in Self.fontSettings {
+            let button = NSButton(title: item.title, target: nil, action: nil)
+            bind(button, ClosureTarget { [weak self] in self?.chooseFont(item.id) })
+            let family = label("")
+            fontButtons[item.id] = button
+            fontLabels[item.id] = family
+            refreshFontRow(item)
+            grid.addRow(with: [button, family])
+        }
+        let page = NSView()
+        page.addSubview(grid)
+        NSLayoutConstraint.activate([
+            grid.leadingAnchor.constraint(equalTo: page.leadingAnchor, constant: 12),
+            grid.trailingAnchor.constraint(lessThanOrEqualTo: page.trailingAnchor, constant: -12),
+            grid.topAnchor.constraint(equalTo: page.topAnchor, constant: 8),
+        ])
+        return page
+    }
+
+    private func refreshFontRow(_ item: FontSetting) {
+        let spec = draft[keyPath: item.path]
+        let font = MainLayoutMetrics.nsFont(spec)
+        fontLabels[item.id]?.stringValue = font.familyName ?? spec.family
+        fontLabels[item.id]?.font = font
+    }
+
+    /// Port of gitk proc `choosefont`: shows the font panel for one row.
+    func chooseFont(_ id: String) {
+        guard let item = Self.fontSettings.first(where: { $0.id == id }) else { return }
+        activeFontRow = id
+        let manager = NSFontManager.shared
+        manager.target = self
+        manager.action = #selector(changeFont(_:))
+        manager.setSelectedFont(MainLayoutMetrics.nsFont(draft[keyPath: item.path]), isMultiple: false)
+        manager.fontPanel(true)?.title = item.title
+        manager.orderFrontFontPanel(nil)
+    }
+
+    /// Called by the font panel when the user picks a font.
+    @objc func changeFont(_ sender: NSFontManager?) {
+        guard let id = activeFontRow, let item = Self.fontSettings.first(where: { $0.id == id }) else { return }
+        let current = MainLayoutMetrics.nsFont(draft[keyPath: item.path])
+        applyChosenFont((sender ?? NSFontManager.shared).convert(current), row: id)
+    }
+
+    /// Port of gitk procs `on_choosefont` and `fontok` (gitk/gitk 11643–11690):
+    /// the chosen font replaces the row's font on the draft.
+    func applyChosenFont(_ font: NSFont, row id: String) {
+        guard let item = Self.fontSettings.first(where: { $0.id == id }) else { return }
+        draft[keyPath: item.path] = Self.fontSpec(from: font)
+        refreshFontRow(item)
+    }
+
+    /// The `FontSpec` for an `NSFont`; the system faces map to the sentinels (design D9).
+    static func fontSpec(from font: NSFont) -> FontSpec {
+        let traits = NSFontManager.shared.traits(of: font)
+        let family: String
+        if font.fontName.hasPrefix(".") || (font.familyName ?? "").hasPrefix(".") {
+            family = font.isFixedPitch ? FontSpec.monospacedSystemFamily : FontSpec.systemFamily
+        } else {
+            family = font.familyName ?? font.fontName
+        }
+        return FontSpec(family: family, pointSize: Double(font.pointSize),
+                        bold: traits.contains(.boldFontMask), italic: traits.contains(.italicFontMask))
     }
 
     // MARK: Helpers

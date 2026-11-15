@@ -183,6 +183,28 @@ final class MainWindowController: NSWindowController {
         _ = try? settingsStore?.save(settings)
     }
 
+    /// Port of gitk proc `incrfont` (gitk/gitk 8873–8901): all three fonts grow
+    /// or shrink by `delta` points, are redrawn, and the new sizes are saved.
+    func changeFontSize(by delta: Int) {
+        settings = FontSizing.incremented(settings, by: delta)
+        applyFonts()
+        saveSettings()
+    }
+
+    /// Redraws the list, sidebar and diff pane with the fonts in `settings`
+    /// (`setcoords`, `settabs` and `redisplay` of gitk's `incrfont`).
+    func applyFonts() {
+        let font = MainLayoutMetrics.nsFont(settings.mainFont)
+        listController.font = font
+        listController.tableView.rowHeight = ceil(font.ascender - font.descender + font.leading) + 2
+        listController.settings = settings
+        listController.refresh()
+        sidebar.settings = settings
+        sidebar.fileList.settings = settings
+        diffPane.settings = settings
+        diffPane.renderAgain()
+    }
+
     private(set) var preferencesController: PreferencesController?
 
     /// Port of gitk proc `doprefs`: raises the window if it is already open. OK
@@ -197,6 +219,7 @@ final class MainWindowController: NSWindowController {
         let controller = PreferencesController(settings: settings, hashLength: startup.repo.hashLength)
         controller.onApply = { [weak self] new in
             self?.settings = new
+            self?.applyFonts()
             self?.saveSettings()
         }
         controller.onClose = { [weak self] in self?.preferencesController = nil }
@@ -247,7 +270,8 @@ final class MainWindowController: NSWindowController {
         case .quit, .closeWindow, .about, .update, .reload, .rereadRefs, .focusCommitID,
              .selectPrev, .selectNext, .selectFirst, .selectLast, .selectPageUp, .selectPageDown,
              .goToParent, .scrollList, .focusFind, .findNext, .findPrev, .toggleDetailsSidebar,
-             .scrollPane, .nextFile, .prevFile, .listRefs, .preferences: return true
+             .scrollPane, .nextFile, .prevFile, .listRefs, .preferences,
+             .fontBigger, .fontSmaller: return true
         case .goBack: return session.selection.history.canGoBack
         case .goForward: return session.selection.history.canGoForward
         default: return commandValidator?(command) ?? (commandHandler != nil)
@@ -287,6 +311,8 @@ final class MainWindowController: NSWindowController {
             else { NSApp.keyWindow?.performClose(nil) }
         case .about: NSApp.orderFrontStandardAboutPanel(nil)
         case .preferences: showPreferences()
+        case .fontBigger: changeFontSize(by: 1)
+        case .fontSmaller: changeFontSize(by: -1)
         default: commandHandler?(command)
         }
     }

@@ -18,7 +18,7 @@ public struct FontSpec: Codable, Sendable, Hashable {
     public var bold: Bool
     public var italic: Bool
 
-    init(family: String, pointSize: Double, bold: Bool = false, italic: Bool = false) {
+    public init(family: String, pointSize: Double, bold: Bool = false, italic: Bool = false) {
         self.family = family
         self.pointSize = pointSize
         self.bold = bold
