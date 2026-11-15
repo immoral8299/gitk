@@ -601,7 +601,7 @@ Order of work:
   - Files: `Sources/GitkUI/Dialogs/WriteCommitDialog.swift`, tests.
   - Port: 9647–9706.
   - Needs: 16.1.
-- [ ] 16.9 [M] Build the Create new branch and Rename branch dialogs (empty name refused; overwrite confirmation) — Verify: `swift test --filter BranchDialogTests` with `GITK_SWIFT_HEADLESS_ERRORS=1`.
+- [x] 16.9 [M] Build the Create new branch and Rename branch dialogs (empty name refused; overwrite confirmation) — Verify: `swift test --filter BranchDialogTests` with `GITK_SWIFT_HEADLESS_ERRORS=1`.
   - Files: `Sources/GitkUI/Dialogs/BranchDialog.swift`, tests.
   - Port: 9706–9858.
   - Needs: 16.1, 10.3.

@@ -154,7 +154,7 @@ Total scenarios: 168
 | repository-actions | Commit context menu | No mark set | RowMenuTests/orderAndMarkEnablement, RowMenuTests/attachedMenuFollowsSessionMark | covered |
 | repository-actions | Diff between two commits | Diff against selection |  | pending |
 | repository-actions | Mark and compare | Compare cherry-picked series |  | pending |
-| repository-actions | Branch operations | Create branch |  | pending |
+| repository-actions | Branch operations | Create branch | BranchDialogTests/emptyNameAndConfirmedOverwrite | covered |
 | repository-actions | Branch operations | Remove current branch |  | pending |
 | repository-actions | Branch operations | Checkout with local changes |  | pending |
 | repository-actions | Tag creation | Annotated tag | CreateTagTests/annotatedTagAndValidation, CreateTagTests/emptyMessageMakesLightweightTagAndLabelIsInSession | covered |
