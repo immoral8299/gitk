@@ -121,6 +121,8 @@ final class MainWindowController: NSWindowController {
         sidebar.fileList.settings = settings
         if environment["GITK_SWIFT_FILE_LAYOUT"] == "tree" { sidebar.fileList.layout = .tree }
         sidebar.fileList.onSelectFile = { [weak self] in self?.diffPane.jumpToFile($0) }
+        sidebar.fileList.onHighlight = { [weak self] path, only in self?.highlightFile(path, only: only) }
+        sidebar.fileList.onBlameParent = { [weak self] path in self?.blameParent(of: path) }
         sidebar.fileList.onModeChange = { [weak self] mode in
             self?.settings.cmitMode = mode == .tree ? "tree" : "patch"
             self?.reselectForMode()
@@ -564,6 +566,26 @@ final class MainWindowController: NSWindowController {
         sidebar.show(DetailsHeaderBuilder.build(commit: index, session: session, dateFormat: settings.dateTimeFormat), session: session)
         sidebar.nearby = nearby(for: id)
         showFiles(id)
+    }
+
+    /// Port of gitk proc `flist_hl` (gitk/gitk 3700–3708).
+    func highlightFile(_ path: String, only: Bool) {
+        let query = searchBar.query
+        let pattern = FileMenu.highlightPattern(path: path, only: only, currentPattern: query.pattern,
+                                                currentIsTouchingPaths: query.type == .touchingPaths)
+        searchBar.setSearch(type: 1, mode: searchBar.mode.indexOfSelectedItem,
+                            field: searchBar.location.indexOfSelectedItem, pattern: pattern)
+    }
+
+    /// Port of gitk proc `external_blame` with parent index 1 (gitk/gitk 4003–4031).
+    func blameParent(of path: String) {
+        let parent = session.selection.selectedID.flatMap { LineOrigin.parents(of: $0, in: session).first }
+        guard let arguments = FileMenu.blameArguments(base: parent, path: path, cdup: session.repo.cdup,
+                                                      hashLength: session.repo.hashLength) else {
+            Alerts().errorPopup(L("No such commit"), parent: window)
+            return
+        }
+        actionCoordinator.launchGitTool(arguments)
     }
 
     /// The bottom pane and file list for `id` in the current Patch/Tree mode

@@ -14,7 +14,7 @@ import GitkCore
 /// separate `git diff-tree` call, so the list and the diff pane always agree,
 /// renames included (docs/architecture.md, Deviations).
 @MainActor
-final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDelegate {
+final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate {
     enum Layout: Int { case list, tree }
 
     /// gitk's `cmitmode`: the Patch/Tree radio buttons. Patch lists the changed
@@ -69,6 +69,10 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
             onModeChange?(mode)
         }
     }
+    /// Context menu: "Highlight this too/only" (path, only).
+    var onHighlight: ((String, Bool) -> Void)?
+    /// Context menu: "Blame parent commit" (path).
+    var onBlameParent: ((String) -> Void)?
     /// The section title ("N Changed Files") changed.
     var onTitleChange: ((String) -> Void)?
     var layout: Layout = .list {
@@ -126,6 +130,9 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
         tableView.delegate = self
         tableView.target = self
         tableView.action = #selector(rowClicked)
+        let menu = NSMenu()
+        menu.delegate = self
+        tableView.menu = menu
         tableView.translatesAutoresizingMaskIntoConstraints = false
         let height = tableView.heightAnchor.constraint(equalToConstant: 0)
         height.isActive = true
@@ -255,6 +262,37 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
         rebuildRows()
     }
 
+    // MARK: Context menu
+
+    /// The file path of table row `row`; nil for folders and directory rows.
+    func path(ofRow row: Int) -> String? {
+        guard rows.indices.contains(row) else { return nil }
+        switch rows[row] {
+        case .file(let index, _): return entries[index].path
+        case .outline(let r): return r.isDirectory ? nil : r.path
+        case .folder: return nil
+        }
+    }
+
+    /// Port of gitk proc `pop_flist_menu` (gitk/gitk 3662–3686): no menu on directories.
+    func menuItems(forRow row: Int) -> [NSMenuItem] {
+        guard let path = path(ofRow: row) else { return [] }
+        return [
+            ClosureMenuItem(title: L("Highlight this too")) { [weak self] in self?.onHighlight?(path, false) },
+            ClosureMenuItem(title: L("Highlight this only")) { [weak self] in self?.onHighlight?(path, true) },
+            ClosureMenuItem(title: L("Blame parent commit")) { [weak self] in self?.onBlameParent?(path) },
+            ClosureMenuItem(title: L("Copy path")) {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(path, forType: .string)
+            },
+        ]
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        for item in menuItems(forRow: tableView.clickedRow) { menu.addItem(item) }
+    }
+
     // MARK: Table
 
     func numberOfRows(in tableView: NSTableView) -> Int { rows.count }
@@ -294,6 +332,23 @@ final class FileListController: NSObject, NSTableViewDataSource, NSTableViewDele
         case .folder: break
         }
     }
+}
+
+/// A menu item that runs a closure.
+@MainActor
+final class ClosureMenuItem: NSMenuItem {
+    private let handler: () -> Void
+
+    init(title: String, action handler: @escaping () -> Void) {
+        self.handler = handler
+        super.init(title: title, action: #selector(run), keyEquivalent: "")
+        target = self
+    }
+
+    @available(*, unavailable)
+    required init(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    @objc private func run() { handler() }
 }
 
 /// One changed file (a status symbol, the name, the +/− counts) or a folder.
