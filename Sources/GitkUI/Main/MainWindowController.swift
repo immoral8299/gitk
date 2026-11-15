@@ -601,7 +601,9 @@ final class MainWindowController: NSWindowController {
             diffPane.show(id, session: session)
             return
         }
-        diffPane.showEmpty(id: id, session: session)
+        // All files mode: the commit's diff stays in the bottom pane until a
+        // file is picked from the outline (a blank pane read as "no diff").
+        diffPane.show(id, session: session)
         sidebar.fileList.setOutline(nil)
         let runner = session.runner
         treeTask = Task { [weak self] in
