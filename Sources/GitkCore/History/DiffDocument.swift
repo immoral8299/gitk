@@ -79,4 +79,27 @@ public struct DiffDocument: Sendable {
         forward ? sections.first(where: { $0.startLine > line })?.startLine
             : sections.last(where: { $0.startLine < line })?.startLine
     }
+
+    /// The path whose attributes decide the encoding of line `index`: the new
+    /// path of its file section, else the old one.
+    public func path(ofLine index: Int) -> String? {
+        guard let section = fileSection(at: index).map({ sections[$0] }) else { return nil }
+        return section.newPath ?? section.oldPath
+    }
+
+    /// Text of line `index` (without its marker) decoded with the per-file
+    /// encoding, as gitk does through `get_path_encoding` (gitk/gitk 12504–12514).
+    public func text(ofLine index: Int, attributes: GitAttributes, guiEncoding: String,
+                     perFileAttrs: Bool) async -> String {
+        guard lines.indices.contains(index) else { return "" }
+        let data: Data
+        switch lines[index] {
+        case .add(let d), .remove(let d), .context(let d), .headerLine(let d), .hunkHeader(let d, _),
+             .binary(let d), .submodule(let d), .other(let d): data = d
+        case .combined(_, let d): data = d
+        case .fileHeader: data = rawLines[index]
+        }
+        return await attributes.decode(data, path: path(ofLine: index), guiEncoding: guiEncoding,
+                                       perFileAttrs: perFileAttrs)
+    }
 }

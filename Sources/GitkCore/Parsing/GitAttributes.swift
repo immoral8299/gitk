@@ -20,4 +20,20 @@ public actor GitAttributes {
         return value == "unspecified" ? fallback : value
     }
     public func invalidate() { encodings = [:] }
+
+    /// Port of gitk proc `get_path_encoding` (gitk/gitk 12504–12514): the
+    /// encoding for `path`'s text. An empty or nil path, or `perFileAttrs` off,
+    /// gives `guiEncoding`.
+    public func pathEncoding(_ path: String?, guiEncoding: String, perFileAttrs: Bool) async -> String {
+        guard perFileAttrs, let path, !path.isEmpty else { return guiEncoding }
+        return await encoding(for: path, fallback: guiEncoding)
+    }
+
+    /// Decodes file text (a diff line or blob) for `path` with its `encoding`
+    /// attribute, else `guiEncoding`. Unknown names and invalid bytes fall back
+    /// as in ``TextDecoder``.
+    public func decode(_ data: Data, path: String?, guiEncoding: String, perFileAttrs: Bool) async -> String {
+        let name = await pathEncoding(path, guiEncoding: guiEncoding, perFileAttrs: perFileAttrs)
+        return TextDecoder.decode(data, encodingName: name)
+    }
 }
