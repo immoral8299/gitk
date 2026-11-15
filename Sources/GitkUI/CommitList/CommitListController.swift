@@ -281,9 +281,37 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         updatingSelection = true
         if let id = session.selection.selectedID, let row = session.row(of: id) {
             tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
-            if scroll { tableView.scrollRowToVisible(row) }
+            if scroll { reveal(row: row) }
         } else { tableView.deselectAll(nil) }
         updatingSelection = false
+    }
+
+    /// Scrolls the least distance that shows `row` in full below the header
+    /// (and titlebar) inset, without animation. `scrollRowToVisible` ignores
+    /// the content insets and animates, so holding an arrow key made the list
+    /// jump and drift.
+    func reveal(row: Int) {
+        guard row >= 0, row < tableView.numberOfRows else { return }
+        let clip = scrollView.contentView
+        let rect = tableView.rect(ofRow: row)
+        guard let y = Self.revealOffset(rowMinY: rect.minY, rowMaxY: rect.maxY, boundsMinY: clip.bounds.minY,
+                                        boundsHeight: clip.bounds.height, insetTop: clip.contentInsets.top,
+                                        insetBottom: clip.contentInsets.bottom) else { return }
+        clip.scroll(to: NSPoint(x: clip.bounds.minX, y: y))
+        scrollView.reflectScrolledClipView(clip)
+    }
+
+    /// The clip origin that brings the row span `rowMinY...rowMaxY` into the
+    /// visible area (the bounds minus the insets), or nil when it is already
+    /// fully visible. A row above the area lands at its top edge, a row below
+    /// at its bottom edge.
+    nonisolated static func revealOffset(rowMinY: CGFloat, rowMaxY: CGFloat, boundsMinY: CGFloat, boundsHeight: CGFloat,
+                                         insetTop: CGFloat, insetBottom: CGFloat) -> CGFloat? {
+        let visibleTop = boundsMinY + insetTop
+        let visibleBottom = boundsMinY + boundsHeight - insetBottom
+        if rowMinY < visibleTop { return rowMinY - insetTop }
+        if rowMaxY > visibleBottom { return rowMaxY - boundsHeight + insetBottom }
+        return nil
     }
 
     var pageSize: Int { max(1, Int(scrollView.contentView.bounds.height / tableView.rowHeight)) }

@@ -38,6 +38,8 @@ final class MainWindowController: NSWindowController {
     var currentDiffScrollPosition: () -> Double = { 0 }
     var restoreDiffScrollPosition: (Double) -> Void = { _ in }
     private var loadTask: Task<Void, Never>?
+    /// The pending sidebar and diff load after keyboard navigation (debounced).
+    private var detailsTask: Task<Void, Never>?
     private var requestedID: ObjectID?
     private var initialLoadFinished = false
     var commandHandler: ((AppCommand) -> Void)?
@@ -261,7 +263,7 @@ final class MainWindowController: NSWindowController {
             let parents = session.selection.selectedID.flatMap { session.store.index(of: $0) }
                 .map { session.store.parents(of: $0).map { session.store.id(at: $0) } } ?? []
             let next = session.selection.navigating(command, rows: rowIDs(), parents: parents, pageSize: listController.pageSize)
-            if let id = next.selectedID { select(id) }
+            if let id = next.selectedID { select(id, deferDetails: true) }
         case .scrollList(let step): listController.scroll(step)
         case .goBack: stepHistory(forward: false)
         case .goForward: stepHistory(forward: true)
@@ -295,6 +297,7 @@ final class MainWindowController: NSWindowController {
     /// Port of gitk proc `doquit` (gitk/gitk 11610–11623): stop the loaders and
     /// git children, save the settings, and remove the temp directory.
     func stop() async {
+        detailsTask?.cancel()
         diffPane.cancel()
         searchBar.cancel()
         ancestryTask?.cancel()
@@ -347,18 +350,41 @@ final class MainWindowController: NSWindowController {
         }
     }
 
-    func select(_ id: ObjectID, record: Bool = true) {
+    /// - Parameter deferDetails: keyboard navigation moves the selection at
+    ///   once but loads the sidebar and diff only once the keys have been
+    ///   quiet for `detailsDelay`, so holding an arrow key does not start a
+    ///   `git diff-tree` and a sidebar rebuild for every row passed.
+    func select(_ id: ObjectID, record: Bool = true, deferDetails: Bool = false) {
         guard session.row(of: id) != nil else { return }
         session.selection = session.selection.selecting(id, scrollPosition: currentDiffScrollPosition(), record: record || session.selection.history.entries.isEmpty)
         listController.restoreSelection(scroll: true)
         splitView.showsDiffPane = true
         refreshBars()
-        showDetails(id)
+        detailsTask?.cancel()
+        detailsTask = nil
+        if deferDetails {
+            let delay = Self.detailsDelay(keyRepeatInterval: NSEvent.keyRepeatInterval)
+            detailsTask = Task { [weak self] in
+                try? await Task.sleep(for: delay)
+                guard let self, !Task.isCancelled, session.selection.selectedID == id else { return }
+                detailsTask = nil
+                showDetails(id)
+            }
+        } else {
+            showDetails(id)
+        }
         if settings.autoCopy {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(id.abbreviated(settings.autoSelLen), forType: .string)
         }
         onSelection?(id)
+    }
+
+    /// How long keyboard navigation waits before loading details: two key
+    /// repeats (so a held key never loads), at least 150 ms and at most 350 ms
+    /// (so a single press still feels immediate with a slow repeat rate).
+    nonisolated static func detailsDelay(keyRepeatInterval: TimeInterval) -> Duration {
+        .milliseconds(Int((min(0.35, max(0.15, keyRepeatInterval * 2)) * 1000).rounded()))
     }
 
     /// Port of the display half of gitk proc `selectline` (gitk/gitk 7560–7666):
