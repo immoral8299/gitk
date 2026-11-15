@@ -521,7 +521,9 @@ final class MainWindowController: NSWindowController {
         case .loadFailed(let message):
             statusBar.setReading(false)
             Alerts(environment: environment).errorPopup(message, parent: window)
-        case .refsChanged: listController.refresh()
+        case .refsChanged:
+            listController.refresh()
+            refListController?.reload()
         }
     }
 
