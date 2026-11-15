@@ -133,11 +133,11 @@ Total scenarios: 168
 | localization | Language override | Override from terminal |  | pending |
 | localization | Language override | C locale |  | pending |
 | localization | Catalog regeneration | Idempotent conversion |  | pending |
-| preferences | Preferences window | Change a colour |  | pending |
+| preferences | Preferences window | Change a colour | PrefsColorsTests/newLineBackgroundReachesDiffAttributes, PrefsColorsTests/changesApplyOnlyOnOK | covered |
 | preferences | Preferences window | Cancel | PrefsGeneralTests/cancelDiscardsChanges | covered |
 | preferences | General settings page | Toggle local changes |  | pending |
 | preferences | Colour and font settings pages | Change the text font |  | pending |
-| preferences | Colour and font settings pages | Change a search colour |  | pending |
+| preferences | Colour and font settings pages | Change a search colour | PrefsColorsTests/searchColoursReachPalette | covered |
 | preferences | Defaults match gitk on macOS | Fresh install |  | pending |
 | preferences | Persistence | Geometry restored |  | pending |
 | preferences | Persistence | Sidebar state restored |  | pending |

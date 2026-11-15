@@ -650,7 +650,7 @@ Order of work:
   - Port: 11700–11803, 11914–11972, 12078–12152.
   - Needs: 4.5, 9.6.
   - Spec: preferences "Cancel", "Toggle local changes".
-- [ ] 18.2 [M] Build the Colors page (colour wells for each colour setting, including "Found text background" and "Current search hit background"; changes apply on OK) — Verify: `swift test --filter PrefsColorsTests` (a changed colour reaches `DiffRenderer` attributes and the search match boxes).
+- [x] 18.2 [M] Build the Colors page (colour wells for each colour setting, including "Found text background" and "Current search hit background"; changes apply on OK) — Verify: `swift test --filter PrefsColorsTests` (a changed colour reaches `DiffRenderer` attributes and the search match boxes).
   - Files: `PreferencesController.swift`, tests.
   - Port: 11803–11903, 12017–12078.
   - Needs: 18.1.
