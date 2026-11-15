@@ -18,4 +18,20 @@ import Testing
         _ = try await repo.runner.run(["apply", "--check", output.path])
         await repo.cleanup()
     }
+
+    @Test func reverseSwapsEndpointsAndGeneratesReversePatch() async throws {
+        let repo = try await ActionTestRepo.make()
+        let parent = try await repo.resolve("HEAD~1")
+        let head = try await repo.resolve()
+        let dialog = PatchDialog(from: parent, to: head, number: 3, coordinator: repo.actions)
+        #expect(dialog.outputField.stringValue.hasSuffix("patch3.patch"))
+        dialog.reversePressed()
+        #expect(dialog.fromField.stringValue == head.hex)
+        #expect(dialog.toField.stringValue == parent.hex)
+        let output = repo.directory.appendingPathComponent("rev.patch")
+        dialog.outputField.stringValue = output.path
+        #expect(await dialog.onAccept?() == true)
+        _ = try await repo.runner.run(["apply", "--check", output.path])
+        await repo.cleanup()
+    }
 }
