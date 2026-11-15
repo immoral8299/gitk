@@ -14,6 +14,12 @@ final class BranchDialog: RepositoryDialog {
         super.init(title: oldName.map { L("Rename branch %s", $0) } ?? L("Create branch"),
                    accept: oldName == nil ? L("Create") : L("Rename"))
         field(label: L("ID:"), value: id.hex, editable: false)
+        let headline = field(label: "", value: "", editable: false)
+        let runner = coordinator.session.runner
+        Task { [weak headline] in
+            let out = try? await runner.run(["show", "-s", "--format=%s", id.hex])
+            headline?.stringValue = out.map { String(decoding: $0.stdout, as: UTF8.self).trimmingCharacters(in: .newlines) } ?? ""
+        }
         nameField.stringValue = oldName ?? ""
         row(label: L("Name:"), control: nameField)
         finishForm()

@@ -61,6 +61,15 @@ final class RepositoryActionCoordinator {
         }
     }
 
+    /// Entry point for the head label menu (task 16.13): opens the Rename branch dialog for
+    /// the head `name` pointing at `id`. Port of gitk proc `mvbranch` (gitk/gitk 9718–9730).
+    func showRenameBranch(_ name: String, at id: ObjectID) {
+        guard !isBusy else { return }
+        dialog?.close()
+        dialog = BranchDialog(id: id, renameFrom: name, coordinator: self)
+        dialog?.present(relativeTo: parentWindow)
+    }
+
     /// Port of gitk proc `domktag` (gitk/gitk 9554–9586).
     func tag(name: String, at id: ObjectID, message: String) async -> Bool {
         guard !name.isEmpty else {

@@ -22,4 +22,24 @@ import Testing
         #expect(repo.session.refs.headIDs["topic"] == nil)
         await repo.cleanup()
     }
+
+    @Test func renameValidationAndDeclinedOverwrite() async throws {
+        let repo = try await ActionTestRepo.make(confirm: "no")
+        let id = try await repo.resolve()
+        let older = try await repo.resolve("HEAD~1")
+        #expect(await repo.actions.branch(name: "topic", at: id))
+        #expect(!(await repo.actions.branch(name: "", at: id, renameFrom: "topic")))
+        #expect(repo.messages.last?.contains("Please specify a new name") == true)
+        #expect(await repo.actions.branch(name: "topic", at: id, renameFrom: "topic"))
+        #expect(!(await repo.actions.branch(name: "topic", at: older)))
+        #expect(repo.session.refs.headIDs["topic"] == id)
+        _ = NSApplication.shared
+        let dialog = BranchDialog(id: id, renameFrom: "topic", coordinator: repo.actions)
+        #expect(dialog.nameField.stringValue == "topic")
+        #expect(dialog.window?.title == "Rename branch topic")
+        dialog.close()
+        repo.actions.showRenameBranch("topic", at: id)
+        repo.actions.cancel()
+        await repo.cleanup()
+    }
 }
