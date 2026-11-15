@@ -52,6 +52,7 @@ User-visible strings with no gitk msgid. These have no translations.
 - `Search in`
 - `Matching`
 - `Field`
+- `Date and time format`
 - `Details Sidebar`
 - `Message`
 - `Back`

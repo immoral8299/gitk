@@ -168,6 +168,29 @@ final class MainWindowController: NSWindowController {
         _ = try? settingsStore?.save(settings)
     }
 
+    private(set) var preferencesController: PreferencesController?
+
+    /// Port of gitk proc `doprefs`: raises the window if it is already open. OK
+    /// stores and saves the edited settings and posts `.gitkSettingsDidChange`
+    /// (applying them live is task 18.5).
+    @discardableResult
+    func showPreferences() -> PreferencesController {
+        if let existing = preferencesController {
+            existing.window?.makeKeyAndOrderFront(nil)
+            return existing
+        }
+        let controller = PreferencesController(settings: settings, hashLength: startup.repo.hashLength)
+        controller.onApply = { [weak self] new in
+            self?.settings = new
+            self?.saveSettings()
+        }
+        controller.onClose = { [weak self] in self?.preferencesController = nil }
+        preferencesController = controller
+        controller.window?.center()
+        controller.showWindow(nil)
+        return controller
+    }
+
     /// Gives the titlebar search field the width of the content column.
     func fitToolbar() {
         searchToolbar?.fit(contentWidth: splitView.bounds.width)
@@ -209,7 +232,7 @@ final class MainWindowController: NSWindowController {
         case .quit, .closeWindow, .about, .update, .reload, .rereadRefs, .focusCommitID,
              .selectPrev, .selectNext, .selectFirst, .selectLast, .selectPageUp, .selectPageDown,
              .goToParent, .scrollList, .focusFind, .findNext, .findPrev, .toggleDetailsSidebar,
-             .scrollPane, .nextFile, .prevFile, .listRefs: return true
+             .scrollPane, .nextFile, .prevFile, .listRefs, .preferences: return true
         case .goBack: return session.selection.history.canGoBack
         case .goForward: return session.selection.history.canGoForward
         default: return commandValidator?(command) ?? (commandHandler != nil)
@@ -248,6 +271,7 @@ final class MainWindowController: NSWindowController {
             if NSApp.keyWindow == nil || NSApp.keyWindow === window { NSApp.terminate(nil) }
             else { NSApp.keyWindow?.performClose(nil) }
         case .about: NSApp.orderFrontStandardAboutPanel(nil)
+        case .preferences: showPreferences()
         default: commandHandler?(command)
         }
     }

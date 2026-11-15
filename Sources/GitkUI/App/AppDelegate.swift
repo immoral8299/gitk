@@ -86,6 +86,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         w.makeKeyAndOrderFront(nil)
         NSApp.activate()
         controller.startLoading()
+        // GITK_SWIFT_OPEN=prefs opens the preferences window (verification hook);
+        // a snapshot then captures that window.
+        let prefsWindow = environment["GITK_SWIFT_OPEN"] == "prefs" ? controller.showPreferences().window : nil
         if let delay = environment["GITK_SWIFT_QUIT_AFTER_MS"].flatMap(Int.init), delay >= 0 {
             Task {
                 try? await Task.sleep(for: .milliseconds(delay))
@@ -97,7 +100,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 await controller?.waitForSnapshot(early: self.environment["GITK_SWIFT_SNAPSHOT_EARLY"] == "1")
                 await Snapshot.defaultReady(window)
             }
-            Task { await snapshot.run(window: w) }
+            snapshot.capturesFrame = prefsWindow != nil
+            Task { await snapshot.run(window: prefsWindow ?? w) }
         }
     }
 }

@@ -18,6 +18,9 @@ final class Snapshot {
 
     let outputURL: URL
     let size: NSSize?
+    /// Render the whole window frame (titlebar and background) instead of the
+    /// content view; used for dialog windows such as the preferences window.
+    var capturesFrame = false
 
     /// Suspends until the window shows what the snapshot should capture.
     /// Injectable so tests, and later the history loader, can supply their own.
@@ -82,7 +85,7 @@ final class Snapshot {
         await ready(window)
         // With a unified titlebar the toolbar sits in the window frame view, which
         // then has the content view's size; render it so the titlebar is included.
-        let frameView = window.styleMask.contains(.fullSizeContentView) ? window.contentView?.superview : nil
+        let frameView = capturesFrame || window.styleMask.contains(.fullSizeContentView) ? window.contentView?.superview : nil
         guard let view = frameView ?? window.contentView, let data = Snapshot.pngData(of: view) else {
             FileHandle.standardError.write(Data("gitk: snapshot failed: cannot render window\n".utf8))
             exit(1)
