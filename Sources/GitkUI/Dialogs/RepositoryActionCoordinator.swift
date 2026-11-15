@@ -176,11 +176,14 @@ final class RepositoryActionCoordinator {
     }
 
     /// Port of gitk proc `exec_citool` and File→Start git gui (gitk/gitk 2403, 9858–9882).
+    /// Detached like gitk's `&`: the task is not kept in `externalTasks`, so closing
+    /// the window does not terminate a running `git gui`. A tool that cannot start,
+    /// or exits with an error, reports git's message in an alert.
     func launchGitTool(_ arguments: [String] = ["gui"], authorOf id: ObjectID? = nil) {
         if let toolLauncher { toolLauncher(arguments, id); return }
         let runner = session.runner
         let repo = session.repo
-        externalTasks.append(Task { [weak self] in
+        Task { [weak self] in
             do {
                 var environment = ProcessInfo.processInfo.environment
                 if let id {
@@ -198,7 +201,7 @@ final class RepositoryActionCoordinator {
                 guard !Task.isCancelled else { return }
                 self?.alerts.errorPopup(error.localizedDescription, parent: self?.parentWindow)
             }
-        })
+        }
     }
 
     private var patchCompare: PatchIDCompare?

@@ -35,6 +35,16 @@ final class MainWindowController: NSWindowController {
     private(set) lazy var actionCoordinator: RepositoryActionCoordinator = {
         let coordinator = RepositoryActionCoordinator(session: session)
         coordinator.parentWindow = window
+        coordinator.onBusy = { [weak self] status in
+            guard let self else { return }
+            // Same fields StatusBar.setSearching/setReading use; restore the load state when idle.
+            if let status, !status.isEmpty {
+                statusBar.label.stringValue = status
+                statusBar.progress.startAnimation(nil)
+            } else {
+                statusBar.setReading(session.isLoading)
+            }
+        }
         coordinator.onSelect = { [weak self] in self?.select($0) }
         coordinator.onDiffCommits = { [weak self] in self?.showTwoCommitDiff($0) }
         coordinator.onShowReport = { [weak self] in self?.diffPane.showReport($0) }
