@@ -483,8 +483,14 @@ final class MainWindowController: NSWindowController {
                     requestedID = ObjectID(hex: String(decoding: output.stdout, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines))
                 }
             }
-            expectedCommitCount = await commitCountEstimate()
+            // The progress bar's total is counted alongside the load, never
+            // before it: on a large repo that is a full history walk.
+            let counting = Task { [weak self] in
+                guard let count = await self?.commitCountEstimate() else { return }
+                self?.expectedCommitCount = count
+            }
             await session.load()
+            counting.cancel()
             loadAncestry()
             initialLoadFinished = true
             if let snapshotQuery = environment["GITK_SWIFT_FIND"] {
