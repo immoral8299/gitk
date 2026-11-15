@@ -90,10 +90,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // a snapshot then captures that window.
         let prefsWindow = environment["GITK_SWIFT_OPEN"] == "prefs" ? controller.showPreferences().window : nil
         if let delay = environment["GITK_SWIFT_QUIT_AFTER_MS"].flatMap(Int.init), delay >= 0 {
-            Task {
-                try? await Task.sleep(for: .milliseconds(delay))
-                NSApp.terminate(nil)
+            // terminate(_:) with .terminateLater spins a nested run loop, and the
+            // reply Task needs the main actor and main queue. Calling it from a
+            // main-actor Task or a main-queue block would hold both, so the reply
+            // could never run and the quit would hang. A run-loop timer fires like a
+            // real ⌘-Q event, outside either.
+            let timer = Timer(timeInterval: Double(delay) / 1000, repeats: false) { _ in
+                MainActor.assumeIsolated { NSApp.terminate(nil) }
             }
+            RunLoop.main.add(timer, forMode: .common)
         }
         if let snapshot = Snapshot.fromEnvironment(environment) {
             snapshot.ready = { [weak controller] window in

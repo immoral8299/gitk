@@ -55,4 +55,19 @@ import Testing
         #expect(session.row(of: newHead) == nil)
         #expect(session.selection.selectedID == oldHead)
     }
+
+    /// preferences: Quit during load. `MainWindowController.stop()` awaits this, so it
+    /// must return promptly and leave no running child.
+    @Test func cancelDuringLoadReturnsPromptly() async throws {
+        let repo = try FixtureRepo.make("long-lines")
+        let context = try await RepoContext.discover(cwd: repo)
+        let session = ViewSession(repo: context, runner: GitRunner(cwd: repo), view: ViewSpec(name: "all", args: ["--all"]))
+        let load = Task { await session.load() }
+        try await Task.sleep(for: .milliseconds(20))
+        let start = ContinuousClock.now
+        await session.cancel()
+        #expect(ContinuousClock.now - start < .seconds(2))
+        #expect(!session.isLoading)
+        await load.value
+    }
 }
