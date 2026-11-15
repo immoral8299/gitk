@@ -135,6 +135,12 @@ final class DiffPane: NSObject, NSTextViewDelegate {
     private(set) var document = DiffDocument()
     /// Character offset of each file separator in the text.
     private(set) var sectionOffsets: [Int] = []
+    /// Character offset in the text of each document line (empty renders share
+    /// the next line's offset); maps a click back to `document.lines`.
+    private var lineOffsets: [Int] = []
+    /// Called when "Show origin of this line" finds the commit that introduced a
+    /// line: the commit, the file path and the line number in that commit.
+    var onShowOrigin: ((ObjectID, String, Int) -> Void)?
     /// Called as file sections stream in (and with an empty document on clear).
     var onSectionsChanged: ((DiffDocument) -> Void)?
     /// The file whose separator is at or above the top of the pane (13.2).
@@ -173,6 +179,7 @@ final class DiffPane: NSObject, NSTextViewDelegate {
         textView.isSelectable = true
         textView.isRichText = true
         textView.delegate = self
+        textView.menuProvider = { [weak self] in self?.contextMenu(atCharacter: $0) }
         textView.drawsBackground = true
         textView.backgroundColor = Palette.background(settings)
         textView.separatorColor = Palette.fileSeparatorBackground(settings)
@@ -239,6 +246,7 @@ final class DiffPane: NSObject, NSTextViewDelegate {
         ids = []
         document = DiffDocument()
         sectionOffsets = []
+        lineOffsets = []
         textView.textStorage?.setAttributedString(NSAttributedString())
         onSectionsChanged?(document)
     }
@@ -260,6 +268,7 @@ final class DiffPane: NSObject, NSTextViewDelegate {
         truncationNotice = nil
         finished = false
         sectionOffsets = []
+        lineOffsets = []
         renderer = DiffRenderer(settings: settings, mode: mode, wordMode: options.wordDiff)
         renderer.encoding = session.repo.guiEncoding
         textView.textStorage?.setAttributedString(NSAttributedString())
@@ -326,6 +335,7 @@ final class DiffPane: NSObject, NSTextViewDelegate {
         let end = min(document.lines.count, document.lineLimit)
         while renderedLines < end {
             let line = document.lines[renderedLines]
+            if lineOffsets.count == renderedLines { lineOffsets.append(storage.length) }
             if case .fileHeader = line {
                 let index = sectionOffsets.count
                 if !final, document.lines.count - renderedLines < 12, document.sections.count <= index + 1,
@@ -354,6 +364,7 @@ final class DiffPane: NSObject, NSTextViewDelegate {
         truncationNotice = nil
         renderedLines = 0
         sectionOffsets = []
+        lineOffsets = []
         renderer = DiffRenderer(settings: settings, mode: mode, wordMode: options.wordDiff)
         renderer.encoding = session?.repo.guiEncoding ?? "utf-8"
         appendPending()
@@ -442,6 +453,15 @@ final class DiffPane: NSObject, NSTextViewDelegate {
 /// The diff text view. Draws gitk's full-width file separator bars behind the
 /// lines marked with `separatorKey`, across the whole visible width.
 final class DiffTextView: NSTextView {
+    /// The context menu for the character under the pointer (nil: no menu).
+    var menuProvider: ((Int) -> NSMenu?)?
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        guard let menuProvider else { return super.menu(for: event) }
+        let point = convert(event.locationInWindow, from: nil)
+        return menuProvider(characterIndexForInsertion(at: point))
+    }
+
     static let separatorKey = NSAttributedString.Key("gitk.fileSeparator")
     var separatorColor: NSColor = .tertiarySystemFill
 
@@ -487,5 +507,173 @@ final class DiffPaneView: NSView {
                 scroll.reflectScrolledClipView(clip)
             }
         }
+    }
+}
+
+// MARK: - Line origin (task 13.6)
+
+@MainActor
+private final class LineMenuItem: NSMenuItem {
+    private let handler: () -> Void
+    init(title: String, handler: @escaping () -> Void) {
+        self.handler = handler
+        super.init(title: title, action: #selector(invoke), keyEquivalent: "")
+        target = self
+    }
+    required init(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    @objc private func invoke() { handler() }
+}
+
+extension DiffPane {
+    /// The document line holding text offset `offset`.
+    private func documentLine(atCharacter offset: Int) -> Int? {
+        guard let last = lineOffsets.lastIndex(where: { $0 <= offset }) else { return nil }
+        return last < renderedLines ? last : nil
+    }
+
+    private func textLines() -> [String] {
+        document.rawLines.prefix(renderedLines).map { String(decoding: $0, as: UTF8.self) }
+    }
+
+    /// Port of gitk proc `pop_diff_menu` (gitk/gitk 3698–3716): no menu on file
+    /// or hunk separator lines.
+    func contextMenu(atCharacter offset: Int) -> NSMenu? {
+        guard let line = documentLine(atCharacter: offset), session != nil else { return nil }
+        switch document.lines[line] {
+        case .fileHeader, .hunkHeader, .headerLine, .binary, .submodule, .other: return nil
+        default: break
+        }
+        guard let section = document.fileSection(at: line), document.sections.indices.contains(section),
+              let path = document.sections[section].newPath ?? document.sections[section].oldPath else { return nil }
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        menu.addItem(LineMenuItem(title: L("Show origin of this line")) { [weak self] in
+            self?.showLineSource(line: line, path: path)
+        })
+        menu.addItem(LineMenuItem(title: L("Run git gui blame on this line")) { [weak self] in
+            self?.externalBlameDiff(line: line, path: path)
+        })
+        return menu
+    }
+
+    private func blamePath(_ path: String) -> String {
+        guard let session, !session.repo.cdup.isEmpty else { return path }
+        return session.repo.cdup.hasSuffix("/") ? session.repo.cdup + path : session.repo.cdup + "/" + path
+    }
+
+    private func parentIDs() -> [ObjectID] {
+        guard let session, let id = ids.first else { return [] }
+        return LineOrigin.parents(of: id, in: session)
+    }
+
+    /// Port of gitk procs `external_blame_diff` and `external_blame` (gitk/gitk 3942–4031).
+    private func externalBlameDiff(line: Int, path: String) {
+        guard let session, let current = ids.first else { return }
+        let spec = LineOrigin.blameSpec(diffLines: textLines(), at: line)
+        let parentIndex = spec?.parentIndex ?? 0
+        let lineNumber = spec?.line ?? 0
+        let hashLength = session.repo.hashLength
+        var base: ObjectID? = current
+        if parentIndex > 0 {
+            let parents = parentIDs()
+            base = parents.indices.contains(parentIndex - 1) ? parents[parentIndex - 1] : nil
+        }
+        guard let base, base != ObjectID.localUnstaged(hashLength: hashLength),
+              base != ObjectID.localStaged(hashLength: hashLength) else {
+            Alerts().errorPopup(L("No such commit"), parent: scrollView.window)
+            return
+        }
+        let process = Process()
+        process.executableURL = session.runner.gitURL
+        process.arguments = LineOrigin.guiArguments(revision: base.hex, path: blamePath(path), line: lineNumber)
+        process.currentDirectoryURL = session.runner.cwd
+        do { try process.run() } catch {
+            Alerts().errorPopup("\(L("git gui blame: command failed:")) \(error.localizedDescription)", parent: scrollView.window)
+        }
+    }
+
+    /// Port of gitk proc `show_line_source` (gitk/gitk 4033–4105).
+    private func showLineSource(line: Int, path: String) {
+        guard let session, let current = ids.first,
+              let spec = LineOrigin.blameSpec(diffLines: textLines(), at: line) else { return }
+        let window = scrollView.window
+        if spec.parentIndex == 0 {
+            markLine(line)
+            return
+        }
+        let pi = spec.parentIndex - 1
+        let hashLength = session.repo.hashLength
+        let parents = parentIDs()
+        let revision: FileRevision
+        if current == ObjectID.localUnstaged(hashLength: hashLength) {
+            if pi > 0 {
+                let url = URL(fileURLWithPath: session.repo.gitDir, relativeTo: session.runner.cwd)
+                    .appendingPathComponent("MERGE_HEAD")
+                let text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+                guard let id = text.split(separator: "\n").last.flatMap({ ObjectID(hex: String($0)) }) else {
+                    Alerts().errorPopup(L("Couldn't read merge head: %s", "MERGE_HEAD"), parent: window)
+                    return
+                }
+                revision = .commit(id)
+            } else if parents.count == 1, parents[0] == ObjectID.localStaged(hashLength: hashLength) {
+                revision = .index
+            } else if let first = parents.first {
+                revision = .commit(first)
+            } else { return }
+        } else {
+            guard parents.indices.contains(pi) else { return }
+            revision = .commit(parents[pi])
+        }
+        let runner = session.runner
+        let file = blamePath(path)
+        Task { [weak self] in
+            do {
+                guard let result = try await LineOrigin.blame(revision: revision, path: file, line: spec.line,
+                                                              runner: runner, hashLength: hashLength) else { return }
+                guard let self, let session = self.session else { return }
+                if session.row(of: result.commitID) != nil {
+                    self.onShowOrigin?(result.commitID, result.path, result.line)
+                } else {
+                    Alerts().errorPopup(L("That line comes from commit %s,  which is not in this view",
+                                          result.commitID.abbreviated(8)), parent: window)
+                }
+            } catch {
+                Alerts().errorPopup(L("Error running git blame: %s", "\(error)"), parent: window)
+            }
+        }
+    }
+
+    /// After the commit is selected: scroll to line `lineNumber` of `path` in its
+    /// diff and mark it (the `selectline` tail with a `{fname lnum}` target).
+    func revealLine(path: String, lineNumber: Int) {
+        Task { [weak self] in
+            await self?.waitUntilLoaded()
+            guard let self else { return }
+            let lines = self.textLines()
+            for (index, section) in self.document.sections.enumerated()
+            where section.newPath == path || (section.newPath == nil && section.oldPath == path) {
+                let end = self.document.sections.indices.contains(index + 1)
+                    ? self.document.sections[index + 1].startLine : lines.count
+                if section.startLine < end,
+                   let found = LineOrigin.diffLineIndex(ofNewLine: lineNumber, in: lines, range: section.startLine..<end),
+                   self.lineOffsets.indices.contains(found) {
+                    self.markLine(found)
+                    self.scroll(toCharacter: self.lineOffsets[found])
+                    return
+                }
+            }
+        }
+    }
+
+    /// Port of gitk proc `mark_ctext_line`: a highlight on the line.
+    private func markLine(_ line: Int) {
+        guard let manager = textView.layoutManager, let storage = textView.textStorage,
+              lineOffsets.indices.contains(line) else { return }
+        manager.removeTemporaryAttribute(.backgroundColor, forCharacterRange: NSRange(location: 0, length: storage.length))
+        let start = lineOffsets[line]
+        let end = lineOffsets.indices.contains(line + 1) ? lineOffsets[line + 1] : storage.length
+        guard end > start, end <= storage.length else { return }
+        manager.addTemporaryAttribute(.backgroundColor, value: NSColor.findHighlightColor,
+                                      forCharacterRange: NSRange(location: start, length: end - start))
     }
 }

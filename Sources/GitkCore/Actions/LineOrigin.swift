@@ -17,10 +17,10 @@ public enum LineOrigin {
         public let path: String
     }
 
-    /// Port of gitk proc `find_hunk_blamespec` (gitk/gitk 3874–3940).
-    /// `lines` excludes the hunk header; lineIndex is zero-based within it.
-    public static func blameSpec(header: String, lines: [String], lineIndex: Int) -> BlameSpec? {
-        guard lines.indices.contains(lineIndex), header.hasPrefix("@@") else { return nil }
+    /// The new-file start and the old-file starts of a hunk header (the regexp at
+    /// the top of `find_hunk_blamespec`).
+    static func parseHunkHeader(_ header: String) -> (newLine: Int, old: [Int])? {
+        guard header.hasPrefix("@@") else { return nil }
         let fields = header.split(separator: " ")
         let ranges = fields.dropFirst().prefix { $0.first != "@" }
         func start(_ range: Substring) -> Int? {
@@ -31,25 +31,61 @@ public enum LineOrigin {
         guard !old.isEmpty, old.count == oldRanges.count,
               let newRange = ranges.first(where: { $0.first == "+" }),
               let newLine = start(newRange) else { return nil }
-        let bases = [newLine] + old
-        let count = old.count
-        let markers = Array(lines[lineIndex].prefix(count))
-        guard markers.count == count else { return BlameSpec(parentIndex: 0, line: newLine) }
-        let parent: Int
-        if let removed = markers.firstIndex(of: "-") { parent = removed }
-        else if let unchanged = markers.firstIndex(of: " ") { parent = unchanged }
-        else { parent = -1 }
+        return (newLine, old)
+    }
+
+    /// Port of gitk proc `find_hunk_blamespec` (gitk/gitk 3874–3940).
+    /// `lines` excludes the hunk header; lineIndex is zero-based within it.
+    public static func blameSpec(header: String, lines: [String], lineIndex: Int) -> BlameSpec? {
+        guard lines.indices.contains(lineIndex), let parsed = parseHunkHeader(header) else { return nil }
+        let bases = [parsed.newLine] + parsed.old
+        let count = parsed.old.count
+        var parent = 0
         var delta = 0
-        for line in lines.prefix(lineIndex) {
-            let chunk = Array(line.prefix(count))
-            guard chunk.count == count else { continue }
-            let removed = chunk.contains("-")
-            if parent >= 0 {
-                let code = chunk[parent]
-                if code == "-" || (!removed && code != "+") { delta += 1 }
-            } else if !removed { delta += 1 }
+        if let first = lines[lineIndex].first, "-+ ".contains(first) {
+            let markers = Array(lines[lineIndex].prefix(count))
+            if let removed = markers.firstIndex(of: "-") { parent = removed }
+            else if let unchanged = markers.firstIndex(of: " ") { parent = unchanged }
+            else { parent = -1 }
+            for line in lines.prefix(lineIndex) {
+                let chunk = Array(line.prefix(count))
+                let removed = chunk.contains("-")
+                if parent >= 0 {
+                    let code: Character? = parent < chunk.count ? chunk[parent] : nil
+                    if code == "-" || (!removed && code != "+") { delta += 1 }
+                } else if !removed { delta += 1 }
+            }
+            parent += 1
         }
-        return BlameSpec(parentIndex: parent + 1, line: bases[parent + 1] + delta)
+        return BlameSpec(parentIndex: parent, line: bases[parent] + delta)
+    }
+
+    /// The `find_hunk_blamespec` lookup on a whole diff: `lines` are the diff's
+    /// text lines and `index` the clicked one; the nearest `@@` line at or above
+    /// it is the hunk header (`$ctext search -backwards -regexp ^@@`).
+    public static func blameSpec(diffLines lines: [String], at index: Int) -> BlameSpec? {
+        guard lines.indices.contains(index),
+              let header = (0...index).reversed().first(where: { lines[$0].hasPrefix("@@") }) else { return nil }
+        if header == index { return blameSpec(header: lines[header], lines: ["@"], lineIndex: 0) }
+        return blameSpec(header: lines[header], lines: Array(lines[(header + 1)...index]), lineIndex: index - header - 1)
+    }
+
+    /// The index in `lines[range]` of the line that is line `target` of the new
+    /// file (a line with no `-` marker in any parent column).
+    public static func diffLineIndex(ofNewLine target: Int, in lines: [String], range: Range<Int>) -> Int? {
+        var current = 0, count = 0, inHunk = false
+        for i in range where lines.indices.contains(i) {
+            let line = lines[i]
+            if line.hasPrefix("@@") {
+                guard let parsed = parseHunkHeader(line) else { inHunk = false; continue }
+                current = parsed.newLine; count = parsed.old.count; inHunk = true
+            } else if inHunk, let first = line.first, "-+ ".contains(first) {
+                if line.prefix(count).contains("-") { continue }
+                if current == target { return i }
+                current += 1
+            }
+        }
+        return nil
     }
 
     /// Port of gitk proc `read_line_source` (gitk/gitk 4108–4162).
@@ -77,13 +113,33 @@ public enum LineOrigin {
         switch revision {
         case .commit(let id): args.append(id.hex)
         case .index:
-            stdin = try await runner.run(["show", ":" + path, "--"]).stdout
+            let sha = try await indexSHA1(path, runner: runner)
+            guard !sha.isEmpty else { return nil }
+            stdin = try await runner.run(["cat-file", "blob", sha]).stdout
             args += ["--contents", "-"]
         case .worktree: break
         case .absent: return nil
         }
         args += ["--", path]
         return parseBlame(try await runner.run(args, stdin: stdin).stdout, hashLength: hashLength)
+    }
+
+    /// Port of gitk proc `index_sha1` (gitk/gitk 3955–3968): the blob id of
+    /// `path` in the index at stage 0 or 2, or empty.
+    public static func indexSHA1(_ path: String, runner: GitRunner) async throws -> String {
+        let output = try await runner.run(["ls-files", "-s", path]).stdout
+        for line in String(decoding: output, as: UTF8.self).split(separator: "\n") {
+            let info = line.split(separator: "\t", maxSplits: 1, omittingEmptySubsequences: false)[0].split(separator: " ")
+            if info.count > 2, info[2] == "0" || info[2] == "2" { return String(info[1]) }
+        }
+        return ""
+    }
+
+    /// gitk `parents($curview,$id)`: the parents of `id` in the session's view.
+    @MainActor
+    public static func parents(of id: ObjectID, in session: ViewSession) -> [ObjectID] {
+        guard let index = session.store.index(of: id) else { return [] }
+        return (session.ordering.parents[index] ?? []).map { session.store.id(at: $0) }
     }
 
     /// Port of gitk proc `external_blame` (gitk/gitk 4003–4031).

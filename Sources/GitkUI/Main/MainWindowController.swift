@@ -104,6 +104,10 @@ final class MainWindowController: NSWindowController {
         if environment["GITK_SWIFT_FILE_LAYOUT"] == "tree" { sidebar.fileList.layout = .tree }
         sidebar.fileList.onSelectFile = { [weak self] in self?.diffPane.jumpToFile($0) }
         if let options = environment["GITK_SWIFT_DIFF_OPTIONS"] { diffPane.applySnapshotOptions(options) }
+        diffPane.onShowOrigin = { [weak self] id, path, line in
+            self?.select(id)
+            self?.diffPane.revealLine(path: path, lineNumber: line)
+        }
         diffPane.onSectionsChanged = { [weak self] in self?.sidebar.fileList.update($0) }
         diffPane.onTopSectionChanged = { [weak self] in self?.sidebar.fileList.highlight($0) }
         currentDiffScrollPosition = { [weak self] in
