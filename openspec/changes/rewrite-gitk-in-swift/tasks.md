@@ -318,7 +318,7 @@ Order of work:
   - Files: `Sources/GitkUI/Main/KeyRouter.swift`, tests.
   - Needs: 9.1, 9.5.
   - Spec: commit-list "Letter keys inside a field".
-- [ ] 9.8 [S] Implement quit and close: ⌘-Q and File→Quit stop loaders, save settings and remove temp files; ⌘-W in the main window quits; ⌘-W in other windows closes them — Verify: on `huge` (no snapshot env) with `GITK_SWIFT_QUIT_AFTER_MS=500`, `pgrep -f "git log"` is empty after the process exits.
+- [x] 9.8 [S] Implement quit and close: ⌘-Q and File→Quit stop loaders, save settings and remove temp files; ⌘-W in the main window quits; ⌘-W in other windows closes them — Verify: on `huge` (no snapshot env) with `GITK_SWIFT_QUIT_AFTER_MS=500`, `pgrep -f "git log"` is empty after the process exits.
   - Files: `AppDelegate.swift`, `MainWindowController.swift`.
   - Port: 11610–11623 (`doquit`).
   - Needs: 9.6, 8.4.

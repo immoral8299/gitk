@@ -146,7 +146,7 @@ Total scenarios: 168
 | preferences | Legacy gitk config import | Config with code |  | pending |
 | preferences | Legacy gitk config import | Legacy file untouched |  | pending |
 | preferences | Font size shortcuts | Increase font |  | pending |
-| preferences | Quit and close | Quit during load |  | pending |
+| preferences | Quit and close | Quit during load | ViewSessionTests/cancelDuringLoadReturnsPromptly; live `huge` run with GITK_SWIFT_QUIT_AFTER_MS=500 (no git log children left) | covered |
 | reference-list | Reference list window | Open with F2 | RefListModelTests/openListsAllHeadsAndTags | covered |
 | reference-list | Filtering and sorting | Filter refs | RefListModelTests/globFilter | covered |
 | reference-list | Jump to reference | Ref outside view | RefListModelTests/refOutsideViewIsOmitted | covered |
