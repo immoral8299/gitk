@@ -28,5 +28,9 @@ import Testing
         #expect(RefLabelDrawing.hitTest(tag.x, labels: geometry.labels)?.kind == .tag)
         #expect(RefLabelDrawing.hitTest(head.x, labels: geometry.labels)?.kind == .head)
         #expect(RefLabelDrawing.hitTest(head.x + head.width, labels: geometry.labels) == nil)
+        #expect(RefLabelDrawing.tagLabel(at: tag.x, labels: geometry.labels)?.name == "v1")
+        #expect(RefLabelDrawing.tagLabel(at: head.x, labels: geometry.labels) == nil)
+        #expect(RefLabelDrawing.headLabel(at: head.x, labels: geometry.labels)?.name == "main")
+        #expect(RefLabelDrawing.headLabel(at: tag.x, labels: geometry.labels) == nil)
     }
 }

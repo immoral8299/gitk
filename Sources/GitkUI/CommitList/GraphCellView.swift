@@ -105,8 +105,8 @@ final class GraphCellView: NSTableCellView {
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        if let geometry, let label = RefLabelDrawing.hitTest(point.x, labels: geometry.labels),
-           label.kind == .tag || label.kind == .collapsedTags, let onTagClick {
+        if let geometry, let label = RefLabelDrawing.tagLabel(at: point.x, labels: geometry.labels),
+           let onTagClick {
             onTagClick(label)
             return
         }
@@ -129,8 +129,7 @@ final class GraphCellView: NSTableCellView {
 
     override func rightMouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        if let geometry, let label = RefLabelDrawing.hitTest(point.x, labels: geometry.labels),
-           label.kind == .head || label.kind == .remote,
+        if let geometry, let label = RefLabelDrawing.headLabel(at: point.x, labels: geometry.labels),
            let menu = onHeadMenu?(label, event) {
             NSMenu.popUpContextMenu(menu, with: event, for: self)
             return

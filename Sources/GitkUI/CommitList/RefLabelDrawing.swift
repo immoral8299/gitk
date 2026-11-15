@@ -18,6 +18,17 @@ enum RefLabelDrawing {
         labels.first { x >= $0.x && x < $0.x + $0.width }
     }
 
+    /// Primary click shows a tag (gitk binds `<1>` to tag labels only,
+    /// gitk/gitk 6862); secondary click opens the head menu for head and
+    /// remote labels (gitk/gitk 6864).
+    static func tagLabel(at x: CGFloat, labels: [GraphRowGeometry.RefLabel]) -> GraphRowGeometry.RefLabel? {
+        hitTest(x, labels: labels).flatMap { $0.kind == .tag || $0.kind == .collapsedTags ? $0 : nil }
+    }
+
+    static func headLabel(at x: CGFloat, labels: [GraphRowGeometry.RefLabel]) -> GraphRowGeometry.RefLabel? {
+        hitTest(x, labels: labels).flatMap { $0.kind == .head || $0.kind == .remote ? $0 : nil }
+    }
+
     /// Port of gitk proc `drawtags` (gitk/gitk 6753–6869).
     static func draw(_ labels: [GraphRowGeometry.RefLabel], height: CGFloat, font listFont: NSFont, settings: UISettings) {
         let font = Self.font(for: listFont)
