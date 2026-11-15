@@ -144,6 +144,10 @@ final class MainWindowController: NSWindowController {
             guard let self else { return }
             actionCoordinator.perform(command, id: id, selected: session.selection.selectedID)
         }
+        listController.onHeadCommand = { [weak self] command, name, id in
+            guard let self else { return }
+            actionCoordinator.perform(command, id: id, selected: session.selection.selectedID, branchName: name)
+        }
         searchBar.onCommand = { [weak self] in self?.perform($0) }
         searchBar.onGo = { [weak self] value in Task { await self?.goToCommit(value) } }
         searchBar.onDismiss = { [weak self] in

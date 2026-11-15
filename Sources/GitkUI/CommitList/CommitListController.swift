@@ -14,6 +14,8 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
     /// Receives a row context-menu command and the commit it was opened on.
     /// Nil until the actions are wired (group 16); the items then do nothing.
     var onRowCommand: ((AppCommand, ObjectID) -> Void)?
+    /// Receives a head label menu command, the head's name and the commit it labels.
+    var onHeadCommand: ((AppCommand, String, ObjectID) -> Void)?
     var dateFormat = "%Y-%m-%d %H:%M:%S" { didSet { measureColumns() } }
     var font: NSFont
     var highlightedIDs = Set<ObjectID>()
@@ -234,6 +236,12 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         cell.font = font
         cell.settings = settings
         cell.geometry = geometry
+        cell.onHeadMenu = { [weak self] label, _ in
+            guard let self, let id = session.id(at: row) else { return nil }
+            return RowMenus.headMenu(name: label.name, refs: session.refs) { [weak self] command in
+                self?.onHeadCommand?(command, label.name, id)
+            }
+        }
         cell.attributedHeadline = cellText(headline, position: 0, row: row)
         return cell
     }
