@@ -59,7 +59,7 @@ Total scenarios: 168
 | commit-graph | Lane layout parity | Matches gitk on reference repositories |  | pending |
 | commit-graph | Lane layout parity | Linear history |  | pending |
 | commit-graph | Long-line truncation | Distant parent |  | pending |
-| commit-graph | Long-line truncation | Arrow jump |  | pending |
+| commit-graph | Long-line truncation | Arrow jump | LineHitTests/clickNearArrowReturnsArrow, LineHitTests/arrowJumpCentresTargetAndClamps; smoke-test.md #4 | covered |
 | commit-graph | Commit markers | HEAD marker |  | pending |
 | commit-graph | Commit markers | Local-changes markers |  | pending |
 | commit-graph | Line colours | Straight branch keeps colour |  | pending |
@@ -68,7 +68,7 @@ Total scenarios: 168
 | commit-graph | Ref labels | Remote label |  | pending |
 | commit-graph | Ref labels | Many tags on one commit |  | pending |
 | commit-graph | Ref labels | Context menu on a head label | RefLabelHitTests/adjacentLabelsUseHalfOpenBounds, HeadMenuTests/otherBranchMenuEnablesAllItems, HeadMenuTests/menuItemsPerformTheirCommands | covered |
-| commit-graph | Line interaction | Click a line |  | pending |
+| commit-graph | Line interaction | Click a line | LineHitTests/clickOnVerticalLineBelowDotHitsItsParent, LineHitTests/diagonalToleranceIsLineThicknessPlusTwo; smoke-test.md #2 | covered |
 | commit-list | Window layout | Initial layout |  | pending |
 | commit-list | Window layout | Narrow window |  | pending |
 | commit-list | Titlebar controls | No top bar |  | pending |
@@ -85,8 +85,8 @@ Total scenarios: 168
 | commit-list | Go to commit | Abbreviated ID |  | pending |
 | commit-list | Commit resolution errors | Not in view |  | pending |
 | commit-list | Row context menu | Context menu on a fake row | RowMenuTests/fakeRowHasOnlyDiffAndPatch, RowMenuTests/attachedMenuOnLocalChangesRow | covered |
-| commit-list | Status and progress | Status during load |  | pending |
-| commit-list | Mouse scrolling | Wheel multiplier |  | pending |
+| commit-list | Status and progress | Status during load | StatusBarTests/statusDuringLoad; snapshot GITK_SWIFT_SNAPSHOT_EARLY=1 on huge | covered |
+| commit-list | Mouse scrolling | Wheel multiplier | ScrollScalingTests/wheelMultiplierThreeMovesThreeTimesAsFarAsOne | covered |
 | diff-viewer | Diff pane placement | Selection shows the diff |  | pending |
 | diff-viewer | Patch display | Ordinary commit |  | pending |
 | diff-viewer | Patch display | Rename |  | pending |
@@ -164,8 +164,8 @@ Total scenarios: 168
 | repository-actions | Reset | Hard reset | ResetTests/mixedDefaultAndHardResetRefreshesChanges | covered |
 | repository-actions | Patch and commit export | Make patch | MakePatchTests/patchAppliesAtParent, MakePatchTests/reverseSwapsEndpointsAndGeneratesReversePatch | covered |
 | repository-actions | Copy commit reference | Copy reference |  | pending |
-| repository-actions | External tools | git gui missing |  | pending |
-| repository-actions | Error reporting for write operations | Branch already exists outside the app |  | pending |
+| repository-actions | External tools | git gui missing | WriteActionErrorTests/missingToolShowsGitMessageHeadless, ExternalToolLaunchTests/missingGitToolReportsErrorWithoutBlocking | covered |
+| repository-actions | Error reporting for write operations | Branch already exists outside the app | WriteActionErrorTests/branchCreatedOutsideAppReportsGitMessage | covered |
 | views | Command-line view | No arguments | ViewMenuTests/noArgumentsDisablesEditAndDelete | covered |
 | views | View editor | Create a view | ViewEditorFormTests/createViewBuildsSpec; snapshot GITK_SWIFT_OPEN=viewEditor | covered |
 | views | View editor | Apply without closing | ViewEditorFormTests/editorFieldsRoundTrip | covered |

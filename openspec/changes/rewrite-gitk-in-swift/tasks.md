@@ -357,17 +357,17 @@ Order of work:
   - Port: 8901–8967, 1989–2014 (`longid`).
   - Needs: 10.4, 14.4.
   - Spec: commit-list "Abbreviated ID", "Not in view".
-- [ ] 10.8 [S] Implement the slim bottom status strip in `StatusBar` (Row N / M, Reading, Searching, …), its progress bar and the busy cursor — Verify: a snapshot of `huge` taken right after the first batch (`GITK_SWIFT_SNAPSHOT_EARLY=1`) shows "Reading", the row counter and a partial progress bar along the bottom.
+- [x] 10.8 [S] Implement the slim bottom status strip in `StatusBar` (Row N / M, Reading, Searching, …), its progress bar and the busy cursor — Verify: a snapshot of `huge` taken right after the first batch (`GITK_SWIFT_SNAPSHOT_EARLY=1`) shows "Reading", the row counter and a partial progress bar along the bottom.
   - Files: `StatusBar.swift`, `Snapshot.swift`.
   - Port: 2973–2990, 6893–6943.
   - Needs: 10.1.
   - Spec: commit-list "Status during load".
-- [ ] 10.9 [M] Implement line interaction: a hover tooltip with the parent subject; clicking a line draws it thicker and puts the parent and children text in the details sidebar (a provider interface filled in by 11.1); clicking an arrow scrolls to the other end — Verify: `swift test --filter LineHitTests` (Core hit-testing on the geometry) and a manual check in `docs/smoke-test.md`.
+- [x] 10.9 [M] Implement line interaction: a hover tooltip with the parent subject; clicking a line draws it thicker and puts the parent and children text in the details sidebar (a provider interface filled in by 11.1); clicking an arrow scrolls to the other end — Verify: `swift test --filter LineHitTests` (Core hit-testing on the geometry) and a manual check in `docs/smoke-test.md`.
   - Files: `GraphCellView.swift`, `Sources/GitkCore/Graph/LineHitTest.swift`, tests.
   - Port: 8967–9136.
   - Needs: 10.2, 10.6.
   - Spec: commit-graph "Click a line", "Arrow jump".
-- [ ] 10.10 [S] Apply the wheel multiplier and middle-button drag panning; give the first column its own horizontal scroll — Verify: `swift test --filter ScrollScalingTests` (multiplier maths).
+- [x] 10.10 [S] Apply the wheel multiplier and middle-button drag panning; give the first column its own horizontal scroll — Verify: `swift test --filter ScrollScalingTests` (multiplier maths).
   - Files: `CommitListController.swift`, `ListColumnsView.swift`, tests.
   - Port: 2316–2374, 2925–2945.
   - Needs: 10.1.
@@ -625,7 +625,7 @@ Order of work:
   - Port: 10082–10209.
   - Needs: 16.9.
   - Spec: repository-actions "Remove current branch", "Checkout with local changes".
-- [ ] 16.14 [S] Implement Start git gui (launch in the background; failure shows an alert) and the shared busy/error handling for write actions — Verify: `swift test --filter ExternalToolLaunchTests` (a missing tool gives an error string, no crash); `GITK_SWIFT_HEADLESS_ERRORS=1` prints git's message.
+- [x] 16.14 [S] Implement Start git gui (launch in the background; failure shows an alert) and the shared busy/error handling for write actions — Verify: `swift test --filter ExternalToolLaunchTests` (a missing tool gives an error string, no crash); `GITK_SWIFT_HEADLESS_ERRORS=1` prints git's message.
   - Files: `RepoActions.swift`, `MainWindowController.swift`, tests.
   - Port: 2403, 9858–9884.
   - Needs: 16.1.
