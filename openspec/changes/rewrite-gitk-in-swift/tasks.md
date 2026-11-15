@@ -611,7 +611,7 @@ Order of work:
   - Port: 9858–9947.
   - Needs: 16.1, 8.7.
   - Spec: repository-actions "Successful cherry-pick", "Conflict", "Nothing to commit".
-- [ ] 16.11 [M] Implement Revert, with the same handling as cherry-pick — Verify: `swift test --filter RevertTests`.
+- [x] 16.11 [M] Implement Revert, with the same handling as cherry-pick — Verify: `swift test --filter RevertTests`.
   - Files: `RepoActions.swift`, tests.
   - Port: 9947–10008.
   - Needs: 16.10.
