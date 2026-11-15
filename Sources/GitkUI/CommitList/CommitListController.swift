@@ -8,7 +8,7 @@ import GitkCore
 @MainActor
 final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDelegate {
     let session: ViewSession
-    let scrollView = NSScrollView()
+    let scrollView = CommitScrollView()
     let tableView = NSTableView()
     var onSelection: ((ObjectID) -> Void)?
     /// Receives a row context-menu command and the commit it was opened on.
@@ -35,6 +35,12 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
     private var fitting = false
     /// The widths `fitColumns` last applied.
     private var fitted = ColumnSizing(subject: 0, author: 0, date: 0)
+    /// Horizontal scroll of the first column's content (graph and headline),
+    /// and the widest such content seen so far.
+    private var firstColumnOffset: CGFloat = 0
+    private var firstColumnContent: CGFloat = 0
+    /// The pointer position and clip origin when a middle-button pan began.
+    private var panStart: (mark: NSPoint, origin: NSPoint)?
     /// Rows measured for the author and date widths: the first ones plus the
     /// visible ones, never the whole history.
     static let measuredRows = 300
@@ -72,6 +78,7 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         rowMenu.delegate = self
         tableView.menu = rowMenu
         scrollView.documentView = tableView
+        scrollView.owner = self
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
@@ -252,6 +259,9 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
             }
         }
         cell.attributedHeadline = cellText(headline, position: 0, row: row)
+        cell.setBoundsOrigin(NSPoint(x: firstColumnOffset, y: 0))
+        let contentEnd = CGFloat(geometry?.textX ?? 0) + cell.attributedHeadline.size().width
+        firstColumnContent = max(firstColumnContent, contentEnd)
         return cell
     }
 
@@ -376,6 +386,141 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         y = max(top, min(y, max(top, tableView.bounds.height + clip.contentInsets.bottom - clip.bounds.height)))
         clip.scroll(to: NSPoint(x: clip.bounds.minX, y: y))
         scrollView.reflectScrolledClipView(clip)
+    }
+
+    // MARK: Wheel, first-column scroll and middle-button pan
+
+    /// Scales the list's wheel and trackpad deltas by the "Wheel scrolling
+    /// multiplier" (gitk `kscroll`) and scrolls the list. Returns false when
+    /// the event is left to NSScrollView, which is the case at multiplier 1
+    /// away from the first column.
+    func handleWheel(_ event: NSEvent) -> Bool {
+        let location = tableView.convert(event.locationInWindow, from: nil)
+        let multiplier = settings.kscroll
+        let precise = event.hasPreciseScrollingDeltas
+        let firstColumn = tableView.rect(ofColumn: 0)
+        let inFirstColumn = location.x >= firstColumn.minX && location.x < firstColumn.maxX
+        if inFirstColumn, Self.scrollsFirstColumn(deltaX: event.scrollingDeltaX, deltaY: event.scrollingDeltaY,
+                                                  shift: event.modifierFlags.contains(.shift)) {
+            let horizontal = event.scrollingDeltaX == 0 ? event.scrollingDeltaY : event.scrollingDeltaX
+            let points = Self.wheelPointDelta(horizontal, precise: precise, lineHeight: tableView.rowHeight,
+                                              multiplier: multiplier)
+            let limit = max(0, firstColumnContent - firstColumn.width)
+            firstColumnOffset = Self.clampedOffset(firstColumnOffset - points, lower: 0, upper: limit)
+            applyFirstColumnOffset()
+            return true
+        }
+        guard multiplier != 1 else { return false }
+        let clip = scrollView.contentView
+        let points = Self.wheelPointDelta(event.scrollingDeltaY, precise: precise, lineHeight: tableView.rowHeight,
+                                          multiplier: multiplier)
+        let y = Self.clampedOffset(clip.bounds.minY - points, lower: verticalLower(clip), upper: verticalUpper(clip))
+        clip.scroll(to: NSPoint(x: clip.bounds.minX, y: y))
+        scrollView.reflectScrolledClipView(clip)
+        return true
+    }
+
+    /// Starts a middle-button pan at the event's pointer position.
+    func beginPan(_ event: NSEvent) -> Bool {
+        guard event.buttonNumber == 2 else { return false }
+        panStart = (tableView.convert(event.locationInWindow, from: nil), scrollView.contentView.bounds.origin)
+        return true
+    }
+
+    /// Moves the clip so the content follows the pointer from where the pan began.
+    func continuePan(_ event: NSEvent) -> Bool {
+        guard let panStart else { return false }
+        let now = tableView.convert(event.locationInWindow, from: nil)
+        let clip = scrollView.contentView
+        let x = Self.panOrigin(start: panStart.origin.x, mark: panStart.mark.x, now: now.x)
+        let y = Self.panOrigin(start: panStart.origin.y, mark: panStart.mark.y, now: now.y)
+        let maxX = max(0, tableView.bounds.width - clip.bounds.width)
+        clip.scroll(to: NSPoint(x: Self.clampedOffset(x, lower: 0, upper: maxX),
+                                y: Self.clampedOffset(y, lower: verticalLower(clip), upper: verticalUpper(clip))))
+        scrollView.reflectScrolledClipView(clip)
+        return true
+    }
+
+    /// Ends a middle-button pan; returns false when no pan was running.
+    func endPan(_ event: NSEvent) -> Bool {
+        guard panStart != nil, event.buttonNumber == 2 else { return false }
+        panStart = nil
+        return true
+    }
+
+    /// The vertical clip origin range: the first row must not end up under
+    /// the header or titlebar inset, and the last row must not leave a gap.
+    private func verticalLower(_ clip: NSClipView) -> CGFloat { -clip.contentInsets.top }
+
+    private func verticalUpper(_ clip: NSClipView) -> CGFloat {
+        max(verticalLower(clip), tableView.bounds.height + clip.contentInsets.bottom - clip.bounds.height)
+    }
+
+    /// Sets the first column's content offset on the rows now shown.
+    private func applyFirstColumnOffset() {
+        let visible = tableView.rows(in: scrollView.contentView.documentVisibleRect)
+        for row in visible.location..<min(tableView.numberOfRows, visible.location + visible.length) {
+            guard let cell = tableView.view(atColumn: 0, row: row, makeIfNecessary: false) as? GraphCellView else { continue }
+            cell.setBoundsOrigin(NSPoint(x: firstColumnOffset, y: 0))
+            cell.needsDisplay = true
+        }
+    }
+
+    /// Whether a wheel or trackpad event over the first column scrolls that
+    /// column sideways: Shift-scrolling, or a gesture that is mostly horizontal.
+    nonisolated static func scrollsFirstColumn(deltaX: CGFloat, deltaY: CGFloat, shift: Bool) -> Bool {
+        shift || abs(deltaX) > abs(deltaY)
+    }
+
+    /// Points to scroll for one wheel or trackpad delta, scaled by the wheel
+    /// multiplier. Port of gitk procs `scrollval` and `precisescrollval`
+    /// (gitk/gitk 2306–2314) on macOS, where `scroll_D0` is 1: a non-precise
+    /// delta counts lines, a precise one is already in points. A multiplier
+    /// below 1 counts as 1.
+    nonisolated static func wheelPointDelta(_ delta: CGFloat, precise: Bool, lineHeight: CGFloat, multiplier: Int) -> CGFloat {
+        let points = precise ? delta : delta * lineHeight
+        return points * CGFloat(max(1, multiplier))
+    }
+
+    /// The clip origin for a middle-button pan: the content moves with the
+    /// pointer, so the origin moves against the pointer's travel. Port of gitk
+    /// proc `canvscan` (gitk/gitk 2925–2935).
+    nonisolated static func panOrigin(start: CGFloat, mark: CGFloat, now: CGFloat) -> CGFloat {
+        start - (now - mark)
+    }
+
+    /// `value` limited to `lower...upper`; an inverted range collapses to `lower`.
+    nonisolated static func clampedOffset(_ value: CGFloat, lower: CGFloat, upper: CGFloat) -> CGFloat {
+        min(max(value, lower), max(lower, upper))
+    }
+}
+
+/// The list's scroll view. It hands wheel and middle-button events to
+/// `CommitListController` first, so the wheel multiplier, the first column's
+/// own scroll and the middle-button pan apply; anything it declines goes to
+/// NSScrollView as before.
+@MainActor
+final class CommitScrollView: NSScrollView {
+    weak var owner: CommitListController?
+
+    override func scrollWheel(with event: NSEvent) {
+        if owner?.handleWheel(event) == true { return }
+        super.scrollWheel(with: event)
+    }
+
+    override func otherMouseDown(with event: NSEvent) {
+        if owner?.beginPan(event) == true { return }
+        super.otherMouseDown(with: event)
+    }
+
+    override func otherMouseDragged(with event: NSEvent) {
+        if owner?.continuePan(event) == true { return }
+        super.otherMouseDragged(with: event)
+    }
+
+    override func otherMouseUp(with event: NSEvent) {
+        if owner?.endPan(event) == true { return }
+        super.otherMouseUp(with: event)
     }
 }
 
