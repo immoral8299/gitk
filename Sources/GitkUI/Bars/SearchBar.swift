@@ -38,6 +38,10 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
     private let engine: FindEngine
     private var task: Task<Void, Never>?
     private var serial = 0
+    private var index = SearchIndex()
+    private lazy var scanner = SearchScanner(index: index)
+    private var indexedStore: ObjectIdentifier?
+    private var indexSync: Task<Void, Never>?
     private var searchText = ""
     private(set) var matches = Set<ObjectID>()
 
@@ -202,7 +206,7 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
     }
 
     func controlTextDidChange(_ obj: Notification) {
-        if fieldMode == .search { refresh() }
+        if fieldMode == .search { refresh(debounced: true) }
     }
 
     @objc private func fieldAction() {
@@ -294,7 +298,28 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
         toolbar?.setAdvancedDot(changed)
     }
 
-    func refresh() {
+    /// Brings the search index up to date with the session's commit store. The
+    /// index is replaced when the store is (a reload), and syncs one at a time.
+    private func syncIndex() async {
+        let store = session.store
+        if indexedStore != ObjectIdentifier(store) {
+            indexSync?.cancel()
+            index = SearchIndex()
+            scanner = SearchScanner(index: index)
+            indexedStore = ObjectIdentifier(store)
+            indexSync = nil
+        }
+        let previous = indexSync
+        let index = index
+        let sync = Task { @MainActor in
+            await previous?.value
+            await index.sync(with: store)
+        }
+        indexSync = sync
+        await sync.value
+    }
+
+    func refresh(debounced: Bool = false) {
         cancel()
         updateAdvancedDot()
         let generation = serial
@@ -304,16 +329,27 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
         updateCounter()
         guard !query.pattern.isEmpty else { return }
         onBusy?(true)
-        let ids = (0..<session.rowCount).compactMap { session.id(at: $0) }
         task = Task {
             do {
                 if query.type == .containing {
-                    for (offset, id) in ids.enumerated() {
+                    await syncIndex()
+                    guard !Task.isCancelled, generation == serial else { return }
+                    let priority = (0..<min(200, session.rowCount)).compactMap { session.id(at: $0) }
+                    let stream = scanner.search(query, priority: priority, debounce: debounced ? .milliseconds(100) : .zero)
+                    var lastReport = ContinuousClock.now
+                    var first = true
+                    for await update in stream {
                         guard !Task.isCancelled, generation == serial else { return }
-                        if let index = session.store.index(of: id), query.matches(commit: index, in: session.store) { matches.insert(id) }
-                        if offset % 500 == 0 { await Task.yield() }
+                        matches.formUnion(update.matches)
+                        if first || update.isFinal || lastReport.duration(to: .now) > .milliseconds(100) {
+                            first = false
+                            lastReport = .now
+                            onMatches?(matches, query)
+                            updateCounter()
+                        }
                     }
                 } else {
+                    let ids = (0..<session.rowCount).compactMap { session.id(at: $0) }
                     for try await id in engine.start(query: query, cdup: session.repo.cdup, commitIDs: ids) {
                         guard !Task.isCancelled, generation == serial else { return }
                         matches.insert(id)
@@ -353,6 +389,7 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
     func cancel() {
         serial += 1
         task?.cancel()
+        scanner.cancel()
         engine.cancel()
         onBusy?(false)
     }

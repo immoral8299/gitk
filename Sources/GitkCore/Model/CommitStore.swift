@@ -199,6 +199,21 @@ public final class CommitStore {
                    notes: notes(at: index))
     }
 
+    // MARK: search source
+
+    /// The raw bytes of one loaded commit's searchable text, for decoding off
+    /// the main actor (``SearchIndex``). Nil while the commit is only interned.
+    public func searchSource(at index: CommitIndex) -> SearchSource? {
+        let i = Int(index)
+        guard loaded[i] else { return nil }
+        return SearchSource(
+            id: ids[i], headline: headlines[i],
+            author: identityBytes(authorNames[i], authorEmails[i]),
+            committer: identityBytes(committerNames[i], committerEmails[i]),
+            message: messages[i],
+            encoding: encodings[i].flatMap { $0.isEmpty ? nil : $0 } ?? fallbackEncoding)
+    }
+
     // MARK: helpers
 
     private func identityBytes(_ name: Data, _ email: Data) -> Data {

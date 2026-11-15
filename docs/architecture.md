@@ -84,3 +84,33 @@ the `huge` fixture (task 8.9).
 | Date | Machine | First 100 rows | Full load | Peak RSS |
 |---|---|---|---|---|
 | 2026-11-14 | MacBookPro18,3 (M1 Pro, 16 GB) | 0.08 s | 1.43 s | 439 MB (RSS after load) |
+
+### Commit search (task 14.7)
+
+`SearchIndex` keeps the decoded searchable text of every loaded commit in
+immutable chunks, built on a background task from raw bytes that
+`CommitStore.searchSource(at:)` hands over in slices of 1,000 commits (the
+only main-actor work). `SearchScanner` scans the chunks in parallel off the
+main actor, delivers the visible rows first, narrows when the pattern extends
+the previous Exact/IgnCase one (only the previous matches and newly indexed
+commits are tested; Regexp is never narrowed), reads only the selected field,
+and supersedes older searches by generation. `SearchBar` waits 100 ms after a
+keystroke before scanning. Exact and IgnCase compare UTF-8 bytes, which is the
+same test as gitk's glob `*text*`.
+
+Measured with `GITK_PERF=1 swift test -c release --filter FindPerfTests` on the
+`huge` fixture (200,000 commits), 2026-11-15, MacBookPro18,3 (M1 Pro, 16 GB).
+"Stall" is the longest delay of a 1 ms timer on the main actor while the
+search was consumed there.
+
+| Search | First visible results | Full result | Main-actor stall | Matches |
+|---|---|---|---|---|
+| Headline, IgnCase `commit` (common) | 0.2 ms | 38 ms | 11.4 ms | 200,000 |
+| All fields, Exact `Alice` | 0.6 ms | 35 ms | 6.3 ms | 196,000 |
+| All fields, Exact no-match text | 0.1 ms | 6 ms | 2.9 ms | 0 |
+| Narrowed `commit` to `commit 1` | | 22 ms | | 111,111 |
+| Index build (once per load) | | 0.69 s | 12.1 ms | |
+| Superseded search stops | 1.2 ms | | | |
+
+Budgets: first visible ≤ 120 ms, full ≤ 1 s, superseded search stops ≤ 50 ms,
+main actor never blocked > 16 ms.
