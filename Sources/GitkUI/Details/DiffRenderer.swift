@@ -149,6 +149,12 @@ final class DiffPane: NSObject, NSTextViewDelegate {
     private var task: Task<Void, Never>?
     /// True once the current diff has streamed completely.
     private var finished = false
+    /// Reports when a diff starts and stops streaming (the main window then
+    /// holds back the history load so the selected diff comes first).
+    var onLoadingChanged: ((Bool) -> Void)?
+    private(set) var isLoading = false {
+        didSet { if isLoading != oldValue { onLoadingChanged?(isLoading) } }
+    }
     private var process: GitProcess?
     private var generation: UInt64 = 0
     private var renderer: DiffRenderer
@@ -279,8 +285,10 @@ final class DiffPane: NSObject, NSTextViewDelegate {
         onSectionsChanged?(document)
         let child = session.runner.stream(DiffCommandBuilder.blobDiff(ids: ids, options: options))
         process = child
+        isLoading = true
         task = Task { [weak self] in
             guard let self else { return }
+            defer { if generation == token { isLoading = false } }
             var lastPaint = ContinuousClock.now
             do {
                 for try await line in child.records(separator: 10) {
@@ -447,7 +455,10 @@ final class DiffPane: NSObject, NSTextViewDelegate {
         }
     }
 
-    func cancel() { generation &+= 1; task?.cancel(); task = nil; process?.cancel(); process = nil }
+    func cancel() {
+        generation &+= 1; task?.cancel(); task = nil; process?.cancel(); process = nil
+        isLoading = false
+    }
 }
 
 /// The diff text view. Draws gitk's full-width file separator bars behind the

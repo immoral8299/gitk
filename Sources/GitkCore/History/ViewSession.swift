@@ -28,6 +28,14 @@ public final class ViewSession {
     public var hideRemotes = false
     public var refsToHide = ""
     public var onEvent: ((Event) -> Void)?
+    /// True while the selected commit's details are loading. The history load
+    /// then holds back before taking in its next batch (no reordering, no list
+    /// refresh on the main actor) so the diff appears first; `git log` output
+    /// keeps being parsed off the main actor and is buffered meanwhile.
+    public var historyPaused = false
+    /// The longest a single pause may hold back the history load, so a huge
+    /// or stuck diff cannot stall it.
+    public var historyPauseLimit: Duration = .seconds(2)
     private let loader: HistoryLoader
     private var request: UInt64 = 0
     private var resolved: ResolvedView?
@@ -121,6 +129,8 @@ public final class ViewSession {
             guard token == request else { return }
             for try await batch in stream {
                 guard token == request else { return }
+                await yieldToDetails(token: token)
+                guard token == request else { return }
                 ingest(batch: batch)
             }
             guard token == request else { return }
@@ -142,6 +152,15 @@ public final class ViewSession {
             let detail = (error as? GitError)?.stderr ?? String(describing: error)
             errorMessage = "Error executing git log: \(detail)"
             onEvent?(.loadFailed(errorMessage ?? detail))
+        }
+    }
+
+    /// Waits while `historyPaused` is set, for at most `historyPauseLimit`.
+    private func yieldToDetails(token: UInt64) async {
+        guard historyPaused else { return }
+        let deadline = ContinuousClock.now + historyPauseLimit
+        while historyPaused, token == request, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(15))
         }
     }
 

@@ -111,6 +111,8 @@ final class MainWindowController: NSWindowController {
             self?.diffPane.revealLine(path: path, lineNumber: line)
         }
         diffPane.onSectionsChanged = { [weak self] in self?.sidebar.fileList.update($0) }
+        // While history is loading, the selected commit's diff goes first.
+        diffPane.onLoadingChanged = { [weak self] loading in self?.session.historyPaused = loading }
         diffPane.onTopSectionChanged = { [weak self] in self?.sidebar.fileList.highlight($0) }
         currentDiffScrollPosition = { [weak self] in
             Double(self?.diffPane.scrollView.contentView.bounds.minY ?? 0)
