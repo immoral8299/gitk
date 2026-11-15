@@ -410,7 +410,9 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
             applyFirstColumnOffset()
             return true
         }
-        guard multiplier != 1 else { return false }
+        // Trackpads and Magic Mouse scroll natively (momentum, rubber-banding);
+        // gitk's multiplier is for line-based mouse wheels only.
+        guard multiplier != 1, !precise else { return false }
         let clip = scrollView.contentView
         let points = Self.wheelPointDelta(event.scrollingDeltaY, precise: precise, lineHeight: tableView.rowHeight,
                                           multiplier: multiplier)
@@ -478,8 +480,8 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
     /// delta counts lines, a precise one is already in points. A multiplier
     /// below 1 counts as 1.
     nonisolated static func wheelPointDelta(_ delta: CGFloat, precise: Bool, lineHeight: CGFloat, multiplier: Int) -> CGFloat {
-        let points = precise ? delta : delta * lineHeight
-        return points * CGFloat(max(1, multiplier))
+        // Precise (trackpad) deltas are already points and stay 1:1.
+        precise ? delta : delta * lineHeight * CGFloat(max(1, multiplier))
     }
 
     /// The clip origin for a middle-button pan: the content moves with the

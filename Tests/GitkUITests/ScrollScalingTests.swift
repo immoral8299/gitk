@@ -22,10 +22,10 @@ import Testing
         #expect(CommitListController.wheelPointDelta(2, precise: false, lineHeight: 10, multiplier: -4) == 20)
     }
 
-    /// Trackpad deltas are already in points, so only the multiplier applies.
-    @Test func preciseDeltasArePointsScaledByMultiplier() {
+    /// Trackpad deltas are already in points and are not multiplied.
+    @Test func preciseDeltasArePointsAndNotMultiplied() {
         #expect(CommitListController.wheelPointDelta(7.5, precise: true, lineHeight: 16, multiplier: 1) == 7.5)
-        #expect(CommitListController.wheelPointDelta(7.5, precise: true, lineHeight: 16, multiplier: 2) == 15)
+        #expect(CommitListController.wheelPointDelta(7.5, precise: true, lineHeight: 16, multiplier: 3) == 7.5)
     }
 
     @Test func negativeDeltasKeepTheirSign() {
