@@ -166,9 +166,18 @@ enum Theme {
     static let sapphire = adaptive(light: 0x209FB5, dark: 0x74C7EC)
     static let rosewater = adaptive(light: 0xDC8A78, dark: 0xF5E0DC)
 
-    /// Graph lines, in the roles of gitk's `colors` (green, red, blue, magenta,
-    /// dark grey, brown, orange).
-    static let lines = [green, red, blue, mauve, gray, maroon, peach]
+    /// Graph lines: Zed's One Dark / One Light player colours, in the roles of
+    /// gitk's `colors` (green, red, blue, magenta, then cyan, brown and yellow
+    /// for gitk's dark grey, brown and orange).
+    static let lines = [
+        adaptive(light: 0x669F59, dark: 0xA1C181),  // green
+        adaptive(light: 0xD36151, dark: 0xD07277),  // red
+        adaptive(light: 0x5C78E2, dark: 0x74ADE8),  // blue
+        adaptive(light: 0x984EA5, dark: 0xB477CF),  // purple
+        adaptive(light: 0x3A82B7, dark: 0x6EB4BF),  // cyan
+        adaptive(light: 0xAD6E26, dark: 0xBF956A),  // brown
+        adaptive(light: 0xA48819, dark: 0xDEC184),  // yellow
+    ]
     /// Merge parents, in the roles of gitk's 16 `mergecolors`.
     static let merge = [red, blue, green, mauve, maroon, teal, pink, yellow,
                         sapphire, flamingo, sky, rosewater, lavender, peach, gray, sapphire]

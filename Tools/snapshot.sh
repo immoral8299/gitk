@@ -44,7 +44,9 @@ config=$(mktemp -d "${TMPDIR:-/tmp}/gitk-swift-snapshot-config.XXXXXX")
 trap 'rm -rf "$config"' EXIT
 
 cd "$cache/$fixture"
-GITK_SWIFT_CONFIG_DIR="$config" GITK_SWIFT_SNAPSHOT="$out" "$bin" "$@" &
+# An empty HOME and XDG_CONFIG_HOME keep the user's own gitk config from being
+# imported on this first launch, so snapshots show the app's defaults.
+HOME="$config" XDG_CONFIG_HOME="$config" GITK_SWIFT_CONFIG_DIR="$config" GITK_SWIFT_SNAPSHOT="$out" "$bin" "$@" &
 pid=$!
 (
     sleep "${SNAPSHOT_TIMEOUT:-60}"

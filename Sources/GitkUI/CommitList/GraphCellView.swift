@@ -42,7 +42,7 @@ final class GraphCellView: NSTableCellView {
             let path = NSBezierPath()
             path.move(to: point(segment.from))
             path.line(to: point(segment.to))
-            path.lineWidth = segment.thick ? 2 : 1
+            path.lineWidth = segment.thick ? 3 : 2
             lineColor(segment.colorIndex).setStroke()
             path.stroke()
         }
@@ -54,7 +54,7 @@ final class GraphCellView: NSTableCellView {
             path.move(to: NSPoint(x: x - 3, y: y + direction * 5))
             path.line(to: NSPoint(x: x, y: y))
             path.line(to: NSPoint(x: x + 3, y: y + direction * 5))
-            path.lineWidth = 1.5
+            path.lineWidth = 2.5
             lineColor(arrow.colorIndex).setStroke()
             path.stroke()
         }
