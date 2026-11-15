@@ -115,7 +115,8 @@ final class Snapshot {
     }
 
     /// Waits for readiness, writes the PNG and exits: 0 on success, 1 on failure.
-    func run(window: NSWindow) async -> Never {
+    func run(window mainWindow: NSWindow) async -> Never {
+        let window = Snapshot.openRequestedWindow() ?? mainWindow
         applySize(to: window)
         await ready(window)
         // With a unified titlebar the toolbar sits in the window frame view, which
@@ -134,5 +135,20 @@ final class Snapshot {
             exit(1)
         }
         exit(0)
+    }
+
+    /// Keeps the controller of a window opened by `GITK_SWIFT_OPEN` alive.
+    private static var openedController: NSWindowController?
+
+    /// With `GITK_SWIFT_OPEN=viewEditor`, opens the view editor and returns its
+    /// window, so the snapshot captures it instead of the main window.
+    static func openRequestedWindow(
+        _ environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> NSWindow? {
+        guard environment["GITK_SWIFT_OPEN"] == "viewEditor" else { return nil }
+        let editor = ViewEditorController()
+        openedController = editor
+        editor.present()
+        return editor.window
     }
 }
