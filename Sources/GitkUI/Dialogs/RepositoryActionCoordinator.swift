@@ -117,7 +117,7 @@ final class RepositoryActionCoordinator {
                         : L("Cherry-pick failed because of merge conflict.\nDo you wish to run git citool to resolve it?")
                     if alerts.confirmPopup(message, parent: parentWindow) {
                         try? FileManager.default.removeItem(at: URL(fileURLWithPath: session.repo.gitDir, relativeTo: session.runner.cwd).appendingPathComponent("GITGUI_MSG"))
-                        launchGitTool(["citool"], authorOf: revert ? nil : id)
+                        launchGitTool(["citool"], authorOf: id)
                     }
                 default: throw error
                 }

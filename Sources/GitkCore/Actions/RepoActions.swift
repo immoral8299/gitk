@@ -159,7 +159,8 @@ public struct RepoActions: Sendable {
     ///
     /// gitk's cherry-pick regexp is `Entry '(.*)' (would be overwritten by merge|not uptodate)`
     /// (one file); its revert regexp is `files would be overwritten by merge:(\n(( |\t)+[^\n]+\n)+)`
-    /// (a list). Current git prints the list form for both, so both commands try both.
+    /// (a list). Revert matches only the list form, as gitk does. Cherry-pick also tries the
+    /// list form, because current git prints it for cherry-pick too.
     static func localChangeFiles(in err: String, isRevert: Bool) -> [String]? {
         let entry = #"Entry '(.*)' (would be overwritten by merge|not uptodate)"#
         let list = #"files would be overwritten by merge:(\n(( |\t)+[^\n]+\n)+)"#
@@ -170,9 +171,6 @@ public struct RepoActions: Sendable {
             return m[1].split(separator: "\n").map {
                 String($0.drop(while: { $0 == " " || $0 == "\t" }))
             }
-        }
-        if isRevert, let m = match(entry, in: err, lines: true), m.count > 1 {
-            return [m[1]]
         }
         return nil
     }
