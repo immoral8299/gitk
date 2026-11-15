@@ -67,7 +67,7 @@ Total scenarios: 168
 | commit-graph | Ref labels | Current branch label |  | pending |
 | commit-graph | Ref labels | Remote label |  | pending |
 | commit-graph | Ref labels | Many tags on one commit |  | pending |
-| commit-graph | Ref labels | Context menu on a head label | RefLabelHitTests/adjacentLabelsUseHalfOpenBounds | covered |
+| commit-graph | Ref labels | Context menu on a head label | RefLabelHitTests/adjacentLabelsUseHalfOpenBounds, HeadMenuTests/otherBranchMenuEnablesAllItems, HeadMenuTests/menuItemsPerformTheirCommands | covered |
 | commit-graph | Line interaction | Click a line |  | pending |
 | commit-list | Window layout | Initial layout |  | pending |
 | commit-list | Window layout | Narrow window |  | pending |
@@ -155,8 +155,8 @@ Total scenarios: 168
 | repository-actions | Diff between two commits | Diff against selection |  | pending |
 | repository-actions | Mark and compare | Compare cherry-picked series |  | pending |
 | repository-actions | Branch operations | Create branch | BranchDialogTests/emptyNameAndConfirmedOverwrite | covered |
-| repository-actions | Branch operations | Remove current branch |  | pending |
-| repository-actions | Branch operations | Checkout with local changes |  | pending |
+| repository-actions | Branch operations | Remove current branch | HeadMenuTests/currentBranchCannotBeRemoved | covered |
+| repository-actions | Branch operations | Checkout with local changes | HeadMenuTests/checkoutFailurePreservesHeadAndLabels | covered |
 | repository-actions | Tag creation | Annotated tag | CreateTagTests/annotatedTagAndValidation, CreateTagTests/emptyMessageMakesLightweightTagAndLabelIsInSession | covered |
 | repository-actions | Cherry-pick and revert | Successful cherry-pick | CherryPickTests/successRefreshesRefsAndSelectsNewCommit | covered |
 | repository-actions | Cherry-pick and revert | Conflict | CherryPickTests/noOpAndConflictMessages, CherryPickTests/conflictAcceptedRunsCitoolWithAuthorOfCommit | covered |

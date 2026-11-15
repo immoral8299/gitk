@@ -620,7 +620,7 @@ Order of work:
   - Port: 10008–10082.
   - Needs: 16.1, 8.6.
   - Spec: repository-actions "Hard reset".
-- [ ] 16.13 [M] Build the head label menu: check out (with the local-changes failure path), rename, remove (refuses the current branch; confirms when commits are unmerged), copy branch name — Verify: `swift test --filter HeadMenuTests`.
+- [x] 16.13 [M] Build the head label menu: check out (with the local-changes failure path), rename, remove (refuses the current branch; confirms when commits are unmerged), copy branch name — Verify: `swift test --filter HeadMenuTests`.
   - Files: `Sources/GitkUI/CommitList/RowMenus.swift`, tests.
   - Port: 10082–10209.
   - Needs: 16.9.
