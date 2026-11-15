@@ -150,10 +150,10 @@ Total scenarios: 168
 | reference-list | Reference list window | Open with F2 | RefListModelTests/openListsAllHeadsAndTags | covered |
 | reference-list | Filtering and sorting | Filter refs | RefListModelTests/globFilter | covered |
 | reference-list | Jump to reference | Ref outside view | RefListModelTests/refOutsideViewIsOmitted | covered |
-| reference-list | Live updates and geometry | Branch created while open |  | pending |
+| reference-list | Live updates and geometry | Branch created while open | RefListRefreshTests/branchCreatedWhileOpenAppearsInList | covered |
 | repository-actions | Commit context menu | No mark set | RowMenuTests/orderAndMarkEnablement, RowMenuTests/attachedMenuFollowsSessionMark | covered |
 | repository-actions | Diff between two commits | Diff against selection | TwoCommitDiffTests/endpointsFollowTheMenuItem, TwoCommitDiffTests/commandDiffsFromBToA, TwoCommitDiffTests/coordinatorReportsDiffAndSidebarShowsLinks | covered |
-| repository-actions | Mark and compare | Compare cherry-picked series |  | pending |
+| repository-actions | Mark and compare | Compare cherry-picked series | PatchIDCompareTests/cherryPickedSeriesIsReportedEquivalent | covered |
 | repository-actions | Branch operations | Create branch | BranchDialogTests/emptyNameAndConfirmedOverwrite | covered |
 | repository-actions | Branch operations | Remove current branch | HeadMenuTests/currentBranchCannotBeRemoved | covered |
 | repository-actions | Branch operations | Checkout with local changes | HeadMenuTests/checkoutFailurePreservesHeadAndLabels | covered |

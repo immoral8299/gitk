@@ -577,7 +577,7 @@ Order of work:
   - Files: `SelectionModel.swift`, `CommitListController.swift`, tests.
   - Port: 9188–9241.
   - Needs: 10.11, 12.3.
-- [ ] 16.4 [M] Implement compare with marked commit (`PatchIDCompare`: `git patch-id` for each side, then report the unmatched commits in the diff pane) — Verify: `swift test --filter PatchIDCompareTests` (on a cherry-picked series built in a temp repo).
+- [x] 16.4 [M] Implement compare with marked commit (`PatchIDCompare`: `git patch-id` for each side, then report the unmatched commits in the diff pane) — Verify: `swift test --filter PatchIDCompareTests` (on a cherry-picked series built in a temp repo).
   - Files: `Sources/GitkCore/Actions/PatchIDCompare.swift`, tests.
   - Port: 9241–9345.
   - Needs: 16.1, 16.3.
@@ -638,7 +638,7 @@ Order of work:
   - Port: 10209–10414.
   - Needs: 10.4, 3.3.
   - Spec: reference-list "Open with F2", "Filter refs", "Ref outside view".
-- [ ] 17.2 [S] Refresh on `refsChanged`, persist the window frame, and close on Escape or Close — Verify: `swift test --filter RefListRefreshTests` (the model updates after a branch is created).
+- [x] 17.2 [S] Refresh on `refsChanged`, persist the window frame, and close on Escape or Close — Verify: `swift test --filter RefListRefreshTests` (the model updates after a branch is created).
   - Files: `RefListWindowController.swift`, tests.
   - Needs: 17.1, 18.4.
   - Spec: reference-list "Branch created while open".
