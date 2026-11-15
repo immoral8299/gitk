@@ -34,7 +34,7 @@ Total scenarios: 168
 | commit-details | Commit-ID links | Unknown hash |  | pending |
 | commit-details | Web links | Open a URL |  | pending |
 | commit-details | Comment wrapping | Word wrap |  | pending |
-| commit-details | Annotated tag display | Click a tag |  | pending |
+| commit-details | Annotated tag display | Click a tag | TagDisplayTests/annotatedTagShowsTaggerMessageAndObject | covered |
 | commit-find | Search kinds | Pickaxe search |  | pending |
 | commit-find | Text matching options | Case-insensitive author search |  | pending |
 | commit-find | Text matching options | Invalid regexp |  | pending |
@@ -67,7 +67,7 @@ Total scenarios: 168
 | commit-graph | Ref labels | Current branch label |  | pending |
 | commit-graph | Ref labels | Remote label |  | pending |
 | commit-graph | Ref labels | Many tags on one commit |  | pending |
-| commit-graph | Ref labels | Context menu on a head label |  | pending |
+| commit-graph | Ref labels | Context menu on a head label | RefLabelHitTests/adjacentLabelsUseHalfOpenBounds | covered |
 | commit-graph | Line interaction | Click a line |  | pending |
 | commit-list | Window layout | Initial layout |  | pending |
 | commit-list | Window layout | Narrow window |  | pending |
@@ -84,7 +84,7 @@ Total scenarios: 168
 | commit-list | Back/forward history | Back after following a link |  | pending |
 | commit-list | Go to commit | Abbreviated ID |  | pending |
 | commit-list | Commit resolution errors | Not in view |  | pending |
-| commit-list | Row context menu | Context menu on a fake row |  | pending |
+| commit-list | Row context menu | Context menu on a fake row | RowMenuTests/fakeRowHasOnlyDiffAndPatch, RowMenuTests/attachedMenuOnLocalChangesRow | covered |
 | commit-list | Status and progress | Status during load |  | pending |
 | commit-list | Mouse scrolling | Wheel multiplier |  | pending |
 | diff-viewer | Diff pane placement | Selection shows the diff |  | pending |
@@ -98,11 +98,11 @@ Total scenarios: 168
 | diff-viewer | Diff controls | Context lines |  | pending |
 | diff-viewer | Diff controls | Color words |  | pending |
 | diff-viewer | Path-limited diffs | Limited view |  | pending |
-| diff-viewer | Text search in the pane | Incremental search |  | pending |
+| diff-viewer | Text search in the pane | Incremental search | PaneSearchTests/highlightsEveryMatchAndSelectsFirstAfterCursor, PaneSearchTests/nextAndPreviousStepAndStopAtEnds | covered |
 | diff-viewer | Pane scrolling keys | Next file |  | pending |
 | diff-viewer | Tree mode | View a file at a revision |  | pending |
-| diff-viewer | Per-file encodings | Shift-JIS file |  | pending |
-| diff-viewer | Line origin | Origin of an added line |  | pending |
+| diff-viewer | Per-file encodings | Shift-JIS file | GitAttributesTests/shiftJISFileTextDecodes | covered |
+| diff-viewer | Line origin | Origin of an added line | LineOriginTests/normalHunkCoordinates, LineOriginTests/wholeDiffLookupMatchesHunkLookup, LineOriginTests/findsNewFileLineInDiff | covered |
 | file-list | Changed Files section | Jump to file |  | pending |
 | file-list | Changed Files section | Change totals |  | pending |
 | file-list | Linked highlighting | Scroll the diff |  | pending |
@@ -147,11 +147,11 @@ Total scenarios: 168
 | preferences | Legacy gitk config import | Legacy file untouched |  | pending |
 | preferences | Font size shortcuts | Increase font |  | pending |
 | preferences | Quit and close | Quit during load |  | pending |
-| reference-list | Reference list window | Open with F2 |  | pending |
-| reference-list | Filtering and sorting | Filter refs |  | pending |
-| reference-list | Jump to reference | Ref outside view |  | pending |
+| reference-list | Reference list window | Open with F2 | RefListModelTests/openListsAllHeadsAndTags | covered |
+| reference-list | Filtering and sorting | Filter refs | RefListModelTests/globFilter | covered |
+| reference-list | Jump to reference | Ref outside view | RefListModelTests/refOutsideViewIsOmitted | covered |
 | reference-list | Live updates and geometry | Branch created while open |  | pending |
-| repository-actions | Commit context menu | No mark set |  | pending |
+| repository-actions | Commit context menu | No mark set | RowMenuTests/orderAndMarkEnablement, RowMenuTests/attachedMenuFollowsSessionMark | covered |
 | repository-actions | Diff between two commits | Diff against selection |  | pending |
 | repository-actions | Mark and compare | Compare cherry-picked series |  | pending |
 | repository-actions | Branch operations | Create branch |  | pending |
@@ -161,8 +161,8 @@ Total scenarios: 168
 | repository-actions | Cherry-pick and revert | Successful cherry-pick |  | pending |
 | repository-actions | Cherry-pick and revert | Conflict |  | pending |
 | repository-actions | Cherry-pick and revert | Nothing to commit |  | pending |
-| repository-actions | Reset | Hard reset |  | pending |
-| repository-actions | Patch and commit export | Make patch |  | pending |
+| repository-actions | Reset | Hard reset | ResetTests/mixedDefaultAndHardResetRefreshesChanges | covered |
+| repository-actions | Patch and commit export | Make patch | MakePatchTests/patchAppliesAtParent, MakePatchTests/reverseSwapsEndpointsAndGeneratesReversePatch | covered |
 | repository-actions | Copy commit reference | Copy reference |  | pending |
 | repository-actions | External tools | git gui missing |  | pending |
 | repository-actions | Error reporting for write operations | Branch already exists outside the app |  | pending |

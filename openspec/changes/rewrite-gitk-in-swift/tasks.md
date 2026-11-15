@@ -333,7 +333,7 @@ Order of work:
 - [x] 10.2 [M] Implement `GraphCellView`, which draws `GraphRowGeometry` (segments, dots, arrows, colours, line thickness) and the subject text at `textX` — Verify: snapshots of `merge-simple`, `octopus`, `long-lines` and `local-changes` show the lines, arrows and coloured dots as the spec describes; attach the PNGs to the task report.
   - Files: `Sources/GitkUI/CommitList/GraphCellView.swift`.
   - Needs: 10.1, 7.6.
-- [ ] 10.3 [M] Implement `RefLabelDrawing`: draw the labels from the geometry with the head, remote, tag and other colours and a bold current branch; clicking a tag label shows the tag (calls into 11.12); secondary-clicking a head label opens the head menu (filled in by 16.13) — Verify: a snapshot of `tags-notes` shows the labels; `swift test --filter RefLabelHitTests` checks hit-testing.
+- [x] 10.3 [M] Implement `RefLabelDrawing`: draw the labels from the geometry with the head, remote, tag and other colours and a bold current branch; clicking a tag label shows the tag (calls into 11.12); secondary-clicking a head label opens the head menu (filled in by 16.13) — Verify: a snapshot of `tags-notes` shows the labels; `swift test --filter RefLabelHitTests` checks hit-testing.
   - Files: `Sources/GitkUI/CommitList/RefLabelDrawing.swift`, tests.
   - Needs: 10.2, 7.7.
   - Spec: commit-graph "Context menu on a head label".
@@ -372,7 +372,7 @@ Order of work:
   - Port: 2316–2374, 2925–2945.
   - Needs: 10.1.
   - Spec: commit-list "Wheel multiplier".
-- [ ] 10.11 [S] Build the row context menu and the reduced menu for local-changes rows, with enablement rules; the actions stay stubs until group 16 — Verify: `swift test --filter RowMenuTests` (item titles and order; mark-dependent items are disabled with no mark).
+- [x] 10.11 [S] Build the row context menu and the reduced menu for local-changes rows, with enablement rules; the actions stay stubs until group 16 — Verify: `swift test --filter RowMenuTests` (item titles and order; mark-dependent items are disabled with no mark).
   - Files: `Sources/GitkUI/CommitList/RowMenus.swift`, tests.
   - Port: 2880–2905, 9151–9188.
   - Needs: 10.4.
@@ -417,7 +417,7 @@ Order of work:
   - Files: `DiffRenderer.swift`.
   - Needs: 11.7, 3.5.
   - Spec: diff-viewer "Color words".
-- [ ] 11.9 [M] Implement `PaneSearch`: incremental highlighting, next and previous, the current-hit colour, and ⌘-S/⌘-R — Verify: `swift test --filter PaneSearchTests` (match ranges and the next/previous cursor logic).
+- [x] 11.9 [M] Implement `PaneSearch`: incremental highlighting, next and previous, the current-hit colour, and ⌘-S/⌘-R — Verify: `swift test --filter PaneSearchTests` (match ranges and the next/previous cursor logic).
   - Files: `Sources/GitkUI/Details/PaneSearch.swift`, tests.
   - Port: 8638–8800.
   - Needs: 11.5.
@@ -427,12 +427,12 @@ Order of work:
   - Port: 8574–8603.
   - Needs: 11.5, 9.7.
   - Spec: diff-viewer "Next file".
-- [ ] 11.11 [M] Implement per-file encodings: `GitAttributes` (Core) runs `git check-attr encoding` (cached per path), and file text is decoded with fallbacks — Verify: `swift test --filter GitAttributesTests` on `encodings` (Shift-JIS file text decodes).
+- [x] 11.11 [M] Implement per-file encodings: `GitAttributes` (Core) runs `git check-attr encoding` (cached per path), and file text is decoded with fallbacks — Verify: `swift test --filter GitAttributesTests` on `encodings` (Shift-JIS file text decodes).
   - Files: `Sources/GitkCore/Parsing/GitAttributes.swift`, `DiffDocument.swift`, tests.
   - Port: 12460–12518.
   - Needs: 11.5, 2.6.
   - Spec: diff-viewer "Shift-JIS file".
-- [ ] 11.12 [S] Implement tag display: `git cat-file tag <tag>` shows the tag name, tagger and message with a link to the tagged commit in the sidebar, and clears the Changed Files section; also the "n tags..." list — Verify: `swift test --filter TagDisplayTests` on `tags-notes`.
+- [x] 11.12 [S] Implement tag display: `git cat-file tag <tag>` shows the tag name, tagger and message with a link to the tagged commit in the sidebar, and clears the Changed Files section; also the "n tags..." list — Verify: `swift test --filter TagDisplayTests` on `tags-notes`.
   - Files: `DetailsSidebar.swift`, `Sources/GitkCore/History/TagInfo.swift`, tests.
   - Port: 11556–11610.
   - Needs: 11.1.
@@ -494,7 +494,7 @@ Order of work:
   - Port: 3662–3729, 4003–4033.
   - Needs: 13.1, 14.4.
   - Spec: file-list "Highlight this only", "Copy path".
-- [ ] 13.6 [M] Implement Show origin of this line and Run git gui blame on this line in the diff context menu — Verify: `swift test --filter LineOriginTests` (`find_hunk_blamespec` port on sample hunks; the blame output parser).
+- [x] 13.6 [M] Implement Show origin of this line and Run git gui blame on this line in the diff context menu — Verify: `swift test --filter LineOriginTests` (`find_hunk_blamespec` port on sample hunks; the blame output parser).
   - Files: `Sources/GitkCore/Actions/LineOrigin.swift`, `DiffRenderer.swift`, tests.
   - Port: 3874–4003, 4033–4179.
   - Needs: 11.5.
@@ -582,7 +582,7 @@ Order of work:
   - Port: 9241–9345.
   - Needs: 16.1, 16.3.
   - Spec: repository-actions "Compare cherry-picked series".
-- [ ] 16.5 [M] Build the Make patch dialog (From, To, Reverse, Output file defaulting to `patch<n>.patch`, Generate, Cancel) — Verify: `swift test --filter MakePatchTests` (the generated file applies with `git apply --check` on the parent).
+- [x] 16.5 [M] Build the Make patch dialog (From, To, Reverse, Output file defaulting to `patch<n>.patch`, Generate, Cancel) — Verify: `swift test --filter MakePatchTests` (the generated file applies with `git apply --check` on the parent).
   - Files: `Sources/GitkUI/Dialogs/PatchDialog.swift`, tests.
   - Port: 9424–9514.
   - Needs: 16.1.
@@ -597,7 +597,7 @@ Order of work:
   - Port: 9632–9647.
   - Needs: 16.1.
   - Spec: repository-actions "Copy reference".
-- [ ] 16.8 [M] Build the Write commit to file dialog (command defaults to `git diff-tree --stdin -p --pretty=email`, run with `sh -c`, ID on stdin) — Verify: `swift test --filter WriteCommitTests`.
+- [x] 16.8 [M] Build the Write commit to file dialog (command defaults to `git diff-tree --stdin -p --pretty=email`, run with `sh -c`, ID on stdin) — Verify: `swift test --filter WriteCommitTests`.
   - Files: `Sources/GitkUI/Dialogs/WriteCommitDialog.swift`, tests.
   - Port: 9647–9706.
   - Needs: 16.1.
@@ -615,7 +615,7 @@ Order of work:
   - Files: `RepoActions.swift`, tests.
   - Port: 9947–10008.
   - Needs: 16.10.
-- [ ] 16.12 [M] Build the Reset dialog (Soft, Mixed (the default) or Hard; confirm; labels and local rows refreshed afterwards) — Verify: `swift test --filter ResetTests`.
+- [x] 16.12 [M] Build the Reset dialog (Soft, Mixed (the default) or Hard; confirm; labels and local rows refreshed afterwards) — Verify: `swift test --filter ResetTests`.
   - Files: `Sources/GitkUI/Dialogs/ResetDialog.swift`, tests.
   - Port: 10008–10082.
   - Needs: 16.1, 8.6.
@@ -633,7 +633,7 @@ Order of work:
 
 ## 17. Reference list window
 
-- [ ] 17.1 [M] Build `RefListWindowController`: titled "Tags and heads: <repo>", glob filter, Sort refs by type, click to select the commit; a single instance that is brought to the front if already open — Verify: `swift test --filter RefListModelTests` (filtering and both sort orders on `tags-notes`).
+- [x] 17.1 [M] Build `RefListWindowController`: titled "Tags and heads: <repo>", glob filter, Sort refs by type, click to select the commit; a single instance that is brought to the front if already open — Verify: `swift test --filter RefListModelTests` (filtering and both sort orders on `tags-notes`).
   - Files: `Sources/GitkUI/Dialogs/RefListWindowController.swift`, `Sources/GitkCore/Model/RefListModel.swift`, tests.
   - Port: 10209–10414.
   - Needs: 10.4, 3.3.
