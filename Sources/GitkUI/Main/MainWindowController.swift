@@ -162,6 +162,10 @@ final class MainWindowController: NSWindowController {
             self?.diffPane.scrollView.reflectScrolledClipView(clip)
         }
         listController.onSelection = { [weak self] in self?.select($0) }
+        listController.onLineDetails = { [weak self] in
+            guard let self else { return }
+            sidebar.show(line: $0, session: session)
+        }
         diffPane.onSelectCommit = { [weak self] in self?.select($0) }
         listController.onRowCommand = { [weak self] command, id in
             guard let self else { return }

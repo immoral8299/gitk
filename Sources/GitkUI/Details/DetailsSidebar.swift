@@ -250,6 +250,59 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         setMessage(messages.joined(separator: "\n\n"), session: session)
     }
 
+    /// Shows the parent and children of a clicked graph line. Port of the text
+    /// of gitk proc `lineclick` (gitk/gitk 9082–9118): "Parent" then "Children",
+    /// each commit ID a link, then its subject, author and date. The commit
+    /// identity and the Changed Files section are cleared.
+    func show(line: LineDetails, session: ViewSession) {
+        self.session = session
+        shownID = nil
+        shownHeader = nil
+        for section in sections { section.isHidden = false }
+        commitSection.title = L("Parent")
+        identityView.isHidden = true
+        idButton.isHidden = true
+        refsLabel.isHidden = true
+        messageSection.isHidden = true
+        filesSection.isHidden = true
+        fileList.update(nil)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.tabStops = [NSTextTab(textAlignment: .left, location: 74)]
+        paragraph.headIndent = 74
+        paragraph.paragraphSpacing = 3
+        let label: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold),
+            .foregroundColor: NSColor.secondaryLabelColor, .paragraphStyle: paragraph,
+        ]
+        let value: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+            .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph,
+        ]
+        let result = NSMutableAttributedString()
+        func append(_ entry: LineDetails.Entry, heading: String) {
+            result.append(NSAttributedString(string: heading + "\t", attributes: label))
+            result.append(NSAttributedString(string: entry.id.abbreviated(8), attributes: [
+                .font: NSFont.monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular),
+                .link: LinkHandling.commitScheme + entry.id.hex, .foregroundColor: Palette.link(settings),
+                .paragraphStyle: paragraph,
+            ]))
+            result.append(NSAttributedString(string: " " + entry.headline + "\n", attributes: value))
+            result.append(NSAttributedString(string: L("Author") + "\t", attributes: label))
+            result.append(NSAttributedString(string: entry.author + "\n", attributes: value))
+            result.append(NSAttributedString(string: L("Date") + "\t", attributes: label))
+            result.append(NSAttributedString(string: entry.date + "\n", attributes: value))
+        }
+        append(line.parent, heading: L("Parent"))
+        for (n, child) in line.children.enumerated() {
+            if n == 0 { result.append(NSAttributedString(string: "\n" + L("Children") + ":\n", attributes: label)) }
+            else { result.append(NSAttributedString(string: "\n", attributes: value)) }
+            append(child, heading: " ")
+        }
+        if result.length > 0 { result.deleteCharacters(in: NSRange(location: result.length - 1, length: 1)) }
+        setText(rowsView, result)
+        setMessage("", session: session)
+    }
+
     /// Shows the two commits of a row-menu diff. Port of the text of gitk proc
     /// `doseldiff` (gitk/gitk 9407–9420): "From" and "To" lines with each ID as
     /// a commit link and its headline. The Changed Files section stays and is

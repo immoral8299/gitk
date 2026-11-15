@@ -11,6 +11,9 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
     let scrollView = CommitScrollView()
     let tableView = NSTableView()
     var onSelection: ((ObjectID) -> Void)?
+    /// The parent whose line is drawn thicker, and the receiver of its details (task 10.9).
+    var thickLine: CommitIndex?
+    var onLineDetails: ((LineDetails) -> Void)?
     /// Receives a row context-menu command and the commit it was opened on.
     /// Nil until the actions are wired (group 16); the items then do nothing.
     var onRowCommand: ((AppCommand, ObjectID) -> Void)?
@@ -243,7 +246,7 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         let geometry = GraphRowGeometry.make(
             row: row, layout: session.layout, colors: graphColors(), refs: session.refs,
             columnWidth: width, maxWidth: settings.maxWidth, maxGraphPct: settings.maxGraphPct,
-            lineSpacing: lineSpacing)?
+            lineSpacing: lineSpacing, thickLine: thickLine)?
             .addingRefLabels(refs: session.refs, store: session.store, columnWidth: width, lineSpacing: lineSpacing) { text, bold in
                 // Measure with the font the labels are drawn in (monospaced).
                 let measured = RefLabelDrawing.font(for: labelFont, bold: bold)
@@ -252,6 +255,7 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         cell.font = font
         cell.settings = settings
         cell.geometry = geometry
+        configureLineInteraction(cell)
         cell.onHeadMenu = { [weak self] label, _ in
             guard let self, let id = session.id(at: row) else { return nil }
             return RowMenus.headMenu(name: label.name, refs: session.refs) { [weak self] command in
@@ -310,6 +314,7 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
             if !rows.isEmpty { tableView.reloadData(forRowIndexes: rows, columnIndexes: IndexSet(integersIn: 0..<3)) }
         }
         shownSelectedRow = tableView.selectedRow
+        if tableView.selectedRow >= 0 { setThickLine(nil) }
         guard !updatingSelection, let id = session.id(at: tableView.selectedRow) else { return }
         onSelection?(id)
     }

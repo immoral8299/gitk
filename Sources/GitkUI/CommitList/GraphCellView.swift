@@ -14,6 +14,8 @@ final class GraphCellView: NSTableCellView {
     var onTagClick: ((GraphRowGeometry.RefLabel) -> Void)?
     var onArrowClick: ((Int) -> Void)?
     var onLineClick: ((CommitIndex) -> Void)?
+    /// The hover tooltip for a line: the parent's subject (gitk `linehover`).
+    var lineTooltip: ((CommitIndex) -> String?)?
     var onHeadMenu: ((GraphRowGeometry.RefLabel, NSEvent) -> NSMenu?)?
 
     override var isFlipped: Bool { true }
@@ -111,22 +113,34 @@ final class GraphCellView: NSTableCellView {
             onTagClick(label)
             return
         }
-        if let geometry, let arrow = geometry.arrows.first(where: {
-            abs(originX + CGFloat($0.column) * bounds.height - point.x) < 6 && abs(bounds.midY - point.y) < 7
-        }), let onArrowClick {
-            onArrowClick(arrow.targetRow)
-            return
-        }
-        if let geometry, let segment = geometry.segments.first(where: {
-            distance(point, from: self.point($0.from), to: self.point($0.to)) < 3
-        }), point.x < CGFloat(geometry.textX),
-           hypot(point.x - originX - CGFloat(geometry.dotColumn) * bounds.height, point.y - bounds.midY) > bounds.height / 3 + 2,
-           let onLineClick {
-            onLineClick(segment.id)
-            return
+        if let geometry, let hit = LineHitTest.hit(in: geometry, x: Double(point.x), y: Double(point.y),
+                                                   rowHeight: Double(bounds.height)) {
+            switch hit {
+            case .arrow(let arrow): if let onArrowClick { onArrowClick(arrow.targetRow); return }
+            case .line(let id): if let onLineClick { onLineClick(id); return }
+            }
         }
         super.mouseDown(with: event)
     }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        for area in trackingAreas where area.owner === self { removeTrackingArea(area) }
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+                                       owner: self))
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if let geometry, case .line(let id)? = LineHitTest.hit(in: geometry, x: Double(point.x), y: Double(point.y),
+                                                               rowHeight: Double(bounds.height)) {
+            toolTip = lineTooltip?(id)
+        } else {
+            toolTip = nil
+        }
+    }
+
+    override func mouseExited(with event: NSEvent) { toolTip = nil }
 
     override func rightMouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
@@ -136,13 +150,6 @@ final class GraphCellView: NSTableCellView {
             return
         }
         super.rightMouseDown(with: event)
-    }
-
-    private func distance(_ p: NSPoint, from a: NSPoint, to b: NSPoint) -> CGFloat {
-        let dx = b.x - a.x, dy = b.y - a.y
-        let length = dx * dx + dy * dy
-        let t = length > 0 ? max(0, min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length)) : 0
-        return hypot(p.x - a.x - t * dx, p.y - a.y - t * dy)
     }
 }
 
