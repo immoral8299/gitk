@@ -109,8 +109,8 @@ Total scenarios: 168
 | file-list | Tree mode | Expand a directory | TreeModeTests/directoriesStartClosedAndExpand | covered |
 | file-list | File context menu | External diff |  | pending |
 | file-list | File context menu | External diff with a renamed file |  | pending |
-| file-list | File context menu | Highlight this only |  | pending |
-| file-list | File context menu | Copy path |  | pending |
+| file-list | File context menu | Highlight this only | FileMenuTests/highlightOnlyReplacesPattern, FileMenuTests/highlightQuotesPathsWithSpaces | covered |
+| file-list | File context menu | Copy path | FileMenuUITests/menuItemsInOrderAndCopyPath | covered |
 | file-list | Temporary file cleanup | Quit after external diff |  | pending |
 | history-loading | Streaming commit load | Large repository |  | pending |
 | history-loading | Streaming commit load | git log fails |  | pending |
@@ -152,7 +152,7 @@ Total scenarios: 168
 | reference-list | Jump to reference | Ref outside view | RefListModelTests/refOutsideViewIsOmitted | covered |
 | reference-list | Live updates and geometry | Branch created while open |  | pending |
 | repository-actions | Commit context menu | No mark set | RowMenuTests/orderAndMarkEnablement, RowMenuTests/attachedMenuFollowsSessionMark | covered |
-| repository-actions | Diff between two commits | Diff against selection |  | pending |
+| repository-actions | Diff between two commits | Diff against selection | TwoCommitDiffTests/endpointsFollowTheMenuItem, TwoCommitDiffTests/commandDiffsFromBToA, TwoCommitDiffTests/coordinatorReportsDiffAndSidebarShowsLinks | covered |
 | repository-actions | Mark and compare | Compare cherry-picked series |  | pending |
 | repository-actions | Branch operations | Create branch | BranchDialogTests/emptyNameAndConfirmedOverwrite | covered |
 | repository-actions | Branch operations | Remove current branch | HeadMenuTests/currentBranchCannotBeRemoved | covered |

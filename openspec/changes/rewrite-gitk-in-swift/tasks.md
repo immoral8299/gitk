@@ -489,7 +489,7 @@ Order of work:
   - Port: 3729–3874.
   - Needs: 13.1.
   - Spec: file-list "External diff", "External diff with a renamed file", "Quit after external diff".
-- [ ] 13.5 [S] Implement the file context menu: Highlight this too/only (sets the search bar), Copy path, and Blame parent commit (`git gui blame`) — Verify: `swift test --filter FileMenuTests` (the commands produced).
+- [x] 13.5 [S] Implement the file context menu: Highlight this too/only (sets the search bar), Copy path, and Blame parent commit (`git gui blame`) — Verify: `swift test --filter FileMenuTests` (the commands produced).
   - Files: `FileListController.swift`, tests.
   - Port: 3662–3729, 4003–4033.
   - Needs: 13.1, 14.4.
@@ -568,7 +568,7 @@ Order of work:
 - [x] 16.1 [M] Implement `RepoActions` (Core) wrappers for branch create, rename and delete, tag create, checkout, reset, cherry-pick, revert and patch-id, each returning typed results or errors that carry git's stderr — Verify: `swift test --filter RepoActionsTests` on temp copies of fixtures (one test per operation, including the failure paths).
   - Files: `Sources/GitkCore/Actions/RepoActions.swift`, tests.
   - Needs: 2.2, 1.6.
-- [ ] 16.2 [M] Implement diff this ↔ selected and diff this ↔ marked: a two-commit diff in the bottom pane with both IDs as links in the details sidebar — Verify: `swift test --filter TwoCommitDiffTests` (command and header text).
+- [x] 16.2 [M] Implement diff this ↔ selected and diff this ↔ marked: a two-commit diff in the bottom pane with both IDs as links in the details sidebar — Verify: `swift test --filter TwoCommitDiffTests` (command and header text).
   - Files: `DetailsSidebar.swift`, `DiffRenderer.swift`, tests.
   - Port: 9345–9424.
   - Needs: 11.5, 10.11.
