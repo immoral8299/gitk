@@ -364,16 +364,15 @@ final class DiffPane: NSObject, NSTextViewDelegate {
         task = Task { [weak self] in
             guard let self else { return }
             defer { if generation == token { isLoading = false } }
-            var lastPaint = ContinuousClock.now
             do {
-                for try await line in child.records(separator: 10) {
+                // Record splitting and line parsing run on a detached task in
+                // `parsedBatches`; the main actor only appends and paints.
+                let batches = DiffDocument.parsedBatches(child.records(separator: 10))
+                for try await batch in batches {
                     guard generation == token, !Task.isCancelled else { return }
-                    document.append(line)
-                    if document.lines.count % 500 == 0 || lastPaint.duration(to: .now) > .milliseconds(50) {
-                        appendPending(final: false)
-                        lastPaint = .now
-                        await Task.yield()
-                    }
+                    document.append(batch)
+                    appendPending(final: false)
+                    await Task.yield()
                 }
                 guard generation == token, !Task.isCancelled else { return }
                 appendPending()

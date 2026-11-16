@@ -6,13 +6,36 @@ import Foundation
 
 public enum DiffDisplayMode: Sendable { case diff, old, new }
 
+/// A chunk of diff lines parsed off the main actor by
+/// `DiffDocument.parsedBatches`, ready for `DiffDocument.append(_:)`.
+/// `sections` is the producer's complete section list at the time of the
+/// batch; `startLine`s are indexes into the whole stream.
+public struct ParsedBatch: Sendable {
+    public var lines: [DiffLine]
+    public var rawLines: [Data]
+    public var sections: [DiffFileSection]
+    /// Lines parsed by the producer so far, stream-wide.
+    public var lineCount: Int
+
+    public init(lines: [DiffLine], rawLines: [Data], sections: [DiffFileSection], lineCount: Int) {
+        self.lines = lines
+        self.rawLines = rawLines
+        self.sections = sections
+        self.lineCount = lineCount
+    }
+}
+
 public struct DiffDocument: Sendable {
     public private(set) var lines: [DiffLine] = []
     public private(set) var rawLines: [Data] = []
+    public private(set) var sections: [DiffFileSection] = []
+    /// The streaming parser behind `append(_:)`. Only meaningful for callers
+    /// that feed one line at a time; the batch path (`append(_:)` with a
+    /// `ParsedBatch`, produced by `parsedBatches`) parses off the main actor
+    /// and records the same state directly.
     public private(set) var parser = DiffParser()
     public var lineLimit: Int = 200_000
     public init() {}
-    public var sections: [DiffFileSection] { parser.sections }
     public var hiddenLineCount: Int { max(0, lines.count - lineLimit) }
     /// Lines added and removed in each file section, aligned with `sections`.
     /// For a combined diff a line counts as added if any parent marker is `+`,
@@ -26,6 +49,7 @@ public struct DiffDocument: Sendable {
     /// streamed line and record file sections.
     public mutating func append(_ raw: Data) {
         let line = parser.parse(line: raw)
+        mirrorSections()
         lines.append(line)
         rawLines.append(raw)
         while addedPerFile.count < parser.sections.count {
@@ -40,6 +64,93 @@ public struct DiffDocument: Sendable {
             if markers.contains("+") { addedPerFile[addedPerFile.count - 1] += 1 }
             else if markers.contains("-") { removedPerFile[removedPerFile.count - 1] += 1 }
         default: break
+        }
+    }
+
+    /// Adds a chunk parsed by `parsedBatches`, extending the file sections and
+    /// the per-file add/remove counts exactly as one-line `append(_:)` does: a
+    /// section born on a line is padded before that line is counted.
+    public mutating func append(_ batch: ParsedBatch) {
+        let base = lines.count
+        lines.append(contentsOf: batch.lines)
+        rawLines.append(contentsOf: batch.rawLines)
+        // `batch.sections` mirrors the producer's whole section list, so the
+        // shared head is refreshed (a rename can fill in paths after the
+        // section was created) and the tail is appended.
+        let shared = min(sections.count, batch.sections.count)
+        for i in 0..<shared where sections[i] != batch.sections[i] { sections[i] = batch.sections[i] }
+        if batch.sections.count > shared { sections.append(contentsOf: batch.sections[shared...]) }
+        var cursor = addedPerFile.count
+        for (local, line) in batch.lines.enumerated() {
+            let at = base + local
+            while cursor < batch.sections.count, batch.sections[cursor].startLine <= at {
+                addedPerFile.append(0)
+                removedPerFile.append(0)
+                cursor += 1
+            }
+            guard !addedPerFile.isEmpty else { continue }
+            switch line {
+            case .add: addedPerFile[addedPerFile.count - 1] += 1
+            case .remove: removedPerFile[removedPerFile.count - 1] += 1
+            case .combined(let markers, _):
+                if markers.contains("+") { addedPerFile[addedPerFile.count - 1] += 1 }
+                else if markers.contains("-") { removedPerFile[removedPerFile.count - 1] += 1 }
+            default: break
+            }
+        }
+    }
+
+    /// Makes `sections` match `parser.sections`: new sections are appended, and
+    /// the last one is re-copied because header lines that follow a section
+    /// (`rename from`, `deleted file`, `Binary files …`) fill in its paths and
+    /// status afterwards.
+    private mutating func mirrorSections() {
+        while sections.count < parser.sections.count { sections.append(parser.sections[sections.count]) }
+        if !sections.isEmpty { sections[sections.count - 1] = parser.sections[parser.sections.count - 1] }
+    }
+
+    /// Parses `records` (diff lines without their trailing newline) into
+    /// batches on a detached task, so the main actor neither splits records nor
+    /// classifies lines while a diff streams. Batches hold at most 2,000 lines
+    /// and flush early once 50 ms have passed, mirroring
+    /// `AncestryIndex.parsedBatches`.
+    public static func parsedBatches(
+        _ records: AsyncThrowingStream<Data, Error>
+    ) -> AsyncThrowingStream<ParsedBatch, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task.detached {
+                var parser = DiffParser()
+                var lastFlush = ContinuousClock.now
+                var batch = ParsedBatch(lines: [], rawLines: [], sections: [], lineCount: 0)
+                do {
+                    for try await record in records {
+                        batch.lines.append(parser.parse(line: record))
+                        batch.rawLines.append(record)
+                        // Mirror the parser's section list: new sections are
+                        // appended, the last one is re-copied because header
+                        // lines after it fill in its paths and status.
+                        while batch.sections.count < parser.sections.count {
+                            batch.sections.append(parser.sections[batch.sections.count])
+                        }
+                        if !batch.sections.isEmpty {
+                            batch.sections[batch.sections.count - 1] = parser.sections[parser.sections.count - 1]
+                        }
+                        batch.lineCount = parser.lineCount
+                        let now = ContinuousClock.now
+                        if batch.lines.count >= 2000 || (!batch.lines.isEmpty && now - lastFlush >= .milliseconds(50)) {
+                            continuation.yield(batch)
+                            batch = ParsedBatch(lines: [], rawLines: [], sections: batch.sections, lineCount: parser.lineCount)
+                            lastFlush = now
+                        }
+                    }
+                    if !batch.lines.isEmpty { continuation.yield(batch) }
+                    continuation.finish()
+                } catch {
+                    if !batch.lines.isEmpty { continuation.yield(batch) }
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { @Sendable _ in task.cancel() }
         }
     }
 

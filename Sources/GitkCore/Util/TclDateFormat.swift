@@ -38,22 +38,66 @@ public enum TclDateFormat {
         } else {
             let date = Date(timeIntervalSince1970: TimeInterval(epoch))
             offset = localZone.secondsFromGMT(for: date)
-            let f = DateFormatter()
-            f.locale = Locale(identifier: "en_US")
-            f.timeZone = localZone
-            f.dateFormat = "zzz"
-            abbrev = f.string(from: date)
+            // %Z is the only specifier that reads the abbreviation, and a
+            // format with %Z never takes this branch (it sets commitZone).
+            // The abbreviation is therefore only built for the explicit
+            // `useCommitZone: false` case; a nil formatter for the common
+            // no-zone formats (gitk's default date column) skips the
+            // expensive DateFormatter entirely.
+            abbrev = hasAbbrevSpecifier(format) ? zoneAbbreviation(date, localZone: localZone) : ""
         }
         return strftime(format, local: epoch + Int64(offset), offset: offset, abbrev: abbrev, epoch: epoch)
     }
 
     /// Mirrors Tcl `string match {*%[zZ]*}`.
     private static func containsZoneSpecifier(_ f: String) -> Bool {
+        hasSpecifier(f, in: "zZ")
+    }
+
+    /// Mirrors Tcl `string match {*%Z*}`.
+    private static func hasAbbrevSpecifier(_ f: String) -> Bool {
+        hasSpecifier(f, in: "Z")
+    }
+
+    /// True when `%` followed by a character of `specs` appears in `f`.
+    private static func hasSpecifier(_ f: String, in specs: String) -> Bool {
         let c = Array(f.unicodeScalars)
         guard c.count >= 2 else { return false }
-        for i in 0..<(c.count - 1) where c[i] == "%" && (c[i + 1] == "z" || c[i + 1] == "Z") { return true }
+        for i in 0..<(c.count - 1) where c[i] == "%" && specs.unicodeScalars.contains(c[i + 1]) { return true }
         return false
     }
+
+    /// The local-zone abbreviation for `%Z`, from one reused formatter.
+    /// Building a `DateFormatter` costs tens of microseconds, so the instance
+    /// is cached; the lock keeps it safe for callers on any thread.
+    private static func zoneAbbreviation(_ date: Date, localZone: TimeZone) -> String {
+        abbrevCache.abbreviation(for: date, zone: localZone)
+    }
+
+    /// Lock-guarded holder for the cached `%Z` formatter, so the cache can be
+    /// an immutable `static let` under Swift 6 strict concurrency.
+    private final class AbbrevCache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var formatter: DateFormatter?
+
+        func abbreviation(for date: Date, zone: TimeZone) -> String {
+            lock.lock()
+            defer { lock.unlock() }
+            let f: DateFormatter
+            if let cached = formatter {
+                f = cached
+            } else {
+                f = DateFormatter()
+                f.locale = Locale(identifier: "en_US")
+                formatter = f
+            }
+            f.timeZone = zone
+            f.dateFormat = "zzz"
+            return f.string(from: date)
+        }
+    }
+
+    private static let abbrevCache = AbbrevCache()
 
     private static func numericZone(_ offset: Int) -> String {
         let a = abs(offset)

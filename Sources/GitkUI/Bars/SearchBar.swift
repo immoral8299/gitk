@@ -350,11 +350,20 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
                     }
                 } else {
                     let ids = (0..<session.rowCount).compactMap { session.id(at: $0) }
+                    // One match report per 100 ms keeps the list redraws from
+                    // dominating a scan with many hits; the first hit still
+                    // reports at once, and the loop ends with a final one.
+                    var lastReport = ContinuousClock.now
+                    var first = true
                     for try await id in engine.start(query: query, cdup: session.repo.cdup, commitIDs: ids) {
                         guard !Task.isCancelled, generation == serial else { return }
                         matches.insert(id)
-                        onMatches?(matches, query)
-                        updateCounter()
+                        if first || lastReport.duration(to: .now) > .milliseconds(100) {
+                            first = false
+                            lastReport = .now
+                            onMatches?(matches, query)
+                            updateCounter()
+                        }
                     }
                 }
                 guard generation == serial else { return }

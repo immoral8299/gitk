@@ -52,9 +52,12 @@ public enum TextDecoder {
         return String.Encoding(rawValue: nsEncoding)
     }
 
-    /// Decodes UTF-8 strictly per byte: a valid sequence becomes its scalar, and
-    /// any byte that does not start a valid sequence becomes U+00XX.
+    /// Decodes UTF-8 per byte: a valid sequence becomes its scalar, and
+    /// any byte that does not start a valid sequence becomes U+00XX. Valid
+    /// input takes the strict `String(data:encoding:)` path, which is far
+    /// faster than the byte loop; the loop only runs for invalid bytes.
     static func decodeUTF8(_ data: Data) -> String {
+        if let strict = String(data: data, encoding: .utf8) { return strict }
         let bytes = [UInt8](data)
         var scalars = String.UnicodeScalarView()
         var index = 0

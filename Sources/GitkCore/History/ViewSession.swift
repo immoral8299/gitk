@@ -104,10 +104,12 @@ public final class ViewSession {
         await loader.cancel()
     }
 
+    /// Adds a parsed batch. The `rowsChanged` event carries the appended
+    /// subrange, so the list can redraw only the rows that are new.
     public func ingest(batch: HistoryBatch) {
         let oldCount = rowCount
         for commit in batch.commits { ordering.add(commit) }
-        onEvent?(.rowsChanged(0..<max(oldCount, rowCount)))
+        onEvent?(.rowsChanged(oldCount..<rowCount))
         onEvent?(.loadProgress(rowCount))
     }
 

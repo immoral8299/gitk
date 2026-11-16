@@ -189,7 +189,7 @@ final class MainWindowController: NSWindowController {
             guard let self else { return }
             self.listController.highlightedIDs = ids
             self.listController.findQuery = query
-            self.listController.refresh()
+            self.listController.refreshVisible()
             self.sidebar.setFind(query, matches: ids)
             self.onFindQueryChanged?(query)
         }
@@ -553,8 +553,8 @@ final class MainWindowController: NSWindowController {
         case .loadProgress(let count):
             statusBar.setReading(true, count: count, total: expectedCommitCount)
             statusBar.refresh(session: session)
-        case .rowsChanged:
-            listController.refresh()
+        case .rowsChanged(let changed):
+            listController.refresh(changed: changed)
             if let selected = session.selection.selectedID, session.row(of: selected) != nil {
                 refreshBars()
             } else if let first = session.id(at: 0) {

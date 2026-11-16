@@ -120,8 +120,13 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
     }
 
     /// Measures the widest author and date among the first `measuredRows`
-    /// rows and the visible ones, in the list font.
-    private func measureColumns() {
+    /// rows and the visible ones, in the list font. With `changed` given, it is
+    /// skipped when the changed rows touch neither the measured prefix nor the
+    /// visible ones, since those alone move the widths.
+    private func measureColumns(changed: Range<Int>? = nil) {
+        if let changed, changed.lowerBound >= Self.measuredRows {
+            guard let visible = visibleRowRange(), changed.overlaps(visible) else { return }
+        }
         let count = session.rowCount
         var rows = IndexSet(integersIn: 0..<min(count, Self.measuredRows))
         let visible = tableView.rows(in: scrollView.contentView.documentVisibleRect)
@@ -319,8 +324,9 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         onSelection?(id)
     }
 
-    func refresh() {
-        updatingSelection = true
+    /// Reconciles the table's rows with `session.rowCount`, appending or
+    /// removing at the end. Row content is not touched.
+    private func reconcileCount() {
         let oldCount = tableView.numberOfRows
         let newCount = session.rowCount
         if newCount > oldCount {
@@ -328,6 +334,36 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         } else if newCount < oldCount {
             tableView.removeRows(at: IndexSet(integersIn: newCount..<oldCount), withAnimation: [])
         }
+    }
+
+    /// The rows intersecting the clip's visible rect, or nil when there are none.
+    private func visibleRowRange() -> Range<Int>? {
+        let visible = tableView.rows(in: scrollView.contentView.documentVisibleRect)
+        guard visible.length > 0, visible.location != NSNotFound, visible.location < tableView.numberOfRows else { return nil }
+        return visible.location..<min(tableView.numberOfRows, visible.location + visible.length)
+    }
+
+    /// Reconciles the table with `session.rowCount`. With `changed` nil every
+    /// row is redrawn; with a range that only adds rows past the table's
+    /// previous end, only the new rows and the ones on screen are redrawn, so
+    /// a long history streams in without re-rendering what is already drawn.
+    func refresh(changed: Range<Int>? = nil) {
+        updatingSelection = true
+        let oldCount = tableView.numberOfRows
+        let newCount = session.rowCount
+        if let changed, newCount >= oldCount, changed.lowerBound >= oldCount, changed.upperBound >= newCount {
+            reconcileCount()
+            var rows = IndexSet(integersIn: oldCount..<newCount)
+            if let visible = visibleRowRange() { rows.formUnion(IndexSet(integersIn: visible)) }
+            if !rows.isEmpty {
+                tableView.reloadData(forRowIndexes: rows, columnIndexes: IndexSet(integersIn: 0..<3))
+            }
+            restoreSelection(scroll: false)
+            updatingSelection = false
+            measureColumns(changed: changed)
+            return
+        }
+        reconcileCount()
         if newCount > 0 {
             tableView.reloadData(forRowIndexes: IndexSet(integersIn: 0..<newCount),
                                  columnIndexes: IndexSet(integersIn: 0..<3))
@@ -335,6 +371,20 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         restoreSelection(scroll: false)
         updatingSelection = false
         measureColumns()
+    }
+
+    /// Redraws only the rows on screen, keeping the row count as it is. Match
+    /// boxes and ref labels are painted when a cell view is built, so rows off
+    /// screen pick the new state up when they scroll into view; redrawing a
+    /// whole long history per match report would dominate a scan.
+    func refreshVisible() {
+        updatingSelection = true
+        reconcileCount()
+        if let visible = visibleRowRange() {
+            tableView.reloadData(forRowIndexes: IndexSet(integersIn: visible), columnIndexes: IndexSet(integersIn: 0..<3))
+        }
+        restoreSelection(scroll: false)
+        updatingSelection = false
     }
 
     func restoreSelection(scroll: Bool) {
