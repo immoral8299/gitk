@@ -15,9 +15,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var mainWindowController: MainWindowController?
     private var repositoryPicker: RepositoryPickerWindowController?
 
+    /// `--default-settings`: start with the built-in defaults, ignoring
+    /// settings.json and the Tcl gitk config, and save nothing on quit.
+    let usesDefaultSettings: Bool
+
+    static let defaultSettingsFlag = "--default-settings"
+
     init(arguments: [String], environment: [String: String]) {
-        self.arguments = arguments
+        (usesDefaultSettings, self.arguments) = Self.extractDefaultSettingsFlag(arguments)
         self.environment = environment
+    }
+
+    /// Removes `--default-settings` from the options (before any `--`), so it
+    /// never reaches git.
+    static func extractDefaultSettingsFlag(_ arguments: [String]) -> (Bool, [String]) {
+        let end = arguments.firstIndex(of: "--") ?? arguments.endIndex
+        let options = arguments[..<end]
+        guard options.contains(defaultSettingsFlag) else { return (false, arguments) }
+        return (true, options.filter { $0 != defaultSettingsFlag } + arguments[end...])
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -112,9 +127,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func openMainWindow(startup: StartupContext, launch: LaunchArguments, cwd: URL) {
-        let controller = MainWindowController(
-            startup: startup, launch: launch,
-            settingsStore: SettingsStore(environment: environment), cwd: cwd, environment: environment)
+        let controller = usesDefaultSettings
+            ? MainWindowController(startup: startup, launch: launch, settings: UISettings(), store: nil,
+                                   cwd: cwd, environment: environment)
+            : MainWindowController(startup: startup, launch: launch,
+                                   settingsStore: SettingsStore(environment: environment), cwd: cwd, environment: environment)
         mainWindowController = controller
         NSApp.mainMenu = controller.mainMenu?.menu
         guard let w = controller.window else { return }

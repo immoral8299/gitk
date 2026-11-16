@@ -24,3 +24,24 @@ import Testing
         #expect(!AppDelegate.offersRepositoryPicker(arguments: [], environment: ["GITK_SWIFT_HEADLESS_ERRORS": "1"]))
     }
 }
+
+@MainActor
+@Suite struct DefaultSettingsFlagTests {
+    @Test func flagIsRemovedFromTheOptions() {
+        let (on, rest) = AppDelegate.extractDefaultSettingsFlag(["--all", "--default-settings", "main"])
+        #expect(on)
+        #expect(rest == ["--all", "main"])
+    }
+
+    @Test func flagAfterDoubleDashIsAPath() {
+        let (on, rest) = AppDelegate.extractDefaultSettingsFlag(["--all", "--", "--default-settings"])
+        #expect(!on)
+        #expect(rest == ["--all", "--", "--default-settings"])
+    }
+
+    @Test func delegateUsesDefaultsOnlyWithTheFlag() {
+        #expect(AppDelegate(arguments: ["--default-settings"], environment: [:]).usesDefaultSettings)
+        #expect(AppDelegate(arguments: ["--default-settings"], environment: [:]).arguments.isEmpty)
+        #expect(!AppDelegate(arguments: ["--all"], environment: [:]).usesDefaultSettings)
+    }
+}

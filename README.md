@@ -66,6 +66,9 @@ Notes:
 - Settings live in `~/Library/Application Support/gitk-swift/settings.json`.
   Set `GITK_SWIFT_CONFIG_DIR` to use another directory, which is also how to
   run the app without touching your real preferences.
+- `--default-settings` starts with the built-in defaults, without reading
+  `settings.json` or the Tcl gitk config, and saves nothing on quit. Use it to
+  check whether a problem comes from your preferences.
 
 ## Repository layout
 
