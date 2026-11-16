@@ -263,7 +263,7 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
             }
         }
         cell.attributedHeadline = cellText(headline, position: 0, row: row)
-        cell.setBoundsOrigin(NSPoint(x: firstColumnOffset, y: 0))
+        cell.contentOffset = firstColumnOffset
         let contentEnd = CGFloat(geometry?.textX ?? 0) + cell.attributedHeadline.size().width
         firstColumnContent = max(firstColumnContent, contentEnd)
         return cell
@@ -468,8 +468,7 @@ final class CommitListController: NSObject, NSTableViewDataSource, NSTableViewDe
         let visible = tableView.rows(in: scrollView.contentView.documentVisibleRect)
         for row in visible.location..<min(tableView.numberOfRows, visible.location + visible.length) {
             guard let cell = tableView.view(atColumn: 0, row: row, makeIfNecessary: false) as? GraphCellView else { continue }
-            cell.setBoundsOrigin(NSPoint(x: firstColumnOffset, y: 0))
-            cell.needsDisplay = true
+            cell.contentOffset = firstColumnOffset
         }
     }
 

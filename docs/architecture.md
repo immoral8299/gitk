@@ -44,6 +44,7 @@ Recorded during implementation:
 - 2026-11-14, cli-launch: `gitk-swift <path-to-repo> [args]` opens that repository when the path is a repository's top level, or when the working directory is not in a repository (`RepositoryArgument`). gitk always uses the working directory; a subdirectory of the current repository is still a path limit.
 - 2026-11-14, 11.1/11.5: A colour setting that still has gitk's default value (window, text, diff, link, find, graph line, merge, commit dot and ref label colours) is drawn with the app's pastel theme (Catppuccin Latte in light mode, Mocha in dark mode), so the app reads well in both appearances. A colour set in Preferences or `settings.json` is used exactly (`Palette`, `Theme`).
 - 2026-11-15, 10.1: The history list has a header row (Headline, Author, Date) whose dividers resize the columns, and the author and date columns fit their content with the headline taking the rest (`ColumnSizing`). gitk has no header and places the three panes at fixed sash positions (`pwsash0`, `pwsash1`), so its date pane can be cut off in a narrow window.
+- 2026-11-16, 10.10: The first column's horizontal scroll keeps the graph lanes and dots fixed and scrolls the ref labels and headline underneath them, and the headline is drawn at its full width rather than clipped to the column width. gitk scrolls that whole canvas, so its graph leaves the view while reading a long message.
 
 ## New strings
 

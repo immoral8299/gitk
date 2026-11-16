@@ -29,13 +29,15 @@ enum RefLabelDrawing {
         hitTest(x, labels: labels).flatMap { $0.kind == .head || $0.kind == .remote ? $0 : nil }
     }
 
-    /// Port of gitk proc `drawtags` (gitk/gitk 6753–6869).
-    static func draw(_ labels: [GraphRowGeometry.RefLabel], height: CGFloat, font listFont: NSFont, settings: UISettings) {
+    /// Port of gitk proc `drawtags` (gitk/gitk 6753–6869). `offset` is the
+    /// first column's horizontal scroll, applied to every label.
+    static func draw(_ labels: [GraphRowGeometry.RefLabel], height: CGFloat, font listFont: NSFont,
+                     settings: UISettings, offset: CGFloat = 0) {
         let font = Self.font(for: listFont)
         let delta = floor((height - 1) / 2)
         for label in labels {
             let isTag = label.kind == .tag || label.kind == .collapsedTags
-            let x = CGFloat(label.x)
+            let x = CGFloat(label.x) - offset
             let right = x + CGFloat(label.width) - height / 2
             let path = NSBezierPath()
             if isTag {

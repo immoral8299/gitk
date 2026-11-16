@@ -11,6 +11,10 @@ final class GraphCellView: NSTableCellView {
     var attributedHeadline = NSAttributedString() { didSet { needsDisplay = true } }
     var font = NSFont.systemFont(ofSize: 12) { didSet { needsDisplay = true } }
     var settings = UISettings() { didSet { needsDisplay = true } }
+    /// Horizontal scroll of the ref labels and headline. The graph lanes stay
+    /// put, so dots and lines remain visible while long ref names and messages
+    /// scroll under the text region.
+    var contentOffset: CGFloat = 0 { didSet { needsDisplay = true } }
     var onTagClick: ((GraphRowGeometry.RefLabel) -> Void)?
     var onArrowClick: ((Int) -> Void)?
     var onLineClick: ((CommitIndex) -> Void)?
@@ -27,6 +31,31 @@ final class GraphCellView: NSTableCellView {
         set {}
     }
     private var originX: CGFloat { floor(3 + 0.5 * bounds.height) }
+
+    /// The x where the scrolling content (ref labels and headline) begins: the
+    /// first label's left edge, or the headline's x when the row has no labels.
+    var graphContentStart: CGFloat {
+        guard let geometry else { return 0 }
+        return geometry.labels.first.map { CGFloat($0.x) } ?? CGFloat(geometry.textX)
+    }
+
+    /// The part of the cell where labels and text may draw. The graph lanes to
+    /// its left stay fixed and are never painted over.
+    var contentClipRect: NSRect {
+        NSRect(x: graphContentStart, y: 0, width: max(0, bounds.width - graphContentStart), height: bounds.height)
+    }
+
+    /// The headline's draw rect. It spans the whole attributed string rather
+    /// than stopping at the column edge, so horizontal scrolling reveals the
+    /// rest of a long message instead of blank space.
+    var textDrawRect: NSRect {
+        guard geometry != nil else { return .zero }
+        let textHeight = font.ascender - font.descender
+        let width = attributedHeadline.size().width + 2
+        return NSRect(x: CGFloat(geometry?.textX ?? 0) - contentOffset,
+                      y: (bounds.height - textHeight) / 2 - 1,
+                      width: max(0, width), height: bounds.height)
+    }
 
     private func point(_ value: GraphRowGeometry.Point) -> NSPoint {
         NSPoint(x: originX + CGFloat(value.column) * bounds.height, y: CGFloat(value.y) * bounds.height)
@@ -86,29 +115,44 @@ final class GraphCellView: NSTableCellView {
         Palette.dotOutline(settings).setStroke()
         path.lineWidth = 1
         path.stroke()
-        RefLabelDrawing.draw(geometry.labels, height: bounds.height, font: font, settings: settings)
+
+        // Labels and headline scroll sideways, clipped to the right of the
+        // graph so they never cover it.
+        NSGraphicsContext.saveGraphicsState()
+        NSBezierPath(rect: contentClipRect).addClip()
+        RefLabelDrawing.draw(geometry.labels, height: bounds.height, font: font,
+                             settings: settings, offset: contentOffset)
         if geometry.hasNotes {
             let side = max(3, radius * 2 - 1)
-            let rect = NSRect(x: CGFloat(geometry.textX) - bounds.height, y: bounds.midY - radius, width: side, height: side)
+            let rect = NSRect(x: CGFloat(geometry.textX) - contentOffset - bounds.height,
+                              y: bounds.midY - radius, width: side, height: side)
             Palette.notesMarker(settings).setFill()
             rect.fill()
             Palette.dotOutline(settings).setStroke()
             NSBezierPath(rect: rect).stroke()
         }
         let text = NSMutableAttributedString(attributedString: attributedHeadline)
+        if text.length > 0 {
+            // One line, clipped at the scroll offset rather than wrapped into
+            // the next row.
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.lineBreakMode = .byClipping
+            text.addAttribute(.paragraphStyle, value: paragraph,
+                              range: NSRange(location: 0, length: text.length))
+        }
         if backgroundStyle == .emphasized, text.length > 0 {
             text.addAttribute(.foregroundColor, value: NSColor.selectedTextColor, range: NSRange(location: 0, length: text.length))
         }
-        let textHeight = font.ascender - font.descender
-        MatchBoxes.draw(text, at: NSPoint(x: CGFloat(geometry.textX), y: (bounds.height - textHeight) / 2 - 1), height: textHeight)
-        text.draw(in: NSRect(x: CGFloat(geometry.textX), y: (bounds.height - textHeight) / 2 - 1,
-            width: max(0, bounds.width - CGFloat(geometry.textX)), height: bounds.height))
+        let textRect = textDrawRect
+        MatchBoxes.draw(text, at: textRect.origin, height: font.ascender - font.descender)
+        text.draw(in: textRect)
+        NSGraphicsContext.restoreGraphicsState()
         setAccessibilityLabel(attributedHeadline.string)
     }
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        if let geometry, let label = RefLabelDrawing.tagLabel(at: point.x, labels: geometry.labels),
+        if let geometry, let label = RefLabelDrawing.tagLabel(at: point.x + contentOffset, labels: geometry.labels),
            let onTagClick {
             onTagClick(label)
             return
@@ -144,7 +188,7 @@ final class GraphCellView: NSTableCellView {
 
     override func rightMouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        if let geometry, let label = RefLabelDrawing.headLabel(at: point.x, labels: geometry.labels),
+        if let geometry, let label = RefLabelDrawing.headLabel(at: point.x + contentOffset, labels: geometry.labels),
            let menu = onHeadMenu?(label, event) {
             NSMenu.popUpContextMenu(menu, with: event, for: self)
             return
