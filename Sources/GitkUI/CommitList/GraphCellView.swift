@@ -152,7 +152,7 @@ final class GraphCellView: NSTableCellView {
                               range: NSRange(location: 0, length: text.length))
         }
         if backgroundStyle == .emphasized, text.length > 0 {
-            text.addAttribute(.foregroundColor, value: NSColor.selectedTextColor, range: NSRange(location: 0, length: text.length))
+            text.addAttribute(.foregroundColor, value: NSColor.alternateSelectedControlTextColor, range: NSRange(location: 0, length: text.length))
         }
         let textRect = textDrawRect
         MatchBoxes.draw(text, at: textRect.origin, height: font.ascender - font.descender)
