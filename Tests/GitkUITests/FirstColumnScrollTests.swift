@@ -55,4 +55,12 @@ import Testing
         #expect(cell.contentClipRect.minX == 80)
         #expect(cell.textDrawRect.minX == 80)
     }
+
+    @Test func graphIsClippedBeforeTheContent() {
+        let labelled = makeCell(labels: [headLabel])
+        #expect(labelled.graphClipRect.maxX == 99)
+        labelled.contentOffset = 60
+        #expect(labelled.graphClipRect.maxX == 99)
+        #expect(makeCell(labels: []).graphClipRect.maxX == 79)
+    }
 }

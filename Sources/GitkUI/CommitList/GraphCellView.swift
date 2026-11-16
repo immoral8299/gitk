@@ -45,6 +45,14 @@ final class GraphCellView: NSTableCellView {
         NSRect(x: graphContentStart, y: 0, width: max(0, bounds.width - graphContentStart), height: bounds.height)
     }
 
+    /// The part of the cell where the graph lanes, arrows and dot may draw.
+    /// When the graph is wider than the width limit the text starts at the
+    /// limit, and the lanes past it are cut off rather than drawn through the
+    /// text. Ends 1pt short so a lane centred on the limit does not show.
+    var graphClipRect: NSRect {
+        NSRect(x: 0, y: 0, width: max(0, graphContentStart - 1), height: bounds.height)
+    }
+
     /// The headline's draw rect. It spans the whole attributed string rather
     /// than stopping at the column edge, so horizontal scrolling reveals the
     /// rest of a long message instead of blank space.
@@ -69,6 +77,8 @@ final class GraphCellView: NSTableCellView {
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         guard let geometry else { return }
+        NSGraphicsContext.saveGraphicsState()
+        NSBezierPath(rect: graphClipRect).addClip()
         for segment in geometry.segments {
             let path = NSBezierPath()
             path.move(to: point(segment.from))
@@ -115,6 +125,7 @@ final class GraphCellView: NSTableCellView {
         Palette.dotOutline(settings).setStroke()
         path.lineWidth = 1
         path.stroke()
+        NSGraphicsContext.restoreGraphicsState()
 
         // Labels and headline scroll sideways, clipped to the right of the
         // graph so they never cover it.
