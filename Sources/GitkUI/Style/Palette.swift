@@ -21,6 +21,21 @@ enum Palette {
                        blue: CGFloat(rgba.b) / 255, alpha: CGFloat(rgba.a) / 255)
     }
 
+    // MARK: Shapes
+
+    /// Corner radius shared by ref labels (list and sidebar), match boxes and
+    /// the sidebar's commit ID.
+    nonisolated static let cornerRadius: CGFloat = 3
+    /// How far a match box or sidebar ref label extends past its text on each side.
+    nonisolated static let matchBoxOutset: CGFloat = 1
+
+    // MARK: Controls
+
+    /// Fill behind a clickable inline value (the sidebar's commit ID).
+    static let inlineControlFill = NSColor.quaternarySystemFill
+    static let inlineControlFillHovered = NSColor.tertiarySystemFill
+    static let inlineControlFillPressed = NSColor.secondarySystemFill
+
     private static let defaults = Settings()
 
     private static func isDefault(_ value: String, _ gitkDefault: String) -> Bool {
@@ -126,12 +141,6 @@ enum Palette {
         let value = kind == .tag ? s.tagFgColor : s.headFgColor
         let gitk = kind == .tag ? defaults.tagFgColor : defaults.headFgColor
         return resolve(value, gitkDefault: gitk, Theme.Label.text)
-    }
-
-    static func refOutline(_ s: Settings, _ kind: Ref) -> NSColor {
-        let value = kind == .tag ? s.tagOutlineColor : s.headOutlineColor
-        let gitk = kind == .tag ? defaults.tagOutlineColor : defaults.headOutlineColor
-        return resolve(value, gitkDefault: gitk, .clear)
     }
 }
 

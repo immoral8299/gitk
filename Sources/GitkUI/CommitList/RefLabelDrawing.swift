@@ -7,11 +7,26 @@ import GitkCore
 
 @MainActor
 enum RefLabelDrawing {
+    /// Smallest point size for label text.
+    private static let minimumFontSize: CGFloat = 9
+    /// How many points smaller than the list font the label text is.
+    private static let fontSizeReduction: CGFloat = 1
+    /// Space between a label and the row's top and bottom edges.
+    private static let rowInset: CGFloat = 1
+    /// Narrowest a head label's rectangle can get.
+    private static let minimumLabelWidth: CGFloat = 1
+    /// Vertical adjustment applied to the centred text position.
+    private static let textOffset: CGFloat = 1
+    /// Extra width after a tag's name, so the text clears the rounded corners.
+    /// Passed to `addingRefLabels(tagPadding:)` so hit-testing matches.
+    static let tagRightPadding: CGFloat = 3
+
     /// Branch and tag names are set in the monospaced system font, a point
     /// smaller than the list font so they sit inside the row. Label widths
     /// must be measured with this font too.
     static func font(for listFont: NSFont, bold: Bool = false) -> NSFont {
-        NSFont.monospacedSystemFont(ofSize: max(9, listFont.pointSize - 1), weight: bold ? .bold : .regular)
+        NSFont.monospacedSystemFont(ofSize: max(minimumFontSize, listFont.pointSize - fontSizeReduction),
+                                    weight: bold ? .bold : .regular)
     }
 
     static func hitTest(_ x: CGFloat, labels: [GraphRowGeometry.RefLabel]) -> GraphRowGeometry.RefLabel? {
@@ -33,40 +48,49 @@ enum RefLabelDrawing {
     /// first column's horizontal scroll, applied to every label.
     static func draw(_ labels: [GraphRowGeometry.RefLabel], height: CGFloat, font listFont: NSFont,
                      settings: UISettings, offset: CGFloat = 0) {
-        let font = Self.font(for: listFont)
-        let delta = floor((height - 1) / 2)
+        let top = rowInset
+        let bottom = height - rowInset
+        let delta = floor((bottom - top) / 2)
         for label in labels {
             let isTag = label.kind == .tag || label.kind == .collapsedTags
             let x = CGFloat(label.x) - offset
             let right = x + CGFloat(label.width) - height / 2
-            let path = NSBezierPath()
+            let path: NSBezierPath
             if isTag {
-                path.move(to: NSPoint(x: x, y: delta))
-                path.line(to: NSPoint(x: x + delta, y: 0))
-                path.line(to: NSPoint(x: right, y: 0))
-                path.line(to: NSPoint(x: right, y: height - 1))
-                path.line(to: NSPoint(x: x + delta, y: height - 1))
-                path.line(to: NSPoint(x: x, y: height - delta - 1))
+                // Pointed on the left as in gitk, rounded on the right.
+                path = NSBezierPath()
+                path.move(to: NSPoint(x: x, y: top + delta))
+                path.line(to: NSPoint(x: x + delta, y: top))
+                path.appendArc(from: NSPoint(x: right, y: top), to: NSPoint(x: right, y: bottom), radius: Palette.cornerRadius)
+                path.appendArc(from: NSPoint(x: right, y: bottom), to: NSPoint(x: x + delta, y: bottom), radius: Palette.cornerRadius)
+                path.line(to: NSPoint(x: x + delta, y: bottom))
+                path.line(to: NSPoint(x: x, y: bottom - delta))
                 path.close()
-            } else { path.appendRect(NSRect(x: x, y: 0, width: max(1, right - x), height: height - 1)) }
+            } else {
+                path = NSBezierPath(roundedRect: NSRect(x: x, y: top, width: max(minimumLabelWidth, right - x), height: bottom - top),
+                                    xRadius: Palette.cornerRadius, yRadius: Palette.cornerRadius)
+            }
             let kind: Palette.Ref = isTag ? .tag : (label.kind == .other ? .other : .head)
+            let labelFont = Self.font(for: listFont, bold: label.isBold)
+            let textX = x + (isTag ? delta : floor(delta / 2))
             Palette.refBackground(settings, kind).setFill()
             path.fill()
-            Palette.refOutline(settings, kind).setStroke()
-            path.lineWidth = 1
-            path.stroke()
             if let prefix = label.remotePrefix {
-                let width = (prefix as NSString).size(withAttributes: [.font: font]).width
+                // The prefix colour covers the label's left end up to where the
+                // branch name starts, clipped to the label's shape.
+                let prefixEnd = textX + (prefix as NSString).size(withAttributes: [.font: labelFont]).width
+                NSGraphicsContext.saveGraphicsState()
+                path.addClip()
                 Palette.refBackground(settings, .remote).setFill()
-                NSRect(x: x + 1, y: 1, width: min(width, max(0, right - x - 1)), height: max(0, height - 2)).fill()
+                NSRect(x: x, y: top, width: max(0, min(prefixEnd, right) - x), height: bottom - top).fill()
+                NSGraphicsContext.restoreGraphicsState()
             }
-            let labelFont = Self.font(for: listFont, bold: label.isBold)
             let text: String
             if label.kind == .collapsedTags {
                 // gitk draws these untranslated (gitk/gitk 6776–6781).
                 text = label.tagCount == 1 ? "tag..." : "\(label.tagCount) tags..."
             } else { text = label.text }
-            (text as NSString).draw(at: NSPoint(x: x + (isTag ? delta : floor(delta / 2)), y: (height - labelFont.ascender + labelFont.descender) / 2 - 1),
+            (text as NSString).draw(at: NSPoint(x: textX, y: (height - labelFont.ascender + labelFont.descender) / 2 - textOffset),
                 withAttributes: [.font: labelFont, .foregroundColor: Palette.refForeground(settings, kind)])
         }
     }

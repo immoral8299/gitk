@@ -222,9 +222,10 @@ enum MatchBoxes {
             guard let colour = value as? NSColor else { return }
             let before = text.attributedSubstring(from: NSRange(location: 0, length: range.location)).size().width
             let width = text.attributedSubstring(from: range).size().width
-            let box = NSRect(x: origin.x + before - 1, y: origin.y, width: width + 2, height: height)
+            let box = NSRect(x: origin.x + before, y: origin.y, width: width, height: height)
+                .insetBy(dx: -Palette.matchBoxOutset, dy: 0)
             colour.setFill()
-            NSBezierPath(roundedRect: box, xRadius: 3, yRadius: 3).fill()
+            NSBezierPath(roundedRect: box, xRadius: Palette.cornerRadius, yRadius: Palette.cornerRadius).fill()
         }
     }
 }

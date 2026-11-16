@@ -21,8 +21,9 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
     private let nameLabel = NSTextField(labelWithString: "")
     private let dateLabel = NSTextField(labelWithString: "")
     private let emailLabel = NSTextField(labelWithString: "")
-    let idButton = NSButton(title: "", target: nil, action: nil)
-    private let refsLabel = NSTextField(labelWithString: "")
+    let idButton = CopyIDButton()
+    /// Branch and tag names as rounded labels (match boxes in `AutoHeightTextView`).
+    private let refsView = AutoHeightTextView()
     /// The monogram and name block, hidden while a tag is shown.
     private var identityView: NSView!
     private let rowsView = AutoHeightTextView()
@@ -96,16 +97,15 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         NSLayoutConstraint.activate([monogram.widthAnchor.constraint(equalToConstant: 36),
                                      monogram.heightAnchor.constraint(equalToConstant: 36)])
 
-        idButton.isBordered = false
-        idButton.font = .monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
-        idButton.contentTintColor = .secondaryLabelColor
-        idButton.lineBreakMode = .byTruncatingMiddle
-        idButton.alignment = .left
         idButton.target = self
         idButton.action = #selector(copyID)
         idButton.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        refsLabel.lineBreakMode = .byWordWrapping
-        refsLabel.maximumNumberOfLines = 0
+        refsView.isEditable = false
+        refsView.isSelectable = false
+        refsView.drawsBackground = false
+        refsView.textContainerInset = .zero
+        // Room for the label boxes, which extend past the text.
+        refsView.textContainer?.lineFragmentPadding = Palette.matchBoxOutset
 
         for view in [rowsView, messageView] {
             view.delegate = self
@@ -121,8 +121,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         moreButton.target = self
         moreButton.action = #selector(toggleMore)
 
-        let commitBody = Self.column([identity, idButton, refsLabel, rowsView], spacing: 8)
-        commitBody.setCustomSpacing(2, after: idButton)
+        let commitBody = Self.column([identity, idButton, refsView, rowsView], spacing: 8)
         commitSection = SidebarSection(title: L("Commit"), body: commitBody, showsDivider: false)
         messageSection = SidebarSection(title: L("Message"), body: Self.column([messageView, moreButton], spacing: 4))
         filesSection = SidebarSection(title: "", body: fileList.view, padded: false)
@@ -211,9 +210,8 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         emailLabel.stringValue = header.authorEmail
         emailLabel.isHidden = header.authorEmail.isEmpty
         idButton.title = header.id.hex
-        idButton.toolTip = header.id.hex
-        refsLabel.attributedStringValue = refsText(header.refs, id: header.id, session: session)
-        refsLabel.isHidden = header.refs.isEmpty
+        setText(refsView, refsText(header.refs, id: header.id, session: session))
+        refsView.isHidden = header.refs.isEmpty
         shownHeader = header
         identityView.isHidden = false
         idButton.isHidden = false
@@ -241,7 +239,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         commitSection.title = L("Tag")
         identityView.isHidden = true
         idButton.isHidden = true
-        refsLabel.isHidden = true
+        refsView.isHidden = true
         setText(rowsView, tagRowsText(tags, session: session))
         let messages = tags.map(\.message).filter { !$0.isEmpty }
         messageSection.isHidden = messages.isEmpty
@@ -262,7 +260,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         commitSection.title = L("Parent")
         identityView.isHidden = true
         idButton.isHidden = true
-        refsLabel.isHidden = true
+        refsView.isHidden = true
         messageSection.isHidden = true
         filesSection.isHidden = true
         fileList.update(nil)
@@ -315,7 +313,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         commitSection.title = L("Commit")
         identityView.isHidden = true
         idButton.isHidden = true
-        refsLabel.isHidden = true
+        refsView.isHidden = true
         messageSection.isHidden = true
         func headline(_ id: ObjectID) -> String {
             guard let commit = session.store.index(of: id), session.store.isLoaded(commit) else { return "" }
@@ -400,13 +398,16 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         let tags = Set(session.refs.tags(of: id))
         let result = NSMutableAttributedString()
         let font = NSFont.monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineSpacing = 3  // keeps wrapped rows of labels apart
         for (n, ref) in refs.enumerated() {
-            if n > 0 { result.append(NSAttributedString(string: "  ", attributes: [.font: font])) }
+            if n > 0 { result.append(NSAttributedString(string: " ", attributes: [.font: font, .paragraphStyle: paragraph])) }
             let isTag = tags.contains(ref)
-            result.append(NSAttributedString(string: " \(ref) ", attributes: [
-                .font: font,
+            // No-break spaces pad the name inside its box and keep the box on one line.
+            result.append(NSAttributedString(string: "\u{00A0}\(ref)\u{00A0}", attributes: [
+                .font: font, .paragraphStyle: paragraph,
                 .foregroundColor: Palette.refForeground(settings, isTag ? .tag : .head),
-                .backgroundColor: Palette.refBackground(settings, isTag ? .tag : .head),
+                MatchBoxes.key: Palette.refBackground(settings, isTag ? .tag : .head),
             ]))
         }
         return result
@@ -496,6 +497,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
         guard let shownID else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(shownID.hex, forType: .string)
+        idButton.showCopied()
     }
 
     /// The subject only, or the whole message and notes when expanded.
@@ -594,14 +596,26 @@ final class AutoHeightTextView: NSTextView {
     /// Match boxes (`MatchBoxes.key`) behind the text, as in the list.
     override func drawBackground(in rect: NSRect) {
         super.drawBackground(in: rect)
-        guard let storage = textStorage, let manager = layoutManager, let container = textContainer, storage.length > 0 else { return }
+        guard let storage = textStorage, let manager = layoutManager, storage.length > 0 else { return }
         storage.enumerateAttribute(MatchBoxes.key, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
             guard let colour = value as? NSColor else { return }
             let glyphs = manager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
-            manager.enumerateEnclosingRects(forGlyphRange: glyphs, withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0), in: container) { box, _ in
-                let r = box.offsetBy(dx: self.textContainerOrigin.x, dy: self.textContainerOrigin.y).insetBy(dx: -1, dy: 0)
+            let font = storage.attribute(.font, at: range.location, effectiveRange: nil) as? NSFont ?? self.font
+            // One box per line, as tall as the font rather than the line, so
+            // line spacing stays visible between wrapped rows of boxes.
+            manager.enumerateLineFragments(forGlyphRange: glyphs) { line, _, container, lineGlyphs, _ in
+                let part = NSIntersectionRange(lineGlyphs, glyphs)
+                guard part.length > 0 else { return }
+                var box = manager.boundingRect(forGlyphRange: part, in: container)
+                if let font {
+                    let baseline = line.minY + manager.location(forGlyphAt: part.location).y
+                    box.origin.y = baseline - font.ascender
+                    box.size.height = font.ascender - font.descender
+                }
+                let r = box.offsetBy(dx: self.textContainerOrigin.x, dy: self.textContainerOrigin.y)
+                    .insetBy(dx: -Palette.matchBoxOutset, dy: 0)
                 colour.setFill()
-                NSBezierPath(roundedRect: r, xRadius: 3, yRadius: 3).fill()
+                NSBezierPath(roundedRect: r, xRadius: Palette.cornerRadius, yRadius: Palette.cornerRadius).fill()
             }
         }
     }

@@ -51,6 +51,8 @@ Recorded during implementation:
 - 2026-11-16, cli-launch: Launched outside a repository with no revisions or paths (only options, or nothing), the app opens a window saying "Cannot find a git repository here." and shows a folder chooser as a sheet on it (`RepositoryPickerWindowController`); the chosen repository then opens with those options. Cancelling leaves the window with an Open Repository button, and closing it quits. gitk exits straight away. With `GITK_SWIFT_HEADLESS_ERRORS=1`, or when revisions or paths were given, the app still exits with gitk's error. The chooser is a sheet, not `runModal()`, because a modal run loop inside the async start-up task blocks the main actor.
 - 2026-11-16, cli-launch: `--default-settings` (not in gitk) starts with the built-in settings, reads neither `settings.json` nor the Tcl gitk config, and saves nothing on quit. It is removed from the options before they reach git.
 - 2026-11-16, launch: When `DYLD_LIBRARY_PATH` or `DYLD_FALLBACK_LIBRARY_PATH` is set, gitk-swift re-executes itself without them. On macOS 27 those paths make ImageIO load Homebrew's libpng/libtiff and crash (SIGBUS) whenever CoreText draws an emoji; gitk draws its text through Tk, so it never hits that decoder. A terminal launch prints one line saying why it restarted.
+- 2026-11-16, ui: Ref labels in the history list have no outline (gitk draws one in the head and tag outline colours), heads have rounded corners, and tags keep gitk's pointed left end but have rounded right corners and 3 pt more width after the name. A remote branch's prefix colour fills the label edge to edge up to the branch name. The sidebar's ref labels are rounded boxes too.
+- 2026-11-16, ui: The sidebar's commit ID sits on a dim rounded fill, brightens on hover and shows a "Copy" hint at once instead of a delayed tooltip with the full ID; clicking it copies the ID and shows "Copied!" for half a second.
 
 ## New strings
 
@@ -58,6 +60,7 @@ User-visible strings with no gitk msgid. These have no translations.
 
 - `Settings…`
 - `Copy`
+- `Copied!`
 - `Paste`
 - `Select all`
 - `Search commits…`

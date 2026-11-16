@@ -153,9 +153,10 @@ public struct GraphRowGeometry: Sendable, Equatable {
 
     /// Port of gitk procs `drawtags` and `drawnotesign` (6753–6880).
     /// The measuring closure is supplied by the UI's actual font metrics.
+    /// `tagPadding` widens tag labels beyond gitk's size (0 keeps gitk's).
     public func addingRefLabels(
         refs: RefSet, store: CommitStore, columnWidth: Double,
-        lineSpacing: Double = 18, lineThickness: Double = 1,
+        lineSpacing: Double = 18, lineThickness: Double = 1, tagPadding: Double = 0,
         measure: (String, Bool) -> Double
     ) -> GraphRowGeometry {
         var result = self
@@ -175,7 +176,8 @@ public struct GraphRowGeometry: Sendable, Equatable {
         var x = textX
         result.labels = labels.map { name, text, kind, count in
             let bold = (kind == .head || kind == .remote) && name == refs.mainHeadName
-            let width = measure(text, bold) + extra
+            let isTag = kind == .tag || kind == .collapsedTags
+            let width = measure(text, bold) + extra + (isTag ? tagPadding : 0)
             let prefix: String?
             if kind == .remote {
                 let parts = name.split(separator: "/", omittingEmptySubsequences: false)
