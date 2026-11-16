@@ -355,8 +355,8 @@ final class ClosureMenuItem: NSMenuItem {
 final class FileRowView: NSTableCellView {
     static let id = NSUserInterfaceItemIdentifier("fileRow")
     private let icon = NSImageView()
-    private let name = NSTextField(labelWithString: "")
-    private let counts = NSTextField(labelWithString: "")
+    private(set) var name = NSTextField(labelWithString: "")
+    private(set) var counts = NSTextField(labelWithString: "")
     private var leading: NSLayoutConstraint?
 
     init() {
@@ -368,7 +368,10 @@ final class FileRowView: NSTableCellView {
             field.cell?.truncatesLastVisibleLine = true
         }
         name.lineBreakMode = .byTruncatingTail
-        name.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        // Below the stack's clipping resistance (defaultLow): at equal priority
+        // the stack may clip the counts off the row's end instead of truncating
+        // the name, e.g. when a streamed diff makes the counts wider.
+        name.setContentCompressionResistancePriority(.init(100), for: .horizontal)
         name.setContentHuggingPriority(.init(1), for: .horizontal)
         counts.alignment = .right
         counts.setContentCompressionResistancePriority(.required, for: .horizontal)
