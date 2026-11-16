@@ -146,6 +146,8 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
         grid.rowSpacing = 8
         grid.columnSpacing = 8
         grid.column(at: 0).xPlacement = .trailing
+        // Line each label up with its pop-up's text, not the top of the row.
+        grid.rowAlignment = .firstBaseline
         grid.translatesAutoresizingMaskIntoConstraints = false
         let content = NSView()
         content.addSubview(grid)
