@@ -691,7 +691,7 @@ Order of work:
 
 ## 20. Integration, packaging and parity sign-off
 
-- [x] 20.1 [S] Write `Tools/make-app.sh` (an `.app` bundle with `Info.plist`, a placeholder icon and the resource bundle) and Makefile `app`/`install PREFIX=` targets — Verify: `make app && open -a "./out/gitk (Native).app" --args` from within a fixture opens the window; `make install PREFIX=/tmp/gs` produces `/tmp/gs/bin/gitk-swift`, which runs.
+- [x] 20.1 [S] Write `Tools/make-app.sh` (an `.app` bundle with `Info.plist`, the icon compiled from `Tools/icon.icon` and the resource bundle) and Makefile `app`/`install PREFIX=` targets — Verify: `make app && open -a "./out/gitk (Native).app" --args` from within a fixture opens the window; `make install PREFIX=/tmp/gs` produces `/tmp/gs/bin/gitk-swift`, which runs.
   - Files: `Tools/make-app.sh`, `Makefile`.
   - Needs: 9.2.
 - [ ] 20.2 [M] Fill in `docs/spec-coverage.md` so every scenario in `specs/**/spec.md` maps to a passing test or a numbered step in `docs/smoke-test.md`; write the smoke steps for the UI-only scenarios — Verify: a script `Tools/check-coverage.sh` reports 0 scenarios without a mapping.

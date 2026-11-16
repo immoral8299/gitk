@@ -6,7 +6,7 @@
 # Usage: Tools/make-app.sh [output-dir]
 #
 # Builds the release executable and assembles "<output-dir>/gitk (Native).app"
-# (default: "out/gitk (Native).app") with Info.plist, a placeholder icon, the
+# (default: "out/gitk (Native).app") with Info.plist, the app icon, the
 # executable and the SwiftPM resource bundles. The generated Bundle.module
 # accessor checks Bundle.main.resourceURL first, which is Contents/Resources in
 # an app bundle, so the bundles go there.
@@ -62,7 +62,9 @@ cat > "$app/Contents/Info.plist" <<PLIST
     <key>CFBundleExecutable</key>
     <string>gitk-swift</string>
     <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
+    <string>icon</string>
+    <key>CFBundleIconName</key>
+    <string>icon</string>
     <key>CFBundleIdentifier</key>
     <string>org.gitk-swift.app</string>
     <key>CFBundleInfoDictionaryVersion</key>
@@ -89,47 +91,25 @@ cat > "$app/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# Placeholder icon: a flat square with a plain ring, generated with the
-# Python standard library and converted with iconutil.
+# App icon: Tools/icon.icon (Icon Composer) compiled by actool into
+# Assets.car (the macOS 26 layered icon) and icon.icns (earlier releases).
+# The --app-icon name is the .icon file's name, and Info.plist refers to it.
+if ! xcrun --find actool >/dev/null 2>&1; then
+    echo "make-app.sh: actool not found; install Xcode 26 or later" >&2
+    exit 1
+fi
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/gitk-swift-icon.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
-python3 -I - "$tmp/icon-1024.png" <<'PY'
-import struct, sys, zlib
-
-size = 1024
-bg = (0x3A, 0x6E, 0xA5)
-fg = (0xF2, 0xF2, 0xF2)
-rows = []
-for y in range(size):
-    row = bytearray([0])  # filter type: none
-    for x in range(size):
-        dx, dy = x - size / 2, y - size / 2
-        d2 = dx * dx + dy * dy
-        inside_ring = (size * 0.28) ** 2 <= d2 <= (size * 0.36) ** 2
-        row += bytes(fg if inside_ring else bg)
-    rows.append(bytes(row))
-
-def chunk(tag, data):
-    body = tag + data
-    return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
-
-png = b"\x89PNG\r\n\x1a\n"
-png += chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 2, 0, 0, 0))
-png += chunk(b"IDAT", zlib.compress(b"".join(rows), 9))
-png += chunk(b"IEND", b"")
-with open(sys.argv[1], "wb") as f:
-    f.write(png)
-PY
-
-iconset="$tmp/AppIcon.iconset"
-mkdir -p "$iconset"
-for spec in 16:icon_16x16 32:icon_16x16@2x 32:icon_32x32 64:icon_32x32@2x \
-            128:icon_128x128 256:icon_128x128@2x 256:icon_256x256 \
-            512:icon_256x256@2x 512:icon_512x512 1024:icon_512x512@2x; do
-    px=${spec%%:*}
-    name=${spec#*:}
-    sips -z "$px" "$px" "$tmp/icon-1024.png" --out "$iconset/$name.png" >/dev/null
+xcrun actool "$root/Tools/icon.icon" --compile "$app/Contents/Resources" \
+    --app-icon icon --platform macosx --target-device mac \
+    --minimum-deployment-target 14.0 --enable-on-demand-resources NO \
+    --development-region en --output-partial-info-plist "$tmp/icon.plist" \
+    --output-format human-readable-text >/dev/null
+for f in Assets.car icon.icns; do
+    if [ ! -f "$app/Contents/Resources/$f" ]; then
+        echo "make-app.sh: actool did not produce $f" >&2
+        exit 1
+    fi
 done
-iconutil -c icns "$iconset" -o "$app/Contents/Resources/AppIcon.icns"
 
 echo "$app"

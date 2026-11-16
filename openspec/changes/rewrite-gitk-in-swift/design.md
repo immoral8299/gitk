@@ -192,7 +192,7 @@ The executable is named `gitk-swift` so it does not clash with git's own `gitk`.
 - `.gitignore`: `.build/`, `.swiftpm/`, `*.xcodeproj`, `/out/`.
 
 ### D14. Packaging
-`swift build -c release` produces `gitk-swift`, which runs from the terminal as a regular foreground app (cli-launch "Foreground activation"). It calls `NSApplication.shared.setActivationPolicy(.regular)` and `activate()`, and resources come from the SwiftPM resource bundle next to the binary. `Tools/make-app.sh` also wraps it into `gitk (Native).app` with an `Info.plist` and icon. `make install PREFIX=…` installs the binary and its resource bundle.
+`swift build -c release` produces `gitk-swift`, which runs from the terminal as a regular foreground app (cli-launch "Foreground activation"). It calls `NSApplication.shared.setActivationPolicy(.regular)` and `activate()`, and resources come from the SwiftPM resource bundle next to the binary. `Tools/make-app.sh` also wraps it into `gitk (Native).app` with an `Info.plist` and the icon from `Tools/icon.icon`. `make install PREFIX=…` installs the binary and its resource bundle.
 
 ### D15. Native appearance: current-macOS chrome, Liquid Glass behind `#available`
 
@@ -256,7 +256,7 @@ Not applicable for deployment. This is a new binary installed alongside Tcl gitk
 
 ## Open Questions
 
-- App icon artwork. Packaging uses a placeholder until one is provided, and nothing else depends on it.
+- App icon artwork. `Tools/icon.icon` (Icon Composer) is compiled by `actool` when packaging, so `make app` needs Xcode 26 or later; nothing else depends on it.
 - Whether to register a `gitk` alias in `make install`. This can be decided at packaging time; the default is no alias.
 - Whether the sidebar should show a "View on GitHub" link when the repository has an HTTPS GitHub remote. The default is no external link until that is decided; the sidebar already shows the full ID and refs.
 - Whether sidebar avatars should ever be fetched from a remote service. The default is the author's initials in a coloured monogram, so the app makes no network requests.
