@@ -49,7 +49,7 @@ The app SHALL find the repository the way git does from the current working dire
 
 #### Scenario: Not a repository, no revisions or paths
 - **WHEN** the app is started outside any git repository with no arguments, or only options
-- **THEN** it shows a folder chooser with "Cannot find a git repository here.", opens the chosen repository with those options, asks again if the folder is not a repository, and exits with a non-zero status if cancelled
+- **THEN** it opens a window saying "Cannot find a git repository here." with a folder chooser on it, opens the chosen repository with those options, and asks again if the folder is not a repository; after a cancel the window offers an Open Repository button, and closing it quits
 
 #### Scenario: Started from a subdirectory
 - **WHEN** the app is started in a subdirectory of a work tree

@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var startup: StartupContext?
     private(set) var launch: LaunchArguments?
     private(set) var mainWindowController: MainWindowController?
+    private var repositoryPicker: RepositoryPickerWindowController?
 
     init(arguments: [String], environment: [String: String]) {
         self.arguments = arguments
@@ -38,30 +39,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// call; then `StartupChecks` (gitk 20–34, 12601, 12828) and
     /// `LaunchArguments` (gitk 12840–12893). A failure goes to stderr when
     /// `GITK_SWIFT_HEADLESS_ERRORS=1`, else to an alert; the exit status is 1.
+    /// Outside a repository the picker window may ask for one instead.
     private func start() async {
         LanguageOverride.apply(environment: environment)
         // `gitk-swift <path-to-repo> [args]` opens that repository (RepositoryArgument).
         let launchDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
         let repository = await RepositoryArgument.extract(arguments, cwd: launchDirectory)
-        var cwd = repository.cwd
-        let arguments = repository.arguments
-        if cwd != launchDirectory { FileManager.default.changeCurrentDirectoryPath(cwd.path) }
+        await open(cwd: repository.cwd, arguments: repository.arguments)
+    }
+
+    /// Runs the checks in `cwd` and opens the main window. Outside a
+    /// repository, when `offersRepositoryPicker` allows it, the picker window
+    /// asks for one and calls this again with the chosen folder.
+    private func open(cwd: URL, arguments: [String]) async {
+        if cwd.path != FileManager.default.currentDirectoryPath {
+            FileManager.default.changeCurrentDirectoryPath(cwd.path)
+        }
         let alerts = Alerts(environment: environment)
 
         do {
-            while true {
-                do {
-                    startup = try await StartupChecks(cwd: cwd, environment: environment).run()
-                    break
-                } catch StartupError.notARepository
-                            where Self.offersRepositoryPicker(arguments: arguments, environment: environment) {
-                    guard let picked = Self.chooseRepository(startingAt: cwd) else { exit(1) }
-                    cwd = picked
-                    FileManager.default.changeCurrentDirectoryPath(cwd.path)
-                }
-            }
+            startup = try await StartupChecks(cwd: cwd, environment: environment).run()
             launch = try await LaunchArguments.parse(
                 argv: arguments, repo: cwd, environment: environment)
+        } catch StartupError.notARepository
+                    where Self.offersRepositoryPicker(arguments: arguments, environment: environment) {
+            showRepositoryPicker(startingAt: cwd, arguments: arguments)
+            return
         } catch let e as StartupError {
             if case .unknownHashAlgorithm = e {
                 // Spec: written to stderr, never an alert.
@@ -84,6 +87,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         guard let startup, let launch else { return }
         openMainWindow(startup: startup, launch: launch, cwd: cwd)
+        repositoryPicker?.close()
+        repositoryPicker = nil
     }
 
     /// Launched outside a repository (from Finder, or a shell in another
@@ -95,20 +100,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         environment[Alerts.headlessErrorsKey] != "1" && arguments.allSatisfy { $0.hasPrefix("-") && $0 != "--" }
     }
 
-    /// Asks for a repository folder; nil when the person cancels.
-    private static func chooseRepository(startingAt directory: URL) -> URL? {
-        NSApp.activate()
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = false
-        panel.message = L("Cannot find a git repository here.") + " " + L("Choose a repository to open.")
-        panel.prompt = L("Open")
-        panel.directoryURL = directory.path == "/"
-            ? FileManager.default.homeDirectoryForCurrentUser : directory
-        guard panel.runModal() == .OK else { return nil }
-        return panel.url
+    /// Shows the picker window, then the folder chooser as a sheet on it. A
+    /// folder that is not a repository comes back here and asks again.
+    private func showRepositoryPicker(startingAt directory: URL, arguments: [String]) {
+        let picker = repositoryPicker ?? RepositoryPickerWindowController()
+        repositoryPicker = picker
+        picker.onChoose = { [weak self] url in
+            Task { await self?.open(cwd: url, arguments: arguments) }
+        }
+        picker.present(startingAt: directory)
     }
 
     private func openMainWindow(startup: StartupContext, launch: LaunchArguments, cwd: URL) {
