@@ -392,6 +392,7 @@ final class DetailsSidebar: NSView, NSTextViewDelegate {
     private func setText(_ view: AutoHeightTextView, _ text: NSAttributedString) {
         view.textStorage?.setAttributedString(text)
         view.invalidateIntrinsicContentSize()
+        view.needsDisplay = true
     }
 
     private func refsText(_ refs: [String], id: ObjectID, session: ViewSession) -> NSAttributedString {
@@ -591,6 +592,14 @@ final class AutoHeightTextView: NSTextView {
         isHorizontallyResizable = false
         textContainer?.widthTracksTextView = true
         textContainer?.containerSize = NSSize(width: 200, height: CGFloat.greatestFiniteMagnitude)
+    }
+
+    // Views do not clip to their bounds by default since macOS 14. Unclipped,
+    // the boxes of a second row of wrapped labels stay on screen as a stray
+    // line when the next commit's shorter text shrinks the view.
+    override var clipsToBounds: Bool {
+        get { true }
+        set {}
     }
 
     /// Match boxes (`MatchBoxes.key`) behind the text, as in the list.
