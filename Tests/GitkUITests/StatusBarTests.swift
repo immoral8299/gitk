@@ -59,4 +59,11 @@ import Testing
         bar.setRow(3, of: 7)
         #expect(bar.rowLabel.stringValue == "\(L("Row")) 3 / 7")
     }
+
+    /// The busy state uses the system's spinning wait cursor (with the
+    /// hourglass as the fallback), never an empty image.
+    @Test func busyCursorHasAnImage() {
+        #expect(StatusBar.busyCursor.image.size.width > 0)
+        #expect(StatusBar.busyCursor.image.size.height > 0)
+    }
 }

@@ -29,8 +29,21 @@ final class StatusBar: NSView {
     /// Called when `isBusy` changes, so the window can show or drop the busy cursor.
     var onBusyChange: ((Bool) -> Void)?
 
-    /// gitk's watch cursor: an hourglass, centred on its hot spot.
+    /// The native macOS busy cursor: the spinning disc with the arrow. AppKit
+    /// exposes no public `NSCursor` for it, so this asks for the system's
+    /// `busyButClickableCursor` and falls back to gitk's hourglass on systems
+    /// that do not have it.
     static let busyCursor: NSCursor = {
+        let selector = NSSelectorFromString("busyButClickableCursor")
+        if NSCursor.responds(to: selector),
+           let cursor = NSCursor.perform(selector)?.takeUnretainedValue() as? NSCursor {
+            return cursor
+        }
+        return hourglassCursor
+    }()
+
+    /// gitk's watch cursor: an hourglass, centred on its hot spot.
+    private static let hourglassCursor: NSCursor = {
         let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
         guard let symbol = NSImage(systemSymbolName: "hourglass", accessibilityDescription: nil)?
             .withSymbolConfiguration(config)
