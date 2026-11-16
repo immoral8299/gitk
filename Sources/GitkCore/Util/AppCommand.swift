@@ -73,6 +73,8 @@ public enum AppCommand: Sendable, Hashable {
     case fontBigger
     /// ⌘-minus, ⌘-keypad-minus.
     case fontSmaller
+    /// ⌘-0: back to the default font sizes.
+    case fontReset
 
     // MARK: File menu, references and views
 

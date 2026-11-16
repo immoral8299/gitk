@@ -276,6 +276,14 @@ final class MainWindowController: NSWindowController {
         saveSettings()
     }
 
+    /// ⌘-0: undoes the ⌘-plus and ⌘-minus steps, putting all three fonts back
+    /// at their default size and saving it.
+    func resetFontSizes() {
+        settings = FontSizing.resetSizes(settings)
+        applyFonts()
+        saveSettings()
+    }
+
     /// Redraws the list, sidebar and diff pane with the fonts in `settings`
     /// (`setcoords`, `settabs` and `redisplay` of gitk's `incrfont`).
     func applyFonts() {
@@ -356,7 +364,7 @@ final class MainWindowController: NSWindowController {
              .selectPrev, .selectNext, .selectFirst, .selectLast, .selectPageUp, .selectPageDown,
              .goToParent, .scrollList, .focusFind, .findNext, .findPrev, .toggleDetailsSidebar,
              .scrollPane, .nextFile, .prevFile, .listRefs, .preferences,
-             .fontBigger, .fontSmaller: return true
+             .fontBigger, .fontSmaller, .fontReset: return true
         case .newView, .showView: return true
         case .editView: return viewManager.canEdit
         case .deleteView: return viewManager.canDelete
@@ -401,6 +409,7 @@ final class MainWindowController: NSWindowController {
         case .preferences: showPreferences()
         case .fontBigger: changeFontSize(by: 1)
         case .fontSmaller: changeFontSize(by: -1)
+        case .fontReset: resetFontSizes()
         case .newView: openViewEditor(editing: nil)
         case .editView: openViewEditor(editing: viewManager.canEdit ? viewManager.current : nil)
         case .deleteView: deleteCurrentView()

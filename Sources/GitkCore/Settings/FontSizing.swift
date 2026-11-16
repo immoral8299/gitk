@@ -22,4 +22,16 @@ public enum FontSizing {
         result.uiFont = incremented(settings.uiFont, by: delta)
         return result
     }
+
+    /// The ⌘-0 counterpart of `incremented`: all three fonts go back to the
+    /// built-in default size. Family, weight and slant are kept, so a font
+    /// chosen in Preferences survives the reset.
+    public static func resetSizes(_ settings: Settings) -> Settings {
+        let defaults = Settings()
+        var result = settings
+        result.mainFont.pointSize = defaults.mainFont.pointSize
+        result.textFont.pointSize = defaults.textFont.pointSize
+        result.uiFont.pointSize = defaults.uiFont.pointSize
+        return result
+    }
 }

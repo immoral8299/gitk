@@ -71,4 +71,22 @@ import Testing
         #expect(loaded.textFont.pointSize == Settings().textFont.pointSize + 2)
         #expect(loaded.uiFont.pointSize == Settings().uiFont.pointSize + 2)
     }
+
+    /// ⌘-0 puts all three fonts back at their default size. The families and
+    /// styles chosen in Preferences stay, and other settings are untouched.
+    @Test func commandZeroResetsSizesAndKeepsFamilies() {
+        var s = Settings()
+        s.mainFont = FontSpec(family: "Menlo", pointSize: 12)
+        s.textFont = FontSpec(family: "Menlo", pointSize: 12)
+        s.diffContext = 5
+        s = FontSizing.incremented(s, by: 3)
+        let reset = FontSizing.resetSizes(s)
+        #expect(reset.mainFont.pointSize == Settings().mainFont.pointSize)
+        #expect(reset.textFont.pointSize == Settings().textFont.pointSize)
+        #expect(reset.uiFont.pointSize == Settings().uiFont.pointSize)
+        #expect(reset.mainFont.family == "Menlo")
+        #expect(reset.textFont.family == "Menlo")
+        #expect(reset.uiFont.bold == Settings().uiFont.bold)
+        #expect(reset.diffContext == 5)
+    }
 }

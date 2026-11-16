@@ -179,6 +179,7 @@ public struct KeyBindings: Sendable {
         list.append(bind(.keypadPlus, .fontBigger, [.command]))
         list.append(bind(.character("-"), .fontSmaller, [.command]))
         list.append(bind(.keypadMinus, .fontSmaller, [.command]))
+        list.append(bind(.character("0"), .fontReset, [.command]))
 
         // File and view menus (gitk 2414–2420, 2814–2818).
         list.append(bind(.f5, .update))

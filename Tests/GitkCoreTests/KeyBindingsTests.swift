@@ -126,6 +126,10 @@ import Testing
         #expect(command(.keypadMinus, [.command]) == .fontSmaller)
     }
 
+    @Test func commandZeroResetsFontSizes() {
+        #expect(command(.character("0"), [.command]) == .fontReset)
+    }
+
     @Test func commandQQuitsAndCommandWClosesWindow() {
         #expect(command(.character("q"), [.command]) == .quit)
         #expect(command(.character("w"), [.command]) == .closeWindow)
