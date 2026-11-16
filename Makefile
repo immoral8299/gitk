@@ -8,7 +8,7 @@
 #                               headless PNG of the main window (needs task 9.4)
 #   make fixture NAME=linear OUT=/tmp/fx
 #                               build one fixture repository
-#   make app                    out/gitk-swift.app (Tools/make-app.sh)
+#   make app                    out/gitk (Native).app (Tools/make-app.sh)
 #   make install PREFIX=/usr/local
 #                               $(PREFIX)/bin/gitk-swift plus its resource bundle
 #   make clean                  remove build output

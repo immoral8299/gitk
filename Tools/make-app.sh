@@ -5,8 +5,8 @@
 #
 # Usage: Tools/make-app.sh [output-dir]
 #
-# Builds the release executable and assembles <output-dir>/gitk-swift.app
-# (default: out/gitk-swift.app) with Info.plist, a placeholder icon, the
+# Builds the release executable and assembles "<output-dir>/gitk (Native).app"
+# (default: "out/gitk (Native).app") with Info.plist, a placeholder icon, the
 # executable and the SwiftPM resource bundles. The generated Bundle.module
 # accessor checks Bundle.main.resourceURL first, which is Contents/Resources in
 # an app bundle, so the bundles go there.
@@ -32,7 +32,7 @@ fi
 
 version=0.1.0
 
-app="$outdir/gitk-swift.app"
+app="$outdir/gitk (Native).app"
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 
@@ -68,9 +68,9 @@ cat > "$app/Contents/Info.plist" <<PLIST
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>gitk-swift</string>
+    <string>gitk (Native)</string>
     <key>CFBundleDisplayName</key>
-    <string>gitk-swift</string>
+    <string>gitk (Native)</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

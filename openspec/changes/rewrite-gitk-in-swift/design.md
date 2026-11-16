@@ -192,7 +192,7 @@ The executable is named `gitk-swift` so it does not clash with git's own `gitk`.
 - `.gitignore`: `.build/`, `.swiftpm/`, `*.xcodeproj`, `/out/`.
 
 ### D14. Packaging
-`swift build -c release` produces `gitk-swift`, which runs from the terminal as a regular foreground app (cli-launch "Foreground activation"). It calls `NSApplication.shared.setActivationPolicy(.regular)` and `activate()`, and resources come from the SwiftPM resource bundle next to the binary. `Tools/make-app.sh` also wraps it into `gitk-swift.app` with an `Info.plist` and icon. `make install PREFIX=…` installs the binary and its resource bundle.
+`swift build -c release` produces `gitk-swift`, which runs from the terminal as a regular foreground app (cli-launch "Foreground activation"). It calls `NSApplication.shared.setActivationPolicy(.regular)` and `activate()`, and resources come from the SwiftPM resource bundle next to the binary. `Tools/make-app.sh` also wraps it into `gitk (Native).app` with an `Info.plist` and icon. `make install PREFIX=…` installs the binary and its resource bundle.
 
 ### D15. Native appearance: current-macOS chrome, Liquid Glass behind `#available`
 
