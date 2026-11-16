@@ -48,6 +48,7 @@ Recorded during implementation:
 - 2026-11-16, 10.8: While reading or searching, the pointer shows macOS's native spinning wait cursor (`NSCursor`'s `busyButClickableCursor`, which has no public API) rather than gitk's hourglass; the hourglass remains the fallback when the system cursor is unavailable. The status strip's progress bar still says what the operation is.
 - 2026-11-16, 10.10: The first column's horizontal scroll keeps the graph lanes and dots fixed and scrolls the ref labels and headline underneath them, and the headline is drawn at its full width rather than clipped to the column width. gitk scrolls that whole canvas, so its graph leaves the view while reading a long message.
 - 2026-11-16, 10.10: When the graph is wider than the width limit (`maxwidth`, `maxgraphpct`), the lanes, arrows and dots past the limit are clipped where the ref labels or headline begin, so they are not drawn through the text (`GraphCellView.graphClipRect`).
+- 2026-11-16, cli-launch: Launched outside a repository with no revisions or paths (only options, or nothing), the app shows a folder chooser with "Cannot find a git repository here." and opens the chosen repository; cancelling exits with status 1. gitk exits straight away. With `GITK_SWIFT_HEADLESS_ERRORS=1`, or when revisions or paths were given, the app still exits with gitk's error.
 - 2026-11-16, launch: When `DYLD_LIBRARY_PATH` or `DYLD_FALLBACK_LIBRARY_PATH` is set, gitk-swift re-executes itself without them. On macOS 27 those paths make ImageIO load Homebrew's libpng/libtiff and crash (SIGBUS) whenever CoreText draws an emoji; gitk draws its text through Tk, so it never hits that decoder. A terminal launch prints one line saying why it restarted.
 
 ## New strings
@@ -80,6 +81,8 @@ User-visible strings with no gitk msgid. These have no translations.
 - `%d Changed Files`
 - `Found text background`
 - `Current search hit background`
+- `Choose a repository to open.`
+- `Open`
 
 ## Performance
 

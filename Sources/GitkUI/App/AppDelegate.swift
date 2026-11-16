@@ -43,13 +43,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // `gitk-swift <path-to-repo> [args]` opens that repository (RepositoryArgument).
         let launchDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
         let repository = await RepositoryArgument.extract(arguments, cwd: launchDirectory)
-        let cwd = repository.cwd
+        var cwd = repository.cwd
         let arguments = repository.arguments
         if cwd != launchDirectory { FileManager.default.changeCurrentDirectoryPath(cwd.path) }
         let alerts = Alerts(environment: environment)
 
         do {
-            startup = try await StartupChecks(cwd: cwd, environment: environment).run()
+            while true {
+                do {
+                    startup = try await StartupChecks(cwd: cwd, environment: environment).run()
+                    break
+                } catch StartupError.notARepository
+                            where Self.offersRepositoryPicker(arguments: arguments, environment: environment) {
+                    guard let picked = Self.chooseRepository(startingAt: cwd) else { exit(1) }
+                    cwd = picked
+                    FileManager.default.changeCurrentDirectoryPath(cwd.path)
+                }
+            }
             launch = try await LaunchArguments.parse(
                 argv: arguments, repo: cwd, environment: environment)
         } catch let e as StartupError {
@@ -74,6 +84,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         guard let startup, let launch else { return }
         openMainWindow(startup: startup, launch: launch, cwd: cwd)
+    }
+
+    /// Launched outside a repository (from Finder, or a shell in another
+    /// directory) with no revisions or paths, the app asks for a repository
+    /// instead of exiting. gitk exits with "Cannot find a git repository here.",
+    /// which is still what happens with headless errors or when arguments other
+    /// than options were given, since those only make sense in a known repository.
+    static func offersRepositoryPicker(arguments: [String], environment: [String: String]) -> Bool {
+        environment[Alerts.headlessErrorsKey] != "1" && arguments.allSatisfy { $0.hasPrefix("-") && $0 != "--" }
+    }
+
+    /// Asks for a repository folder; nil when the person cancels.
+    private static func chooseRepository(startingAt directory: URL) -> URL? {
+        NSApp.activate()
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = false
+        panel.message = L("Cannot find a git repository here.") + " " + L("Choose a repository to open.")
+        panel.prompt = L("Open")
+        panel.directoryURL = directory.path == "/"
+            ? FileManager.default.homeDirectoryForCurrentUser : directory
+        guard panel.runModal() == .OK else { return nil }
+        return panel.url
     }
 
     private func openMainWindow(startup: StartupContext, launch: LaunchArguments, cwd: URL) {

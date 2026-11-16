@@ -44,8 +44,12 @@ When there is no `--`, the app SHALL use `git rev-parse --no-revs --no-flags` to
 The app SHALL find the repository the way git does from the current working directory, honouring `GIT_DIR` and `GIT_WORK_TREE`. It SHALL work in bare repositories, which have no local-changes rows, and in linked worktrees.
 
 #### Scenario: Not a repository
-- **WHEN** the app is started outside any git repository
+- **WHEN** the app is started outside any git repository with revisions or paths, or with headless errors
 - **THEN** it shows "Cannot find a git repository here." and exits with a non-zero status
+
+#### Scenario: Not a repository, no revisions or paths
+- **WHEN** the app is started outside any git repository with no arguments, or only options
+- **THEN** it shows a folder chooser with "Cannot find a git repository here.", opens the chosen repository with those options, asks again if the folder is not a repository, and exits with a non-zero status if cancelled
 
 #### Scenario: Started from a subdirectory
 - **WHEN** the app is started in a subdirectory of a work tree

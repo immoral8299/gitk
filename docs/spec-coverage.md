@@ -16,6 +16,7 @@ Total scenarios: 168
 | cli-launch | Paths without a `--` separator | Ambiguous argument |  | pending |
 | cli-launch | Paths without a `--` separator | Bad revision |  | pending |
 | cli-launch | Repository discovery | Not a repository |  | pending |
+| cli-launch | Repository discovery | Not a repository, no revisions or paths | RepositoryPickerTests | pending |
 | cli-launch | Repository discovery | Started from a subdirectory |  | pending |
 | cli-launch | Repository argument | Open a repository by path | RepositoryArgumentTests/repositoryRootFromOutsideARepository | covered |
 | cli-launch | Repository argument | Subdirectory stays a path | RepositoryArgumentTests/subdirectoryOfCurrentRepositoryStaysAPath | covered |
