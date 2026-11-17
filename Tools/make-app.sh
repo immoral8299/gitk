@@ -30,7 +30,7 @@ if [ ! -x "$exe" ]; then
     exit 1
 fi
 
-version=0.1.1
+version=0.1.2
 
 app="$outdir/gitk (Native).app"
 rm -rf "$app"
