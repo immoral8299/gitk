@@ -30,7 +30,7 @@ import Testing
         let c = make()
         #expect(PreferencesController.fontSettings.map(\.id) == ["main", "text", "ui"])
         #expect(c.fontButtons.count == 3)
-        #expect(c.fontButtons["text"]?.title == L("Diff display font"))
+        #expect(c.fontButtons["text"]?.title == L("Choose..."))
     }
 
     /// Spec "Change the text font": Menlo 12 chosen, OK, the diff is drawn in Menlo 12.

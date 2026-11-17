@@ -85,7 +85,7 @@ final class SpinnerField: NSView {
 /// replace the Colors and Fonts entries and bind their controls to `draft` the
 /// same way `makeGeneralPage()` does.
 @MainActor
-final class PreferencesController: NSWindowController, NSWindowDelegate {
+final class PreferencesController: NSWindowController, NSWindowDelegate, NSToolbarDelegate {
     private(set) var draft: Settings
     let original: Settings
     let hashLength: Int
@@ -107,12 +107,14 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
     private(set) var okButton = NSButton()
     private(set) var cancelButton = NSButton()
 
-    /// (title, builder) for each tab, in gitk's order.
-    private(set) var pageBuilders: [(title: String, build: (PreferencesController) -> NSView)] = [
-        (L("General"), { $0.makeGeneralPage() }),
-        (L("Colors"), { $0.makeColorsPage() }),
-        (L("Fonts"), { $0.makeFontsPage() }),
+    /// (title, toolbar symbol, builder) for each pane, in gitk's order.
+    private(set) var pageBuilders: [(title: String, symbol: String, build: (PreferencesController) -> NSView)] = [
+        (L("General"), "gearshape", { $0.makeGeneralPage() }),
+        (L("Colors"), "paintpalette", { $0.makeColorsPage() }),
+        (L("Fonts"), "textformat", { $0.makeFontsPage() }),
     ]
+    /// Pins the tab view to the selected pane's height so the window fits it.
+    private var tabHeight: NSLayoutConstraint?
 
     init(settings: Settings, hashLength: Int = 40, notificationCenter: NotificationCenter = .default) {
         original = settings
@@ -122,6 +124,7 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 560, height: 560),
                               styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = L("Gitk preferences")
+        window.toolbarStyle = .preference
         window.isReleasedWhenClosed = false
         super.init(window: window)
         window.delegate = self
@@ -132,9 +135,13 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
 
     // MARK: Window
 
+    /// Safari-style settings window: a toolbar picks the pane, the window
+    /// takes the pane's title and resizes to fit it, and Cancel/OK sit below.
     private func buildContent(in window: NSWindow) {
-        for page in pageBuilders {
-            let item = NSTabViewItem()
+        tabView.tabViewType = .noTabsNoBorder
+        tabView.drawsBackground = false
+        for (index, page) in pageBuilders.enumerated() {
+            let item = NSTabViewItem(identifier: Self.toolbarID(index))
             item.label = page.title
             item.view = page.build(self)
             tabView.addTabViewItem(item)
@@ -143,27 +150,87 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
         okButton.keyEquivalent = "\r"
         cancelButton = NSButton(title: L("Cancel"), target: self, action: #selector(cancelAction))
         cancelButton.keyEquivalent = "\u{1b}"
+        for button in [okButton, cancelButton] {
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 76).isActive = true
+        }
         let buttons = NSStackView(views: [cancelButton, okButton])
         buttons.spacing = 12
-        let root = NSStackView(views: [tabView, buttons])
-        root.orientation = .vertical
-        root.alignment = .trailing
-        root.spacing = 12
-        root.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        root.translatesAutoresizingMaskIntoConstraints = false
+        buttons.translatesAutoresizingMaskIntoConstraints = false
+        tabView.translatesAutoresizingMaskIntoConstraints = false
         let content = NSView()
         window.contentView = content
-        content.addSubview(root)
+        content.addSubview(tabView)
+        content.addSubview(buttons)
+        let height = tabView.heightAnchor.constraint(equalToConstant: 0)
+        tabHeight = height
         NSLayoutConstraint.activate([
-            root.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            root.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            root.topAnchor.constraint(equalTo: content.topAnchor),
-            root.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-            tabView.widthAnchor.constraint(equalTo: root.widthAnchor, constant: -24),
-            tabView.heightAnchor.constraint(greaterThanOrEqualToConstant: 580),
+            tabView.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            tabView.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            tabView.topAnchor.constraint(equalTo: content.topAnchor),
+            tabView.widthAnchor.constraint(equalToConstant: Self.paneWidth),
+            height,
+            buttons.topAnchor.constraint(equalTo: tabView.bottomAnchor),
+            buttons.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -20),
+            buttons.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -20),
         ])
+
+        let toolbar = NSToolbar(identifier: "GitkPreferences")
+        toolbar.delegate = self
+        toolbar.displayMode = .iconAndLabel
+        toolbar.allowsUserCustomization = false
+        window.toolbar = toolbar
+        selectPane(0, animate: false)
+    }
+
+    static let paneWidth: CGFloat = 600
+
+    private static func toolbarID(_ index: Int) -> NSToolbarItem.Identifier {
+        NSToolbarItem.Identifier("pane\(index)")
+    }
+
+    /// Shows pane `index`, retitles the window after it and resizes the window
+    /// to the pane's height, keeping its top edge in place.
+    func selectPane(_ index: Int, animate: Bool = true) {
+        guard pageBuilders.indices.contains(index), let window else { return }
+        tabView.selectTabViewItem(at: index)
+        window.toolbar?.selectedItemIdentifier = Self.toolbarID(index)
+        window.title = pageBuilders[index].title
+        let page = tabView.tabViewItem(at: index).view
+        page?.layoutSubtreeIfNeeded()
+        tabHeight?.constant = page?.fittingSize.height ?? 0
+        guard let content = window.contentView else { return }
         content.layoutSubtreeIfNeeded()
-        window.setContentSize(content.fittingSize)
+        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: content.fittingSize))
+        frame.origin = NSPoint(x: window.frame.minX, y: window.frame.maxY - frame.height)
+        window.setFrame(frame, display: true, animate: animate && window.isVisible)
+    }
+
+    @objc private func paneClicked(_ sender: NSToolbarItem) {
+        if let index = Int(sender.itemIdentifier.rawValue.dropFirst(4)) { selectPane(index) }
+    }
+
+    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
+                 willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        guard let index = Int(itemIdentifier.rawValue.dropFirst(4)), pageBuilders.indices.contains(index) else { return nil }
+        let page = pageBuilders[index]
+        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+        item.label = page.title
+        item.image = NSImage(systemSymbolName: page.symbol, accessibilityDescription: page.title)
+        item.target = self
+        item.action = #selector(paneClicked(_:))
+        return item
+    }
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        pageBuilders.indices.map(Self.toolbarID)
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        toolbarAllowedItemIdentifiers(toolbar)
+    }
+
+    func toolbarSelectableItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        toolbarAllowedItemIdentifiers(toolbar)
     }
 
     /// Port of gitk proc `prefsok` minus applying each change (task 18.5).
@@ -188,24 +255,14 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
     /// Port of gitk proc `prefspage_general`. The X11 selection checkbox is
     /// omitted: macOS has no selection clipboard (`haveselectionclipboard`).
     func makeGeneralPage() -> NSView {
-        let grid = NSGridView()
-        grid.rowSpacing = 6
-        grid.columnSpacing = 8
-        grid.translatesAutoresizingMaskIntoConstraints = false
+        let form = SettingsForm()
 
-        func header(_ text: String) {
-            let title = label(text)
-            title.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
-            let row = grid.addRow(with: [title, NSView(), NSView()])
-            row.mergeCells(in: NSRange(location: 0, length: 3))
-            row.topPadding = 6
-        }
         func spinner(_ key: String, _ title: String, _ range: ClosedRange<Int>,
                      _ path: WritableKeyPath<Settings, Int>) {
             let s = SpinnerField(value: draft[keyPath: path], range: range)
             s.onChange = { [weak self] in self?.draft[keyPath: path] = $0 }
             spinners[key] = s
-            grid.addRow(with: [NSView(), label(title), s])
+            form.row(title, s)
         }
         func check(_ title: String, _ path: WritableKeyPath<Settings, Bool>) -> NSButton {
             let b = NSButton(checkboxWithTitle: title, target: nil, action: nil)
@@ -213,23 +270,22 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
             bind(b, ClosureTarget { [weak self, weak b] in
                 self?.draft[keyPath: path] = b?.state == .on
             })
-            grid.addRow(with: [NSView(), b, NSView()]).mergeCells(in: NSRange(location: 1, length: 2))
+            form.row(nil, b)
             return b
         }
         func text(_ title: String, _ path: WritableKeyPath<Settings, String>, button: NSButton? = nil) -> NSTextField {
             let f = NSTextField(string: draft[keyPath: path])
             f.translatesAutoresizingMaskIntoConstraints = false
-            f.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
             bind(f, ClosureTarget { [weak self, weak f] in self?.draft[keyPath: path] = f?.stringValue ?? "" })
-            let titleView: NSView
             if let button {
-                let s = NSStackView(views: [label(title), button])
+                f.widthAnchor.constraint(equalToConstant: SettingsForm.controlWidth - button.fittingSize.width - 8).isActive = true
+                let s = NSStackView(views: [f, button])
                 s.spacing = 8
-                titleView = s
+                form.row(title, s)
             } else {
-                titleView = label(title)
+                f.widthAnchor.constraint(equalToConstant: SettingsForm.controlWidth).isActive = true
+                form.row(title, f)
             }
-            grid.addRow(with: [NSView(), titleView, f])
             return f
         }
         func wrap(_ title: String, _ path: WritableKeyPath<Settings, String>) {
@@ -239,42 +295,41 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
             bind(popup, ClosureTarget { [weak self, weak popup] in
                 self?.draft[keyPath: path] = popup?.titleOfSelectedItem ?? "none"
             })
-            grid.addRow(with: [NSView(), label(title), popup])
+            popup.widthAnchor.constraint(greaterThanOrEqualToConstant: 120).isActive = true
+            form.row(title, popup)
         }
 
-        header(L("Commit list display options"))
+        // gitk's "Commit list display options".
         spinner("maxWidth", L("Maximum graph width (lines)"), 0...100, \.maxWidth)
         spinner("maxGraphPct", L("Maximum graph width (% of pane)"), 1...100, \.maxGraphPct)
+        form.gap()
         showLocalChangesCheckbox = check(L("Show local changes"), \.showLocalChanges)
         _ = check(L("Hide remote refs"), \.hideRemotes)
         _ = text(L("Refs to hide (space-separated globs)"), \.refsToHide)
+        form.gap()
         _ = check(L("Copy commit ID to clipboard"), \.autoCopy)
         spinner("autoSelLen", L("Length of commit ID to copy"), 1...max(hashLength, 1), \.autoSelLen)
+        form.gap()
         spinner("kscroll", L("Wheel scrolling multiplier"), 1...20, \.kscroll)
         _ = text(L("Date and time format"), \.dateTimeFormat)
 
-        header(L("Diff display options"))
+        // gitk's "Diff display options".
+        form.gap(24)
         spinner("tabStop", L("Tab spacing"), 1...20, \.tabStop)
         wrap(L("Wrap comment text"), \.wrapComment)
         wrap(L("Wrap other text"), \.wrapDefault)
+        form.gap()
         _ = check(L("Display nearby tags/heads"), \.showNearTags)
         spinner("maxRefs", L("Maximum # tags/heads to show"), 1...1000, \.maxRefs)
+        form.gap()
         _ = check(L("Limit diffs to listed paths"), \.limitDiffs)
         _ = check(L("Support per-file encodings"), \.perFileAttrs)
+        form.gap()
         let choose = NSButton(title: L("Choose..."), target: nil, action: nil)
         bind(choose, ClosureTarget { [weak self] in self?.chooseExtDiff() })
         extDiffToolField = text(L("External diff tool"), \.extDiffTool, button: choose)
         _ = text(L("Web browser"), \.webBrowser)
-
-        grid.column(at: 0).width = 12
-        let page = NSView()
-        page.addSubview(grid)
-        NSLayoutConstraint.activate([
-            grid.leadingAnchor.constraint(equalTo: page.leadingAnchor, constant: 12),
-            grid.trailingAnchor.constraint(lessThanOrEqualTo: page.trailingAnchor, constant: -12),
-            grid.topAnchor.constraint(equalTo: page.topAnchor, constant: 8),
-        ])
-        return page
+        return form.page()
     }
 
     /// Port of gitk proc `choose_extdiff`: an open panel whose choice goes into
@@ -346,13 +401,7 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
     /// A well edits the draft only; nothing applies until OK. The Themes
     /// section is omitted (no Tk themes; see Deviations).
     func makeColorsPage() -> NSView {
-        let grid = NSGridView()
-        grid.rowSpacing = 6
-        grid.columnSpacing = 8
-        grid.translatesAutoresizingMaskIntoConstraints = false
-        let title = label(L("Colors: press to choose"))
-        title.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
-        grid.addRow(with: [title, NSView()]).mergeCells(in: NSRange(location: 0, length: 2))
+        let form = SettingsForm()
         for item in Self.colorSettings {
             let well = NSColorWell()
             well.color = item.display(draft)
@@ -364,16 +413,9 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
                 item.set(&self.draft, Self.tkString(well.color))
             })
             colorWells[item.id] = well
-            grid.addRow(with: [label(item.title), well])
+            form.row(item.title, well)
         }
-        let page = NSView()
-        page.addSubview(grid)
-        NSLayoutConstraint.activate([
-            grid.leadingAnchor.constraint(equalTo: page.leadingAnchor, constant: 12),
-            grid.trailingAnchor.constraint(lessThanOrEqualTo: page.trailingAnchor, constant: -12),
-            grid.topAnchor.constraint(equalTo: page.topAnchor, constant: 8),
-        ])
-        return page
+        return form.page()
     }
 
     // MARK: Fonts page
@@ -396,36 +438,38 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
     /// `mkfontdisp` (11623–11633): a button per font that opens the system font
     /// panel, and a label showing the family in that font.
     func makeFontsPage() -> NSView {
-        let grid = NSGridView()
-        grid.rowSpacing = 6
-        grid.columnSpacing = 8
-        grid.translatesAutoresizingMaskIntoConstraints = false
-        let title = label(L("Fonts: press to choose"))
-        title.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
-        grid.addRow(with: [title, NSView()]).mergeCells(in: NSRange(location: 0, length: 2))
+        let form = SettingsForm()
         for item in Self.fontSettings {
-            let button = NSButton(title: item.title, target: nil, action: nil)
+            let button = NSButton(title: L("Choose..."), target: nil, action: nil)
             bind(button, ClosureTarget { [weak self] in self?.chooseFont(item.id) })
-            let family = label("")
+            let family = NSTextField(labelWithString: "")
+            family.lineBreakMode = .byTruncatingTail
+            family.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            // A fixed width keeps the Choose buttons in one column.
+            family.translatesAutoresizingMaskIntoConstraints = false
+            family.widthAnchor.constraint(equalToConstant: 130).isActive = true
             fontButtons[item.id] = button
             fontLabels[item.id] = family
             refreshFontRow(item)
-            grid.addRow(with: [button, family])
+            let stack = NSStackView(views: [family, button])
+            stack.spacing = 12
+            form.row(item.title, stack)
         }
-        let page = NSView()
-        page.addSubview(grid)
-        NSLayoutConstraint.activate([
-            grid.leadingAnchor.constraint(equalTo: page.leadingAnchor, constant: 12),
-            grid.trailingAnchor.constraint(lessThanOrEqualTo: page.trailingAnchor, constant: -12),
-            grid.topAnchor.constraint(equalTo: page.topAnchor, constant: 8),
-        ])
-        return page
+        return form.page()
     }
 
     private func refreshFontRow(_ item: FontSetting) {
         let spec = draft[keyPath: item.path]
         let font = MainLayoutMetrics.nsFont(spec)
-        fontLabels[item.id]?.stringValue = font.familyName ?? spec.family
+        // The system faces have private dotted family names; show the
+        // public ones instead.
+        let family: String
+        switch spec.family {
+        case FontSpec.systemFamily: family = "SF Pro"
+        case FontSpec.monospacedSystemFamily: family = "SF Mono"
+        default: family = font.familyName ?? spec.family
+        }
+        fontLabels[item.id]?.stringValue = family
         fontLabels[item.id]?.font = font
     }
 
@@ -478,11 +522,57 @@ final class PreferencesController: NSWindowController, NSWindowDelegate {
         control.target = target
         control.action = #selector(ClosureTarget.fire)
     }
+}
 
-    private func label(_ text: String) -> NSTextField {
-        let l = NSTextField(labelWithString: text)
-        l.alignment = .left
-        return l
+/// A Safari-style settings form: right-aligned labels ending in a colon, the
+/// controls left-aligned beside them, and groups set apart by space. The form
+/// is centred in its pane.
+@MainActor
+final class SettingsForm {
+    static let controlWidth: CGFloat = 260
+    let grid = NSGridView()
+    private var gapBeforeNext: CGFloat?
+
+    init() {
+        grid.rowSpacing = 8
+        grid.columnSpacing = 8
+        grid.rowAlignment = .none
+        grid.yPlacement = .center
+        grid.translatesAutoresizingMaskIntoConstraints = false
+    }
+
+    /// Adds a row; `title` nil leaves the label column empty (checkboxes).
+    func row(_ title: String?, _ control: NSView) {
+        let label: NSView
+        if let title {
+            let field = NSTextField(labelWithString: title + ":")
+            field.alignment = .right
+            label = field
+        } else {
+            label = NSGridCell.emptyContentView
+        }
+        let row = grid.addRow(with: [label, control])
+        if let gap = gapBeforeNext {
+            row.topPadding = gap
+            gapBeforeNext = nil
+        }
+    }
+
+    /// Puts extra space before the next row.
+    func gap(_ space: CGFloat = 12) { if grid.numberOfRows > 0 { gapBeforeNext = space } }
+
+    func page() -> NSView {
+        grid.column(at: 0).xPlacement = .trailing
+        grid.column(at: 1).xPlacement = .leading
+        let page = NSView()
+        page.addSubview(grid)
+        NSLayoutConstraint.activate([
+            grid.centerXAnchor.constraint(equalTo: page.centerXAnchor),
+            grid.leadingAnchor.constraint(greaterThanOrEqualTo: page.leadingAnchor, constant: 20),
+            grid.topAnchor.constraint(equalTo: page.topAnchor, constant: 24),
+            grid.bottomAnchor.constraint(equalTo: page.bottomAnchor, constant: -24),
+        ])
+        return page
     }
 }
 
