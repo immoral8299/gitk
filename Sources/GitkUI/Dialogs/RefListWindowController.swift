@@ -118,8 +118,25 @@ final class RefListWindowController: NSWindowController, NSTableViewDataSource, 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         guard entries.indices.contains(row) else { return nil }
         let text = tableColumn?.identifier.rawValue == "subject" ? subjects[row] : entries[row].name
+        let identifier = tableColumn?.identifier ?? NSUserInterfaceItemIdentifier("name")
+        if let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView {
+            cell.textField?.stringValue = text
+            return cell
+        }
+        // A bare text field is stretched to the full row height and draws its
+        // text at the top; centre it in a cell view instead.
+        let cell = NSTableCellView()
+        cell.identifier = identifier
         let field = NSTextField(labelWithString: text)
         field.lineBreakMode = .byTruncatingTail
-        return field
+        field.translatesAutoresizingMaskIntoConstraints = false
+        cell.addSubview(field)
+        cell.textField = field
+        NSLayoutConstraint.activate([
+            field.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
+            field.trailingAnchor.constraint(equalTo: cell.trailingAnchor),
+            field.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+        ])
+        return cell
     }
 }
