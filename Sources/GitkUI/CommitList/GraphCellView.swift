@@ -80,10 +80,28 @@ final class GraphCellView: NSTableCellView {
         NSGraphicsContext.saveGraphicsState()
         NSBezierPath(rect: graphClipRect).addClip()
         for segment in geometry.segments {
+            var from = point(segment.from), to = point(segment.to)
+            let lineWidth: CGFloat = segment.thick ? 3 : 2
+            // A segment cut at the row edge ends in a slanted butt on diagonals,
+            // leaving a notch at the seam with the next row. Run it past the
+            // edge and let the cell's clip square it off.
+            let dx = to.x - from.x, dy = to.y - from.y
+            let length = hypot(dx, dy)
+            if length > 0 {
+                let overshoot = 2 * lineWidth / length
+                if segment.from.y <= 0 || segment.from.y >= 1 {
+                    from = NSPoint(x: from.x - dx * overshoot, y: from.y - dy * overshoot)
+                }
+                if segment.to.y <= 0 || segment.to.y >= 1 {
+                    to = NSPoint(x: to.x + dx * overshoot, y: to.y + dy * overshoot)
+                }
+            }
             let path = NSBezierPath()
-            path.move(to: point(segment.from))
-            path.line(to: point(segment.to))
-            path.lineWidth = segment.thick ? 3 : 2
+            path.move(to: from)
+            path.line(to: to)
+            path.lineWidth = lineWidth
+            // Round caps close the corners where a path's pieces meet inside a row.
+            path.lineCapStyle = .round
             lineColor(segment.colorIndex).setStroke()
             path.stroke()
         }

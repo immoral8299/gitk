@@ -140,9 +140,14 @@ public struct GraphRowGeometry: Sendable, Equatable {
             default: style = .normal
             }
         }
+        // gitk keeps the text on a parent's lane when the merge line opens a new
+        // lane at `list.count`, so the line runs into the text and the graph
+        // clip cuts it in half. Start the text one lane past any parent lane.
         var rightmost = list.count
         for parent in layout.parents(row) {
-            rightmost = max(rightmost, layout.ids(on: row + 1).firstIndex(of: parent) ?? 0)
+            if let target = layout.ids(on: row + 1).firstIndex(of: parent) {
+                rightmost = max(rightmost, target + 1)
+            }
         }
         let origin = floor(3 + 0.5 * lineSpacing)
         let width = max(0, min(Double(maxWidth) * lineSpacing, columnWidth * Double(maxGraphPct) / 100))
