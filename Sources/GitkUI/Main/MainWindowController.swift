@@ -363,7 +363,7 @@ final class MainWindowController: NSWindowController {
         case .quit, .closeWindow, .about, .update, .reload, .rereadRefs, .focusCommitID,
              .selectPrev, .selectNext, .selectFirst, .selectLast, .selectPageUp, .selectPageDown,
              .goToParent, .scrollList, .focusFind, .findNext, .findPrev, .toggleDetailsSidebar,
-             .scrollPane, .nextFile, .prevFile, .listRefs, .preferences,
+             .scrollPane, .nextFile, .prevFile, .paneSearchNext, .paneSearchPrev, .listRefs, .preferences,
              .fontBigger, .fontSmaller, .fontReset: return true
         case .newView, .showView: return true
         case .editView: return viewManager.canEdit
@@ -392,6 +392,8 @@ final class MainWindowController: NSWindowController {
         case .scrollPane(let step): diffPane.scroll(step)
         case .nextFile: diffPane.jumpFile(forward: true)
         case .prevFile: diffPane.jumpFile(forward: false)
+        case .paneSearchNext: diffPane.search.searchNext()
+        case .paneSearchPrev: diffPane.search.searchPrevious()
         case .selectPrev, .selectNext, .selectFirst, .selectLast, .selectPageUp, .selectPageDown, .goToParent:
             let parents = session.selection.selectedID.flatMap { session.store.index(of: $0) }
                 .map { session.store.parents(of: $0).map { session.store.id(at: $0) } } ?? []
@@ -539,6 +541,8 @@ final class MainWindowController: NSWindowController {
             await loadTask?.value
             await searchBar.waitForSearch()
             await diffPane.waitUntilLoaded()
+            if let text = environment["GITK_SWIFT_DIFF_SEARCH"] { diffPane.search.applySnapshotQuery(text) }
+            if environment["GITK_SWIFT_DIFF_POPOVER"] == "1" { diffPane.controls.showOptions() }
         }
         fitToolbar()
         window?.contentView?.layoutSubtreeIfNeeded()

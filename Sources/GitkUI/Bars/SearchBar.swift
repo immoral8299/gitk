@@ -6,7 +6,7 @@ import AppKit
 import GitkCore
 
 /// The titlebar search strip (design D16), replacing gitk's Commit ID bar and
-/// find bar. Left to right: back/forward, the search field, the Advanced (`Aa`)
+/// find bar. Left to right: back/forward, the search field, the Advanced (sliders)
 /// button, the match counter and previous/next match.
 ///
 /// The field has two modes: commit search (gitk's find bar) and go-to-commit
@@ -18,7 +18,10 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
     let field = NSSearchField()
     let back = SearchBar.symbolButton("chevron.left", fallback: "←")
     let forward = SearchBar.symbolButton("chevron.right", fallback: "→")
-    let advanced = NSButton(title: "Aa", target: nil, action: nil)
+    let advanced = OptionsIcon.image(changed: false, accessibilityDescription: L("Search in"))
+        .map { NSButton(image: $0, target: nil, action: nil) } ?? NSButton(title: L("Search in"), target: nil, action: nil)
+    /// True while the Advanced choices differ from containing / Exact / All fields.
+    private(set) var advancedChanged = false
     let counter = NSTextField(labelWithString: "")
     let previous = SearchBar.symbolButton("chevron.up", fallback: "↑")
     let next = SearchBar.symbolButton("chevron.down", fallback: "↓")
@@ -78,6 +81,7 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
         advanced.setButtonType(.pushOnPushOff)
         advanced.target = self
         advanced.action = #selector(toggleAdvanced)
+        advanced.toolTip = L("Search in")
         counter.font = .monospacedDigitSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
         counter.textColor = .secondaryLabelColor
         counter.alignment = .right
@@ -292,11 +296,12 @@ final class SearchBar: NSView, NSSearchFieldDelegate, NSPopoverDelegate {
     /// Opens the Advanced popover if it is closed (`GITK_SWIFT_FIND_POPOVER`).
     func showAdvanced() { if !popover.isShown { toggleAdvanced() } }
 
-    /// The Advanced button carries a dot while the kind, match mode or field
+    /// The Advanced button turns the accent colour while the kind, match mode or field
     /// differs from containing / Exact / All fields.
     private func updateAdvancedDot() {
         let changed = type.indexOfSelectedItem > 0 || mode.indexOfSelectedItem > 0 || location.indexOfSelectedItem > 0
-        advanced.title = changed ? "Aa •" : "Aa"
+        advancedChanged = changed
+        if let image = OptionsIcon.image(changed: changed, accessibilityDescription: L("Search in")) { advanced.image = image }
         toolbar?.setAdvancedDot(changed)
     }
 
@@ -475,7 +480,7 @@ final class SearchToolbar: NSObject, NSToolbarDelegate {
             return item
         case Self.advancedID:
             let item = NSToolbarItem(itemIdentifier: id)
-            item.image = image("textformat")
+            item.image = OptionsIcon.image(changed: false, pointSize: 16, accessibilityDescription: L("Search in"))
             item.label = L("Search in")
             item.toolTip = item.label
             item.target = bar
@@ -523,7 +528,7 @@ final class SearchToolbar: NSObject, NSToolbarDelegate {
 
     /// Marks the Advanced item while its options differ from the defaults.
     func setAdvancedDot(_ on: Bool) {
-        advancedItem?.image = image(on ? "textformat.alt" : "textformat")
+        advancedItem?.image = OptionsIcon.image(changed: on, pointSize: 16, accessibilityDescription: L("Search in"))
         advancedItem?.toolTip = on ? L("Search in") + " •" : L("Search in")
     }
 

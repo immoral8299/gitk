@@ -47,7 +47,7 @@ For the local-changes rows, and when diffing two chosen commits, the diff SHALL 
 - **THEN** the pane shows the index compared to HEAD, ignoring dirty submodules
 
 ### Requirement: Diff controls
-The pane SHALL provide: Diff / Old version / New version (show both sides, only removed+context lines, or only added+context lines); a "Lines of context" number field; "Ignore space change"; and "Line diff" / "Markup words" / "Color words". Changing any of these SHALL re-render the current diff, keeping the scroll position where possible.
+The pane SHALL provide Diff / Old version / New version (show both sides, only removed+context lines, or only added+context lines) at the trailing end of its bar, after the search field. An options button (the same sliders icon as the commit search's Advanced button) SHALL open a popover with a "Lines of context" number field, "Ignore space change" and "Line diff" / "Markup words" / "Color words". Changing any of these SHALL re-render the current diff, keeping the scroll position where possible.
 
 #### Scenario: Old version
 - **WHEN** the user picks "Old version"
@@ -69,7 +69,7 @@ When "Limit diffs to listed paths" is on and the view has path limits, the patch
 - **THEN** only the `src/` files appear in the patch and the Changed Files section
 
 ### Requirement: Text search in the pane
-The pane SHALL have a search field. Typing in it SHALL highlight all matches incrementally. "Search" / ⌘-S SHALL go to the next match, ⌘-R SHALL go to the previous match, and the current match SHALL use the current-search-hit colour.
+The pane SHALL have a search field. Typing in it SHALL highlight all matches incrementally. Return or ⌘-S SHALL go to the next match and Shift-Return or ⌘-R to the previous match, wrapping around at either end and scrolling the match into view; the current match SHALL use the current-search-hit colour. While the field has text, an "N / M" counter beside it SHALL show the current match and the number of matches. Escape SHALL clear the field.
 
 #### Scenario: Incremental search
 - **WHEN** the user types `TODO` in the pane's search field

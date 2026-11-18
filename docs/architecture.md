@@ -85,6 +85,8 @@ User-visible strings with no gitk msgid. These have no translations.
 - `%d Changed Files`
 - `Found text background`
 - `Current search hit background`
+- `Diff options`
+- `Diff mode`
 - `Choose a repository to open.`
 - `Open Repository…`
 - `Open`

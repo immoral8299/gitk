@@ -139,7 +139,9 @@ final class DiffPane: NSObject, NSTextViewDelegate {
     /// The pane as installed in the window: the controls bar over the text.
     let view = DiffPaneView()
     let controls: DiffControlsBar
-    var settings: Settings
+    var settings: Settings { didSet { search.settings = settings } }
+    /// The pane's incremental search (gitk's `incrsearch`, ⌘-S/⌘-R).
+    private(set) var search: PaneSearch!
     var options: DiffOptions
     var mode: DiffDisplayMode = .diff
     private(set) var document = DiffDocument()
@@ -178,6 +180,8 @@ final class DiffPane: NSObject, NSTextViewDelegate {
         renderer = DiffRenderer(settings: settings)
         controls = DiffControlsBar(context: settings.diffContext)
         super.init()
+        search = PaneSearch(textView: textView, settings: settings)
+        controls.addSearchField(search.field, counter: search.counter)
         view.controls = controls
         view.scrollView = scrollView
         controls.onModeChange = { [weak self] mode in
@@ -403,6 +407,7 @@ final class DiffPane: NSObject, NSTextViewDelegate {
         options.ignoreSpace = controls.ignoreSpace.state == .on
         options.wordDiff = controls.wordDiffMode
         mode = controls.displayMode
+        controls.updateOptionsMarker()
     }
 
     /// Waits for the current diff to finish streaming (snapshots).

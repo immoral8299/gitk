@@ -62,7 +62,7 @@ import Testing
     }
 
     /// Spec "Change a search colour": found and current-hit colours reach the
-    /// colours the match boxes draw with (`Palette.found`, PaneSearch).
+    /// colours the match boxes draw with (`Palette.found`, and `Palette.paneFound`/`paneCurrentHit` for PaneSearch).
     @Test func searchColoursReachPalette() throws {
         let c = make()
         var applied: Settings?
@@ -75,5 +75,8 @@ import Testing
         #expect(s.currentSearchHitBgColor == "#ff00ff")
         #expect(PreferencesController.tkString(Palette.found(s)) == "#00ffff")
         #expect(PreferencesController.tkString(Palette.tk(s.currentSearchHitBgColor)) == "#ff00ff")
+        // The diff pane's solid hit colours also use a colour set by the user.
+        #expect(PreferencesController.tkString(Palette.paneFound(s)) == "#00ffff")
+        #expect(PreferencesController.tkString(Palette.paneCurrentHit(s)) == "#ff00ff")
     }
 }

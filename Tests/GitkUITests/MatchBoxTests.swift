@@ -99,15 +99,15 @@ import Testing
     @Test func advancedOptionsDefaultAndSnapshotQuery() throws {
         let (session, _) = try makeSession()
         let bar = SearchBar(session: session)
-        #expect(bar.advanced.title == "Aa")
+        #expect(!bar.advancedChanged)
         #expect(bar.query.type == .containing && bar.query.matchMode == .exact && bar.query.field == .allFields)
         #expect(!bar.advancedShown)
         bar.applySnapshotQuery("containing:IgnCase:Author:alice")
         #expect(bar.query == FindQuery(type: .containing, matchMode: .ignoreCase, field: .author, pattern: "alice"))
-        #expect(bar.advanced.title == "Aa •")
+        #expect(bar.advancedChanged)
         bar.applySnapshotQuery("containing:Exact:All fields:merge")
         #expect(bar.query == FindQuery(pattern: "merge"))
-        #expect(bar.advanced.title == "Aa")
+        #expect(!bar.advancedChanged)
         bar.cancel()
     }
 }

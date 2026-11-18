@@ -25,7 +25,7 @@ For "containing:" the bar SHALL offer Exact / IgnCase / Regexp matching and a fi
 - **THEN** no commits are highlighted and no error dialog interrupts typing
 
 ### Requirement: Advanced search options
-The bar SHALL show only the text field, an Advanced ("Aa") button, a match counter and previous/next buttons. The Advanced button SHALL open a popover with the search kind, match mode and field, defaulting to containing, Exact and All fields. Changes SHALL apply live; Escape or a click outside SHALL close the popover.
+The bar SHALL show only the text field, an Advanced button (a sliders icon, in the accent colour while an option differs from its default), a match counter and previous/next buttons. The Advanced button SHALL open a popover with the search kind, match mode and field, defaulting to containing, Exact and All fields. Changes SHALL apply live; Escape or a click outside SHALL close the popover.
 
 #### Scenario: Options stay out of the bar
 - **WHEN** the search bar is at rest

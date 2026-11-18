@@ -146,3 +146,18 @@ struct SidebarPanel {
 final class FlippedContent: NSView {
     override var isFlipped: Bool { true }
 }
+
+/// The options icon shared by the commit search's Advanced button and the diff
+/// pane's options button: sliders, drawn in the accent colour while any option
+/// differs from its default.
+@MainActor
+enum OptionsIcon {
+    static let symbol = "slider.horizontal.3"
+
+    static func image(changed: Bool, pointSize: CGFloat = 13, accessibilityDescription: String? = nil) -> NSImage? {
+        guard let base = NSImage(systemSymbolName: symbol, accessibilityDescription: accessibilityDescription) else { return nil }
+        var config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .regular, scale: .small)
+        if changed { config = config.applying(NSImage.SymbolConfiguration(paletteColors: [.controlAccentColor])) }
+        return base.withSymbolConfiguration(config) ?? base
+    }
+}

@@ -63,6 +63,20 @@ enum Palette {
         resolve(s.foundBgColor, gitkDefault: defaults.foundBgColor, Theme.yellow.withAlphaComponent(0.45))
     }
 
+    /// Diff-pane search hits. They sit on top of the added/removed line tints,
+    /// so the themed colours are solid (not the translucent list boxes) and the
+    /// hit text is drawn dark (`paneSearchText`) to stay readable on them.
+    static func paneFound(_ s: Settings) -> NSColor {
+        resolve(s.foundBgColor, gitkDefault: defaults.foundBgColor, Theme.adaptive(light: 0xFFE066, dark: 0xF9E2AF))
+    }
+
+    static func paneCurrentHit(_ s: Settings) -> NSColor {
+        resolve(s.currentSearchHitBgColor, gitkDefault: defaults.currentSearchHitBgColor,
+                Theme.adaptive(light: 0xFF9F43, dark: 0xFF9E64))
+    }
+
+    static let paneSearchText = Theme.adaptive(light: 0x1E1E2E, dark: 0x1E1E2E)
+
     // MARK: Diff
 
     /// `diffColors`: removed, added, hunk header.
