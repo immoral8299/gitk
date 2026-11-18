@@ -6,7 +6,8 @@
 # Usage: Tools/snapshot.sh <fixture> <out.png> [gitk-swift args...]
 #
 # Builds the fixture (cached under $TMPDIR/gitk-swift-snapshot-fixtures), builds
-# gitk-swift, runs it inside the fixture with GITK_SWIFT_SNAPSHOT set, and prints
+# gitk-swift, runs it on the fixture (passed as the repository argument, so the
+# app opens it instead of the repository picker) with GITK_SWIFT_SNAPSHOT set, and prints
 # the PNG path. Set GITK_SWIFT_SNAPSHOT_SIZE=WxH to choose the window size and
 # SNAPSHOT_TIMEOUT to change the 60 second limit.
 
@@ -25,7 +26,9 @@ cache="${TMPDIR:-/tmp}/gitk-swift-snapshot-fixtures"
 cache=${cache%/}
 mkdir -p "$cache"
 
-if [ ! -d "$cache/$fixture/.git" ] && [ ! -f "$cache/$fixture/HEAD" ]; then
+# macOS purges old files under $TMPDIR, which can leave a cached fixture with a
+# .git directory git no longer recognises; rebuild it then.
+if ! git -C "$cache/$fixture" rev-parse --git-dir >/dev/null 2>&1; then
     rm -rf "${cache:?}/$fixture"
     "$root/Tests/Fixtures/make-fixture.sh" "$fixture" "$cache" >/dev/null
 fi
@@ -46,7 +49,7 @@ trap 'rm -rf "$config"' EXIT
 cd "$cache/$fixture"
 # An empty HOME and XDG_CONFIG_HOME keep the user's own gitk config from being
 # imported on this first launch, so snapshots show the app's defaults.
-HOME="$config" XDG_CONFIG_HOME="$config" GITK_SWIFT_CONFIG_DIR="$config" GITK_SWIFT_SNAPSHOT="$out" "$bin" "$@" &
+HOME="$config" XDG_CONFIG_HOME="$config" GITK_SWIFT_CONFIG_DIR="$config" GITK_SWIFT_SNAPSHOT="$out" "$bin" "$cache/$fixture" "$@" &
 pid=$!
 (
     sleep "${SNAPSHOT_TIMEOUT:-60}"
